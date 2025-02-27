@@ -1,22 +1,15 @@
 "use client";
 
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useCallback
-} from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
 
-
 // -------------------- Constants --------------------
-
-// Define key signatures at the top so they're in scope.
 const keySignatures: Record<string, { semitones: number[]; notes: string[] }> = {
   "C Major": {
     semitones: [0, 2, 4, 5, 7, 9, 11, 12],
@@ -25,30 +18,13 @@ const keySignatures: Record<string, { semitones: number[]; notes: string[] }> = 
   // ... add other keys as needed
 };
 
-// Define sampleURLs with an explicit type.
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",
 };
 
-// Default chromatic scale for visualizations.
-const defaultScale = [
-  "C",
-  "C#",
-  "D",
-  "D#",
-  "E",
-  "F",
-  "F#",
-  "G",
-  "G#",
-  "A",
-  "A#",
-  "B",
-];
+const defaultScale = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-// -------------------- Conductor Visualizer --------------------
-
-// Define ConductorOverlay at the top of the file.
+// -------------------- Conductor Overlay --------------------
 function ConductorOverlay({
   progress,
   expectedProgress,
@@ -59,7 +35,7 @@ function ConductorOverlay({
   return (
     <div className="absolute inset-0 pointer-events-none">
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-white bg-black/50 p-2">
+        <div className="text-white bg-black/50 p-2 rounded">
           Conductor progress: {(progress * 100).toFixed(1)}% <br />
           Expected progress: {(expectedProgress * 100).toFixed(1)}%
         </div>
@@ -68,9 +44,7 @@ function ConductorOverlay({
   );
 }
 
-
-// -------------------- ChordGridVisualizer --------------------
-// A simple inline version so the code compiles.
+// -------------------- Chord Grid Visualizer --------------------
 function ChordGridVisualizer({
   chords,
   currentCell,
@@ -79,16 +53,16 @@ function ChordGridVisualizer({
   currentCell: number | null;
 }) {
   return (
-    <div className="absolute top-0 left-0 w-[640px] h-[480px] grid grid-cols-3 grid-rows-3 gap-0 z-30 bg-white/40">
+    <div className="absolute top-0 left-0 w-[640px] h-[480px] grid grid-cols-3 grid-rows-3 gap-0 bg-white/40">
       {chords.map((chord, index) => (
         <div
           key={index}
-          className={`border border-black flex flex-col items-center justify-center ${
-            currentCell === index ? "bg-yellow-300" : "bg-transparent"
+          className={`border border-teal-500 flex flex-col items-center justify-center ${
+            currentCell === index ? "bg-teal-300" : "bg-transparent"
           }`}
         >
-          <div className="text-lg">{chord.name}</div>
-          <div className="text-sm text-gray-600">{chord.roman}</div>
+          <div className="text-lg text-teal-800">{chord.name}</div>
+          <div className="text-sm text-teal-600">{chord.roman}</div>
         </div>
       ))}
     </div>
@@ -97,13 +71,10 @@ function ChordGridVisualizer({
 
 // -------------------- Helper: getChordsForKey --------------------
 function getChordsForKey(keyName: string) {
-  if (!keySignatures[keyName] && keyName !== "None") {
-    return [];
-  }
+  if (!keySignatures[keyName] && keyName !== "None") return [];
   let chords: string[] = [];
   let roman: string[] = [];
   if (keyName === "None") keyName = "C Major";
-
   if (keyName.includes("Major")) {
     const sig = keySignatures[keyName];
     chords = [
@@ -138,29 +109,19 @@ function getChordsForKey(keyName: string) {
 
 // -------------------- Main Page Component --------------------
 export default function Page() {
-  // Refs for video & canvas
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  // Gesture recognition and webcam state
-  const [gestureRecognizer, setGestureRecognizer] =
-    useState<GestureRecognizer | null>(null);
+  const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
   const [webcamEnabled, setWebcamEnabled] = useState(false);
-
-  // BPM, note length, key, mode, arpeggio settings
   const [bpm, setBpm] = useState<number>(120);
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" | "conductor">("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
-
-  // Visual feedback
   const [currentNote, setCurrentNote] = useState<number | null>(null);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
-
-  // Conductor mode states
   const [conductorProgress, setConductorProgress] = useState<number>(0);
   const [conductorStarted, setConductorStarted] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number | string | null>(null);
@@ -168,27 +129,20 @@ export default function Page() {
   const [conductorStartTime, setConductorStartTime] = useState<number | null>(null);
   const [expectedProgress, setExpectedProgress] = useState<number>(0);
   const [gameScore, setGameScore] = useState<number | null>(null);
-
-  // Audio-related refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
   const convolverRef = useRef<ConvolverNode | null>(null);
   const notePlayingRef = useRef<boolean>(false);
   const [backingBuffer, setBackingBuffer] = useState<AudioBuffer | null>(null);
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
-
-  // Error accumulation for conductor mode
   const errorSumRef = useRef<number>(0);
   const errorCountRef = useRef<number>(0);
 
-  // -------------------- Initialize Audio --------------------
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const audioCtx = audioContextRef.current;
-
     const samples: Record<string, AudioBuffer> = {};
     for (const [gesture, url] of Object.entries(sampleURLs)) {
       try {
@@ -204,8 +158,6 @@ export default function Page() {
       }
     }
     samplesRef.current = samples;
-
-    // Load impulse response.
     try {
       const irResponse = await fetch("/samples/impulse.wav");
       if (irResponse.ok) {
@@ -219,8 +171,6 @@ export default function Page() {
     } catch (err) {
       console.error("Error loading impulse response:", err);
     }
-
-    // Load backing track.
     try {
       const backingResponse = await fetch("/samples/backing.mp3");
       if (backingResponse.ok) {
@@ -234,16 +184,12 @@ export default function Page() {
     }
   }, []);
 
-  // -------------------- Initialize Mediapipe --------------------
   const initGestureRecognizer = useCallback(async () => {
     try {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.1/wasm"
-      );
+      const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.1/wasm");
       const recognizer = await GestureRecognizer.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
         },
         numHands: 2,
         runningMode: "VIDEO",
@@ -255,23 +201,19 @@ export default function Page() {
     }
   }, []);
 
-  // On mount, initialize gesture recognizer and audio.
   useEffect(() => {
     initGestureRecognizer();
     initAudio();
     return () => {
       gestureRecognizer?.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // -------------------- Enable Webcam --------------------
   useEffect(() => {
     if (!webcamEnabled) return;
     const videoEl = videoRef.current;
     if (!videoEl) return;
     let stream: MediaStream | null = null;
-
     navigator.mediaDevices
       .getUserMedia({ video: true })
       .then((s) => {
@@ -280,7 +222,6 @@ export default function Page() {
         return videoEl.play();
       })
       .catch((err) => console.error("Error playing video:", err));
-
     return () => {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
@@ -288,11 +229,9 @@ export default function Page() {
     };
   }, [webcamEnabled]);
 
-  // -------------------- Handle WebGL Context Lost --------------------
   useEffect(() => {
     const canvasEl = canvasRef.current;
     if (!canvasEl) return;
-
     const handleContextLost = (e: Event) => {
       e.preventDefault();
       console.warn("WebGL context lost; reinitializing gesture recognizer.");
@@ -302,35 +241,26 @@ export default function Page() {
         initGestureRecognizer();
       }, 1000);
     };
-
     canvasEl.addEventListener("webglcontextlost", handleContextLost, false);
     return () => {
       canvasEl.removeEventListener("webglcontextlost", handleContextLost);
     };
   }, [gestureRecognizer, initGestureRecognizer]);
 
-  // -------------------- Helper Functions --------------------
   function getHandPosition(landmarks: { x: number; y: number }[]) {
-    const avg = landmarks.reduce(
-      (acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }),
-      { x: 0, y: 0 }
-    );
-    const x = avg.x / landmarks.length;
-    const y = avg.y / landmarks.length;
-    return { x: 1 - x, y };
+    const avg = landmarks.reduce((acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }), { x: 0, y: 0 });
+    return { x: 1 - avg.x / landmarks.length, y: avg.y / landmarks.length };
   }
 
   function updateHandPos(landmarks: { x: number; y: number }[]) {
     const pos = getHandPosition(landmarks);
     setHandPos(pos);
     if (mode === "conductor") {
-      let p = 1 - pos.y;
-      p = Math.max(0, Math.min(1, p));
+      const p = Math.max(0, Math.min(1, 1 - pos.y));
       setConductorProgress(p);
     }
   }
 
-  // -------------------- Audio Playback Functions --------------------
   function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
@@ -340,19 +270,15 @@ export default function Page() {
       return;
     }
     if (notePlayingRef.current) return;
-
     const noteIndex = Math.min(11, Math.floor(handPosition.x * 12));
     setCurrentNote(noteIndex);
     setTimeout(() => setCurrentNote(null), 500);
-
     const duration = (60 / bpm) * noteLength;
     const source = audioCtx.createBufferSource();
     source.buffer = sampleBuffer;
     source.playbackRate.value = Math.pow(2, noteIndex / 12);
-
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 0.2 + (1 - handPosition.y) * 0.8;
-
     source.connect(gainNode);
     if (convolverRef.current) {
       gainNode.connect(convolverRef.current);
@@ -360,10 +286,8 @@ export default function Page() {
     } else {
       gainNode.connect(audioCtx.destination);
     }
-
     source.start();
     source.stop(audioCtx.currentTime + duration);
-
     notePlayingRef.current = true;
     setTimeout(() => {
       notePlayingRef.current = false;
@@ -380,9 +304,7 @@ export default function Page() {
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
-    if (chordObj) {
-      playChord(chordObj.name);
-    }
+    if (chordObj) playChord(chordObj.name);
   }
 
   function playArpeggioFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
@@ -395,9 +317,8 @@ export default function Page() {
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
-    if (chordObj) {
+    if (chordObj)
       playArpeggio(chordObj.name, (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
-    }
   }
 
   function playChord(chordLabel: string) {
@@ -405,18 +326,7 @@ export default function Page() {
     if (!audioCtx) return;
     const duration = (60 / bpm) * noteLength;
     const noteToSemitone: Record<string, number> = {
-      C: 0,
-      "C#": 1,
-      D: 2,
-      "D#": 3,
-      E: 4,
-      F: 5,
-      "F#": 6,
-      G: 7,
-      "G#": 8,
-      A: 9,
-      "A#": 10,
-      B: 11,
+      C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
     };
     const match = chordLabel.match(/^[A-G]#?/);
     if (!match) return;
@@ -426,13 +336,11 @@ export default function Page() {
     if (chordType === "maj") intervals = [0, 4, 7];
     else if (chordType === "min") intervals = [0, 3, 7];
     else if (chordType === "dim") intervals = [0, 3, 6];
-
     intervals.forEach((interval) => {
       const source = audioCtx.createBufferSource();
       source.buffer = samplesRef.current["Closed_Fist"];
       const semitoneOffset = noteToSemitone[root] + interval;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
-
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
       source.connect(gainNode);
@@ -460,18 +368,7 @@ export default function Page() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
     const noteToSemitone: Record<string, number> = {
-      C: 0,
-      "C#": 1,
-      D: 2,
-      "D#": 3,
-      E: 4,
-      F: 5,
-      "F#": 6,
-      G: 7,
-      "G#": 8,
-      A: 9,
-      "A#": 10,
-      B: 11,
+      C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
     };
     const match = chordLabel.match(/^[A-G]#?/);
     if (!match) return;
@@ -481,37 +378,27 @@ export default function Page() {
     if (chordType === "maj") intervals = [0, 4, 7];
     else if (chordType === "min") intervals = [0, 3, 7];
     else if (chordType === "dim") intervals = [0, 3, 6];
-
     let pattern: number[] = [];
     if (direction === "up") {
       pattern = [...intervals];
-      if (octaves === 2) {
-        pattern = pattern.concat(intervals.map((i) => i + 12));
-      }
+      if (octaves === 2) pattern = pattern.concat(intervals.map((i) => i + 12));
     } else if (direction === "down") {
       pattern = [...intervals];
-      if (octaves === 2) {
-        pattern = pattern.concat(intervals.map((i) => i + 12));
-      }
+      if (octaves === 2) pattern = pattern.concat(intervals.map((i) => i + 12));
       pattern.reverse();
     } else if (direction === "upDown") {
       let up = [...intervals];
-      if (octaves === 2) {
-        up = up.concat(intervals.map((i) => i + 12));
-      }
+      if (octaves === 2) up = up.concat(intervals.map((i) => i + 12));
       let down = up.slice(0, -1).reverse();
       pattern = up.concat(down);
     }
-
     const totalNotes = pattern.length;
     const noteDuration = duration / totalNotes;
-
     pattern.forEach((intervalVal, i) => {
       const source = audioCtx.createBufferSource();
       source.buffer = samplesRef.current["Closed_Fist"];
       const semitoneOffset = noteToSemitone[root] + intervalVal;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
-
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
       source.connect(gainNode);
@@ -521,23 +408,19 @@ export default function Page() {
       } else {
         gainNode.connect(audioCtx.destination);
       }
-
       source.start(audioCtx.currentTime + i * noteDuration);
       source.stop(audioCtx.currentTime + (i + 1) * noteDuration);
     });
-
     notePlayingRef.current = true;
     setTimeout(() => {
       notePlayingRef.current = false;
     }, duration * 1000);
   }
 
-  // -------------------- Conductor Game --------------------
   function startConductorGame() {
     setGameScore(null);
     setCountdown(3);
-
-    const cdInterval: ReturnType<typeof setInterval> = setInterval(() => {
+    const cdInterval = setInterval(() => {
       setCountdown((prev) => {
         if (prev === 1) {
           clearInterval(cdInterval);
@@ -549,7 +432,6 @@ export default function Page() {
             setConductorGameTime(0);
             errorSumRef.current = 0;
             errorCountRef.current = 0;
-
             if (backingBuffer && audioContextRef.current) {
               const source = audioContextRef.current.createBufferSource();
               source.buffer = backingBuffer;
@@ -561,48 +443,37 @@ export default function Page() {
           }, 1000);
           return prev;
         }
-        if (typeof prev === "number") {
-          return prev - 1;
-        }
+        if (typeof prev === "number") return prev - 1;
         return prev;
       });
     }, 1000);
   }
 
-  // Track conductor progress with a typed interval.
   useEffect(() => {
-    let intervalId: ReturnType<typeof setInterval>;
-    if (conductorStarted) {
+    const intervalId = setInterval(() => {
+      if (!conductorStartTime) return;
+      const elapsed = (performance.now() - conductorStartTime) / 1000;
+      setConductorGameTime(elapsed);
       const measureDuration = (60 / bpm) * 4;
-      intervalId = setInterval(() => {
-        if (!conductorStartTime) return;
-        const elapsed = (performance.now() - conductorStartTime) / 1000;
-        setConductorGameTime(elapsed);
-        const expected = (elapsed % measureDuration) / measureDuration;
-        setExpectedProgress(expected);
-
-        if (handPos) {
-          const err = Math.abs(expected - conductorProgress);
-          errorSumRef.current += err;
-          errorCountRef.current += 1;
+      const expected = (elapsed % measureDuration) / measureDuration;
+      setExpectedProgress(expected);
+      if (handPos) {
+        const err = Math.abs(expected - conductorProgress);
+        errorSumRef.current += err;
+        errorCountRef.current += 1;
+      }
+      if (elapsed >= 30) {
+        clearInterval(intervalId);
+        setConductorStarted(false);
+        if (backingSourceRef.current) {
+          backingSourceRef.current.stop();
+          backingSourceRef.current = null;
         }
-        if (elapsed >= 30) {
-          clearInterval(intervalId);
-          setConductorStarted(false);
-          if (backingSourceRef.current) {
-            backingSourceRef.current.stop();
-            backingSourceRef.current = null;
-          }
-          const avgError = errorCountRef.current
-            ? errorSumRef.current / errorCountRef.current
-            : 0;
-          setGameScore(avgError);
-        }
-      }, 100);
-    }
-    return () => {
-      clearInterval(intervalId);
-    };
+        const avgError = errorCountRef.current ? errorSumRef.current / errorCountRef.current : 0;
+        setGameScore(avgError);
+      }
+    }, 100);
+    return () => clearInterval(intervalId);
   }, [conductorStarted, bpm, conductorProgress, conductorStartTime, handPos]);
 
   // -------------------- Main Gesture Loop --------------------
@@ -611,18 +482,15 @@ export default function Page() {
     const videoEl = videoRef.current;
     const canvasEl = canvasRef.current;
     if (!videoEl || !canvasEl) return;
-
     let animationFrameId: number;
     let lastLogTime = 0;
     const ctx = canvasEl.getContext("2d");
-
     const processFrame = async () => {
       if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA && ctx) {
         ctx.save();
         ctx.translate(canvasEl.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-
         const timestamp = performance.now();
         try {
           const results = await gestureRecognizer.recognizeForVideo(videoEl, timestamp);
@@ -638,17 +506,11 @@ export default function Page() {
               if (!handLandmarks) return;
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
-
               if (mode === "conductor") return;
-
               if (gesture.categoryName === "Closed_Fist") {
-                if (mode === "manual") {
-                  playNoteManual("Closed_Fist", pos);
-                } else if (mode === "autoChord") {
-                  playChordFromHandPosition("Closed_Fist", pos);
-                } else if (mode === "arpeggiator") {
-                  playArpeggioFromHandPosition("Closed_Fist", pos);
-                }
+                if (mode === "manual") playNoteManual("Closed_Fist", pos);
+                else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
+                else if (mode === "arpeggiator") playArpeggioFromHandPosition("Closed_Fist", pos);
               }
             });
           }
@@ -670,29 +532,13 @@ export default function Page() {
       animationFrameId = requestAnimationFrame(processFrame);
     };
     processFrame();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [gestureRecognizer, webcamEnabled, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection]);
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [
-    gestureRecognizer,
-    webcamEnabled,
-    bpm,
-    noteLength,
-    selectedKey,
-    mode,
-    arpeggioOctaves,
-    arpeggioDirection,
-  ]);
-
-  // When in manual mode, use the Three.js piano; otherwise, use the chord grid.
   const visualizerComponent =
     mode === "manual" ? (
-      <div className="mx-auto" style={{ width: "640px", height: "280px" }}>
-        <ThreePianoVisualizer currentNote={currentNote} />
-      </div>
-
-      ) : (
+      <ThreePianoVisualizer currentNote={currentNote} />
+    ) : (
       <ChordGridVisualizer
         chords={getChordsForKey(selectedKey)}
         currentCell={currentChordCell}
@@ -700,227 +546,231 @@ export default function Page() {
     );
 
   return (
-    <div className="relative text-center">
-      {/* Video & Canvas container */}
-      <div className="relative inline-block mt-10">
-        {!webcamEnabled ? (
-          <Button
-            onClick={() => {
-              setWebcamEnabled(true);
-              if (
-                audioContextRef.current &&
-                audioContextRef.current.state === "suspended"
-              ) {
-                audioContextRef.current.resume();
-              }
-            }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 text-xl z-20"
-          >
-            Enable Webcam
-          </Button>
-        ) : (
-          <Button
-            onClick={() => {
-              setWebcamEnabled(false);
-              if (backingSourceRef.current) {
-                backingSourceRef.current.stop();
-                backingSourceRef.current = null;
-              }
-              setConductorStarted(false);
-            }}
-            className="absolute top-4 left-4 px-4 py-2 text-base z-20"
-          >
-            Stop Video
-          </Button>
-        )}
+    <div className="container mx-auto p-4">
+      <div className="flex flex-row gap-4">
+        {/* Left Column: Tutorials Prompt */}
+        <div className="w-1/4">
+          <Card className="p-6 rounded-2xl bg-teal-100 shadow-lg">
+            <CardHeader>
+              <h2 className="text-2xl font-bold text-teal-800">Tutorials</h2>
+            </CardHeader>
+            <CardContent>
+              <p className="text-teal-700 mb-4">
+                Learn how to make the most of Motiononics with our step‑by‑step tutorials.
+              </p>
+              <Link href="/tutorials">
+                <Button className="bg-teal-500 hover:bg-teal-600 text-white">View Tutorials</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
 
-        <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
-        <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
-
-        {(mode === "autoChord" || mode === "arpeggiator") && visualizerComponent}
-        {mode === "conductor" && (
-          <ConductorOverlay
-            progress={conductorProgress}
-            expectedProgress={expectedProgress}
-          />
-        )}
-        {handPos && (
-          <motion.div
-            animate={{ left: handPos.x * 640 - 25, top: handPos.y * 480 - 25 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute w-12 h-12 rounded-full bg-red-500/50 pointer-events-none z-40"
-          />
-        )}
-
-        {mode === "conductor" && !conductorStarted && (
-          <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
-            {countdown !== null ? (
-              <div>{countdown}</div>
+        {/* Central Column: Webcam Feed & Visualizer */}
+        <div className="w-1/2">
+          {/* Webcam Feed Container */}
+          <div className="relative inline-block mb-4">
+            {!webcamEnabled ? (
+              <Button
+                onClick={() => {
+                  setWebcamEnabled(true);
+                  if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+                    audioContextRef.current.resume();
+                  }
+                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 text-xl z-20 bg-teal-500 hover:bg-teal-600 text-white"
+              >
+                Enable Webcam
+              </Button>
             ) : (
-              <Button className="px-6 py-3 text-2xl" onClick={startConductorGame}>
-                Start Conductor Game
+              <Button
+                onClick={() => {
+                  setWebcamEnabled(false);
+                  if (backingSourceRef.current) {
+                    backingSourceRef.current.stop();
+                    backingSourceRef.current = null;
+                  }
+                  setConductorStarted(false);
+                }}
+                className="absolute top-4 left-4 px-4 py-2 text-base z-20 bg-teal-500 hover:bg-teal-600 text-white"
+              >
+                Stop Video
               </Button>
             )}
+            <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
+            <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
+            {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && visualizerComponent}
+            {mode === "conductor" && (
+              <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
+            )}
+            {handPos && (
+              <motion.div
+                animate={{ left: handPos.x * 640 - 25, top: handPos.y * 480 - 25 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="absolute w-12 h-12 rounded-full bg-red-500/50 pointer-events-none z-40"
+              />
+            )}
+            {mode === "conductor" && !conductorStarted && (
+              <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
+                {countdown !== null ? (
+                  <div>{countdown}</div>
+                ) : (
+                  <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white" onClick={startConductorGame}>
+                    Start Conductor Game
+                  </Button>
+                )}
+              </div>
+            )}
+            {mode === "conductor" && conductorStarted && (
+              <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
+                <div className="h-full bg-green-500" style={{ width: `${(conductorGameTime / 30) * 100}%` }} />
+              </div>
+            )}
+            {mode === "conductor" && gameScore !== null && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-4 text-3xl z-50">
+                Your average timing error: {(gameScore * 100).toFixed(2)}%
+              </div>
+            )}
           </div>
-        )}
-        {mode === "conductor" && conductorStarted && (
-          <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
-            <div
-              className="h-full bg-green-500"
-              style={{ width: `${(conductorGameTime / 30) * 100}%` }}
-            />
-          </div>
-        )}
-        {mode === "conductor" && gameScore !== null && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-4 text-3xl z-50">
-            Your average timing error: {(gameScore * 100).toFixed(2)}%
-          </div>
-        )}
-      </div>
-
-      {mode === "manual" && visualizerComponent}
-
-      {/* Controls Panel */}
-      <div className="mt-5">
-        <Card className="max-w-xl mx-auto">
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Controls</h3>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
-              <label className="flex items-center gap-2">
-                BPM:
-                <input
-                  type="number"
-                  value={bpm}
-                  onChange={(e) => setBpm(Number(e.target.value))}
-                  className="w-16 px-2 py-1 border rounded"
-                />
-              </label>
-              <label className="flex items-center gap-2">
-                Note Length:
-                <select
-                  value={noteLength}
-                  onChange={(e) => setNoteLength(Number(e.target.value))}
-                  className="px-2 py-1 border rounded"
-                >
-                  <option value={0.25}>16th</option>
-                  <option value={0.5}>8th</option>
-                  <option value={1}>Quarter</option>
-                  <option value={2}>Half</option>
-                  <option value={4}>Whole</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-2">
-                Key:
-                <select
-                  value={selectedKey}
-                  onChange={(e) => setSelectedKey(e.target.value)}
-                  className="px-2 py-1 border rounded"
-                >
-                  <option value="None">None (Chromatic)</option>
-                  {Object.keys(keySignatures).map((keyName) => (
-                    <option key={keyName} value={keyName}>
-                      {keyName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2">
-                Mode:
-                <select
-                  value={mode}
-                  onChange={(e) =>
-                    setMode(e.target.value as typeof mode)
-                  }
-                  className="px-2 py-1 border rounded"
-                >
-                  <option value="manual">Manual</option>
-                  <option value="autoChord">Auto Chord</option>
-                  <option value="arpeggiator">Arpeggiator</option>
-                  <option value="conductor">Conductor</option>
-                </select>
-              </label>
-
-              {mode === "arpeggiator" && (
-                <>
-                  <label className="flex items-center gap-2">
-                    Arpeggio Octaves:
-                    <label className="ml-2 flex items-center gap-1">
-                      <input
-                        type="radio"
-                        value={1}
-                        checked={arpeggioOctaves === 1}
-                        onChange={() => setArpeggioOctaves(1)}
-                      />
-                      1
-                    </label>
-                    <label className="ml-2 flex items-center gap-1">
-                      <input
-                        type="radio"
-                        value={2}
-                        checked={arpeggioOctaves === 2}
-                        onChange={() => setArpeggioOctaves(2)}
-                      />
-                      2
-                    </label>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    Arpeggio Direction:
-                    <label className="ml-2 flex items-center gap-1">
-                      <input
-                        type="radio"
-                        value="up"
-                        checked={arpeggioDirection === "up"}
-                        onChange={() => setArpeggioDirection("up")}
-                      />
-                      Up
-                    </label>
-                    <label className="ml-2 flex items-center gap-1">
-                      <input
-                        type="radio"
-                        value="down"
-                        checked={arpeggioDirection === "down"}
-                        onChange={() => setArpeggioDirection("down")}
-                      />
-                      Down
-                    </label>
-                    <label className="ml-2 flex items-center gap-1">
-                      <input
-                        type="radio"
-                        value="upDown"
-                        checked={arpeggioDirection === "upDown"}
-                        onChange={() => setArpeggioDirection("upDown")}
-                      />
-                      Up &amp; Down
-                    </label>
-                  </label>
-                </>
-              )}
+          {mode === "manual" && (
+            <div className="mx-auto" style={{ width: "640px", height: "280px" }}>
+              {visualizerComponent}
             </div>
+          )}
+        </div>
 
-            <Button
-              onClick={() => {
-                console.log("Test Closed_Fist Sample clicked.");
-                if (mode === "manual") {
-                  playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 });
-                } else if (mode === "autoChord") {
-                  playChord("Cmaj");
-                } else if (mode === "arpeggiator") {
-                  playArpeggio(
-                    "Cmaj",
-                    (60 / bpm) * noteLength,
-                    arpeggioOctaves,
-                    arpeggioDirection
-                  );
-                }
-              }}
-              className="px-6 py-2"
-            >
-              Test Closed_Fist Sample
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Right Column: Controls Panel */}
+        <div className="w-1/4">
+          <Card className="max-w-md mx-auto bg-white shadow-lg">
+            <CardHeader>
+              <h3 className="text-lg font-semibold text-teal-800">Controls</h3>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
+                <label className="flex items-center gap-2 text-teal-700">
+                  BPM:
+                  <input
+                    type="number"
+                    value={bpm}
+                    onChange={(e) => setBpm(Number(e.target.value))}
+                    className="w-16 px-2 py-1 border rounded focus:ring-teal-500"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-teal-700">
+                  Note Length:
+                  <select
+                    value={noteLength}
+                    onChange={(e) => setNoteLength(Number(e.target.value))}
+                    className="px-2 py-1 border rounded focus:ring-teal-500"
+                  >
+                    <option value={0.25}>16th</option>
+                    <option value={0.5}>8th</option>
+                    <option value={1}>Quarter</option>
+                    <option value={2}>Half</option>
+                    <option value={4}>Whole</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-teal-700">
+                  Key:
+                  <select
+                    value={selectedKey}
+                    onChange={(e) => setSelectedKey(e.target.value)}
+                    className="px-2 py-1 border rounded focus:ring-teal-500"
+                  >
+                    <option value="None">None (Chromatic)</option>
+                    {Object.keys(keySignatures).map((keyName) => (
+                      <option key={keyName} value={keyName}>
+                        {keyName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-teal-700">
+                  Mode:
+                  <select
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as typeof mode)}
+                    className="px-2 py-1 border rounded focus:ring-teal-500"
+                  >
+                    <option value="manual">Manual</option>
+                    <option value="autoChord">Auto Chord</option>
+                    <option value="arpeggiator">Arpeggiator</option>
+                    <option value="conductor">Conductor</option>
+                  </select>
+                </label>
+                {mode === "arpeggiator" && (
+                  <>
+                    <label className="flex items-center gap-2 text-teal-700">
+                      Arpeggio Octaves:
+                      <label className="ml-2 flex items-center gap-1">
+                        <input
+                          type="radio"
+                          value={1}
+                          checked={arpeggioOctaves === 1}
+                          onChange={() => setArpeggioOctaves(1)}
+                        />
+                        1
+                      </label>
+                      <label className="ml-2 flex items-center gap-1">
+                        <input
+                          type="radio"
+                          value={2}
+                          checked={arpeggioOctaves === 2}
+                          onChange={() => setArpeggioOctaves(2)}
+                        />
+                        2
+                      </label>
+                    </label>
+                    <label className="flex items-center gap-2 text-teal-700">
+                      Arpeggio Direction:
+                      <label className="ml-2 flex items-center gap-1">
+                        <input
+                          type="radio"
+                          value="up"
+                          checked={arpeggioDirection === "up"}
+                          onChange={() => setArpeggioDirection("up")}
+                        />
+                        Up
+                      </label>
+                      <label className="ml-2 flex items-center gap-1">
+                        <input
+                          type="radio"
+                          value="down"
+                          checked={arpeggioDirection === "down"}
+                          onChange={() => setArpeggioDirection("down")}
+                        />
+                        Down
+                      </label>
+                      <label className="ml-2 flex items-center gap-1">
+                        <input
+                          type="radio"
+                          value="upDown"
+                          checked={arpeggioDirection === "upDown"}
+                          onChange={() => setArpeggioDirection("upDown")}
+                        />
+                        Up &amp; Down
+                      </label>
+                    </label>
+                  </>
+                )}
+              </div>
+              <Button
+                onClick={() => {
+                  console.log("Test Closed_Fist Sample clicked.");
+                  if (mode === "manual") {
+                    playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 });
+                  } else if (mode === "autoChord") {
+                    playChord("Cmaj");
+                  } else if (mode === "arpeggiator") {
+                    playArpeggio("Cmaj", (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
+                  }
+                }}
+                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white"
+              >
+                Test Closed_Fist Sample
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
