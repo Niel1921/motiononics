@@ -4,49 +4,31 @@ import React, {
   useRef,
   useEffect,
   useState,
-  useCallback,
-  RefObject
+  useCallback
 } from "react";
+import * as THREE from "three";
 import { motion } from "framer-motion";
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
-// Example inline ConductorOverlay:
-function ConductorOverlay({
-  progress,
-  expectedProgress,
-}: {
-  progress: number;
-  expectedProgress: number;
-}) {
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      {/* Example visual overlay */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-white bg-black/50 p-2">
-          Conductor progress: {(progress * 100).toFixed(1)}% <br />
-          Expected progress: {(expectedProgress * 100).toFixed(1)}%
-        </div>
-      </div>
-    </div>
-  );
-}
+// -------------------- Constants --------------------
 
-// Hardcode your sample file paths from public folder:
-const sampleURLs = {
-  Closed_Fist: "/samples/fist.wav",
-};
-
+// Define key signatures at the top so they're in scope.
 const keySignatures: Record<string, { semitones: number[]; notes: string[] }> = {
   "C Major": {
     semitones: [0, 2, 4, 5, 7, 9, 11, 12],
     notes: ["C", "D", "E", "F", "G", "A", "B", "C"],
   },
-  // ... add the rest of your keys ...
+  // ... add other keys as needed
 };
 
-// Default chromatic scale
+// Define sampleURLs with an explicit type.
+const sampleURLs: Record<string, string> = {
+  Closed_Fist: "/samples/fist.wav",
+};
+
+// Default chromatic scale for visualizations.
 const defaultScale = [
   "C",
   "C#",
@@ -62,47 +44,119 @@ const defaultScale = [
   "B",
 ];
 
-// Piano Visualizer (manual mode)
-function PianoVisualizer({
-  currentNote,
-  selectedKey,
-}: {
+// -------------------- Three.js Piano Visualizer --------------------
+type ThreePianoVisualizerProps = {
   currentNote: number | null;
-  selectedKey: string;
+};
+
+// Define ConductorOverlay at the top of the file.
+function ConductorOverlay({
+  progress,
+  expectedProgress,
+}: {
+  progress: number;
+  expectedProgress: number;
 }) {
   return (
-    <div className="flex justify-center mt-5">
-      {defaultScale.map((note, index) => {
-        // Default color
-        let bgClass = "bg-white";
-        // Highlight if note is in the selectedKey
-        if (selectedKey !== "None") {
-          const allowed = new Set(
-            keySignatures[selectedKey].semitones.map((s) => s % 12)
-          );
-          if (allowed.has(index)) {
-            bgClass = "bg-blue-200";
-          }
-        }
-        // Highlight the current note
-        if (currentNote === index) {
-          bgClass = "bg-yellow-300";
-        }
-
-        return (
-          <div
-            key={index}
-            className={`w-10 h-36 border border-black m-0.5 flex items-end justify-center text-sm text-black ${bgClass}`}
-          >
-            {note}
-          </div>
-        );
-      })}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-white bg-black/50 p-2">
+          Conductor progress: {(progress * 100).toFixed(1)}% <br />
+          Expected progress: {(expectedProgress * 100).toFixed(1)}%
+        </div>
+      </div>
     </div>
   );
 }
 
-// Chord grid visualizer (autoChord/arpeggiator)
+
+function ThreePianoVisualizer({ currentNote }: ThreePianoVisualizerProps) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  // Initialize keysRef with an empty array and requestRef with 0.
+  const keysRef = useRef<THREE.Mesh[]>([]);
+  const requestRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Set up scene, camera, and renderer.
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, 640 / 200, 0.1, 1000);
+    camera.position.set(0, 5, 10);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(640, 200);
+    mountRef.current?.appendChild(renderer.domElement);
+
+    // Create 12 keys for one octave.
+    const keyWidth = 0.8;
+    const keyHeight = 0.2;
+    const keyDepth = 3;
+    const startX = -((12 * keyWidth) / 2) + keyWidth / 2;
+    const keys: THREE.Mesh[] = [];
+    for (let i = 0; i < 12; i++) {
+      const geometry = new THREE.BoxGeometry(keyWidth, keyHeight, keyDepth);
+      const material = new THREE.MeshPhongMaterial({ color: 0xffffff });
+      const keyMesh = new THREE.Mesh(geometry, material);
+      keyMesh.position.x = startX + i * keyWidth;
+      keyMesh.position.y = 0;
+      scene.add(keyMesh);
+      keys.push(keyMesh);
+    }
+    keysRef.current = keys;
+
+    // Add lighting.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(0, 10, 10);
+    scene.add(directionalLight);
+
+    // Animation loop.
+    const animate = () => {
+      requestRef.current = requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      mountRef.current?.removeChild(renderer.domElement);
+      renderer.dispose();
+    };
+  }, []);
+
+  // Animate a key press when currentNote changes.
+  useEffect(() => {
+    if (currentNote === null) return;
+    const noteIndex = currentNote % 12;
+    const key = keysRef.current[noteIndex];
+    if (!key) return;
+    const originalY = key.position.y;
+    const targetY = originalY - 0.2; // press down by 0.2 units
+    const duration = 200; // ms for full press+release
+    const startTime = performance.now();
+
+    const animateKey = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      if (progress < 0.5) {
+        key.position.y = originalY - (originalY - targetY) * (progress * 2);
+      } else {
+        key.position.y = targetY + (originalY - targetY) * ((progress - 0.5) * 2);
+      }
+      if (progress < 1) {
+        requestAnimationFrame(animateKey);
+      } else {
+        key.position.y = originalY;
+      }
+    };
+    animateKey();
+  }, [currentNote]);
+
+  return <div ref={mountRef} />;
+}
+
+// -------------------- ChordGridVisualizer --------------------
+// A simple inline version so the code compiles.
 function ChordGridVisualizer({
   chords,
   currentCell,
@@ -127,15 +181,13 @@ function ChordGridVisualizer({
   );
 }
 
-// Helper: get chords (with Roman numerals) for a given key
+// -------------------- Helper: getChordsForKey --------------------
 function getChordsForKey(keyName: string) {
   if (!keySignatures[keyName] && keyName !== "None") {
     return [];
   }
   let chords: string[] = [];
   let roman: string[] = [];
-
-  // If no key selected, treat it as C Major
   if (keyName === "None") keyName = "C Major";
 
   if (keyName.includes("Major")) {
@@ -170,16 +222,18 @@ function getChordsForKey(keyName: string) {
   return chords.map((c, i) => ({ name: c, roman: roman[i] }));
 }
 
+// -------------------- Main Page Component --------------------
 export default function Page() {
   // Refs for video & canvas
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // States
-  const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
+  // Gesture recognition and webcam state
+  const [gestureRecognizer, setGestureRecognizer] =
+    useState<GestureRecognizer | null>(null);
   const [webcamEnabled, setWebcamEnabled] = useState(false);
 
-  // BPM, note length, key, mode, arpeggio
+  // BPM, note length, key, mode, arpeggio settings
   const [bpm, setBpm] = useState<number>(120);
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
@@ -192,7 +246,7 @@ export default function Page() {
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Conductor mode
+  // Conductor mode states
   const [conductorProgress, setConductorProgress] = useState<number>(0);
   const [conductorStarted, setConductorStarted] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number | string | null>(null);
@@ -201,7 +255,7 @@ export default function Page() {
   const [expectedProgress, setExpectedProgress] = useState<number>(0);
   const [gameScore, setGameScore] = useState<number | null>(null);
 
-  // Audio
+  // Audio-related refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
   const convolverRef = useRef<ConvolverNode | null>(null);
@@ -209,11 +263,11 @@ export default function Page() {
   const [backingBuffer, setBackingBuffer] = useState<AudioBuffer | null>(null);
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Error accumulation for conductor
+  // Error accumulation for conductor mode
   const errorSumRef = useRef<number>(0);
   const errorCountRef = useRef<number>(0);
 
-  // Audio init
+  // -------------------- Initialize Audio --------------------
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext ||
@@ -221,7 +275,6 @@ export default function Page() {
     }
     const audioCtx = audioContextRef.current;
 
-    // Load sample(s)
     const samples: Record<string, AudioBuffer> = {};
     for (const [gesture, url] of Object.entries(sampleURLs)) {
       try {
@@ -238,7 +291,7 @@ export default function Page() {
     }
     samplesRef.current = samples;
 
-    // Load impulse response
+    // Load impulse response.
     try {
       const irResponse = await fetch("/samples/impulse.wav");
       if (irResponse.ok) {
@@ -253,7 +306,7 @@ export default function Page() {
       console.error("Error loading impulse response:", err);
     }
 
-    // Load backing track
+    // Load backing track.
     try {
       const backingResponse = await fetch("/samples/backing.mp3");
       if (backingResponse.ok) {
@@ -267,7 +320,7 @@ export default function Page() {
     }
   }, []);
 
-  // Mediapipe init
+  // -------------------- Initialize Mediapipe --------------------
   const initGestureRecognizer = useCallback(async () => {
     try {
       const vision = await FilesetResolver.forVisionTasks(
@@ -288,7 +341,7 @@ export default function Page() {
     }
   }, []);
 
-  // On mount, init
+  // On mount, initialize gesture recognizer and audio.
   useEffect(() => {
     initGestureRecognizer();
     initAudio();
@@ -298,7 +351,7 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Webcam enabling
+  // -------------------- Enable Webcam --------------------
   useEffect(() => {
     if (!webcamEnabled) return;
     const videoEl = videoRef.current;
@@ -321,7 +374,7 @@ export default function Page() {
     };
   }, [webcamEnabled]);
 
-  // Handle WebGL context lost
+  // -------------------- Handle WebGL Context Lost --------------------
   useEffect(() => {
     const canvasEl = canvasRef.current;
     if (!canvasEl) return;
@@ -342,7 +395,7 @@ export default function Page() {
     };
   }, [gestureRecognizer, initGestureRecognizer]);
 
-  // Helpers
+  // -------------------- Helper Functions --------------------
   function getHandPosition(landmarks: { x: number; y: number }[]) {
     const avg = landmarks.reduce(
       (acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }),
@@ -350,7 +403,6 @@ export default function Page() {
     );
     const x = avg.x / landmarks.length;
     const y = avg.y / landmarks.length;
-    // Mirror horizontally
     return { x: 1 - x, y };
   }
 
@@ -358,13 +410,13 @@ export default function Page() {
     const pos = getHandPosition(landmarks);
     setHandPos(pos);
     if (mode === "conductor") {
-      let p = 1 - pos.y; // invert so top = 1, bottom = 0
+      let p = 1 - pos.y;
       p = Math.max(0, Math.min(1, p));
       setConductorProgress(p);
     }
   }
 
-  // Audio Playback Functions
+  // -------------------- Audio Playback Functions --------------------
   function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
@@ -566,12 +618,11 @@ export default function Page() {
     }, duration * 1000);
   }
 
-  // Conductor Game
+  // -------------------- Conductor Game --------------------
   function startConductorGame() {
     setGameScore(null);
     setCountdown(3);
 
-    // Use ReturnType<typeof setInterval> to fix TS error
     const cdInterval: ReturnType<typeof setInterval> = setInterval(() => {
       setCountdown((prev) => {
         if (prev === 1) {
@@ -585,7 +636,6 @@ export default function Page() {
             errorSumRef.current = 0;
             errorCountRef.current = 0;
 
-            // Start backing track
             if (backingBuffer && audioContextRef.current) {
               const source = audioContextRef.current.createBufferSource();
               source.buffer = backingBuffer;
@@ -605,7 +655,7 @@ export default function Page() {
     }, 1000);
   }
 
-  // While conductor is running, track progress
+  // Track conductor progress with a typed interval.
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval>;
     if (conductorStarted) {
@@ -641,7 +691,7 @@ export default function Page() {
     };
   }, [conductorStarted, bpm, conductorProgress, conductorStartTime, handPos]);
 
-  // Main gesture loop
+  // -------------------- Main Gesture Loop --------------------
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
     const videoEl = videoRef.current;
@@ -661,10 +711,7 @@ export default function Page() {
 
         const timestamp = performance.now();
         try {
-          const results = await gestureRecognizer.recognizeForVideo(
-            videoEl,
-            timestamp
-          );
+          const results = await gestureRecognizer.recognizeForVideo(videoEl, timestamp);
           if (timestamp - lastLogTime > 1000) {
             console.log("Gesture recognition results:", results);
             lastLogTime = timestamp;
@@ -678,7 +725,6 @@ export default function Page() {
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
 
-              // If in conductor mode, only track visuals/timing
               if (mode === "conductor") return;
 
               if (gesture.categoryName === "Closed_Fist") {
@@ -692,7 +738,6 @@ export default function Page() {
               }
             });
           }
-          // Draw landmarks
           if (results?.landmarks) {
             results.landmarks.forEach((lmArr) => {
               lmArr.forEach((lm) => {
@@ -726,10 +771,10 @@ export default function Page() {
     arpeggioDirection,
   ]);
 
-  // Decide which visualizer to show
+  // When in manual mode, use the Three.js piano; otherwise, use the chord grid.
   const visualizerComponent =
     mode === "manual" ? (
-      <PianoVisualizer currentNote={currentNote} selectedKey={selectedKey} />
+      <ThreePianoVisualizer currentNote={currentNote} />
     ) : (
       <ChordGridVisualizer
         chords={getChordsForKey(selectedKey)}
@@ -739,7 +784,7 @@ export default function Page() {
 
   return (
     <div className="relative text-center">
-      {/* Video + Canvas container */}
+      {/* Video & Canvas container */}
       <div className="relative inline-block mt-10">
         {!webcamEnabled ? (
           <Button
@@ -772,18 +817,8 @@ export default function Page() {
           </Button>
         )}
 
-        <video
-          ref={videoRef}
-          className="w-[640px] h-[480px] scale-x-[-1]"
-          muted
-          playsInline
-        />
-        <canvas
-          ref={canvasRef}
-          width={640}
-          height={480}
-          className="absolute top-0 left-0"
-        />
+        <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
+        <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
 
         {(mode === "autoChord" || mode === "arpeggiator") && visualizerComponent}
         {mode === "conductor" && (
@@ -794,16 +829,12 @@ export default function Page() {
         )}
         {handPos && (
           <motion.div
-            animate={{
-              left: handPos.x * 640 - 25,
-              top: handPos.y * 480 - 25,
-            }}
+            animate={{ left: handPos.x * 640 - 25, top: handPos.y * 480 - 25 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="absolute w-12 h-12 rounded-full bg-red-500/50 pointer-events-none z-40"
           />
         )}
 
-        {/* Conductor Overlays */}
         {mode === "conductor" && !conductorStarted && (
           <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
             {countdown !== null ? (
@@ -830,7 +861,6 @@ export default function Page() {
         )}
       </div>
 
-      {/* For manual mode, also show the piano below the video */}
       {mode === "manual" && visualizerComponent}
 
       {/* Controls Panel */}
