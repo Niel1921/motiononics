@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
+
 
 // -------------------- Constants --------------------
 
@@ -44,10 +46,7 @@ const defaultScale = [
   "B",
 ];
 
-// -------------------- Three.js Piano Visualizer --------------------
-type ThreePianoVisualizerProps = {
-  currentNote: number | null;
-};
+// -------------------- Conductor Visualizer --------------------
 
 // Define ConductorOverlay at the top of the file.
 function ConductorOverlay({
@@ -69,91 +68,6 @@ function ConductorOverlay({
   );
 }
 
-
-function ThreePianoVisualizer({ currentNote }: ThreePianoVisualizerProps) {
-  const mountRef = useRef<HTMLDivElement | null>(null);
-  // Initialize keysRef with an empty array and requestRef with 0.
-  const keysRef = useRef<THREE.Mesh[]>([]);
-  const requestRef = useRef<number>(0);
-
-  useEffect(() => {
-    // Set up scene, camera, and renderer.
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 640 / 200, 0.1, 1000);
-    camera.position.set(0, 5, 10);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(640, 200);
-    mountRef.current?.appendChild(renderer.domElement);
-
-    // Create 12 keys for one octave.
-    const keyWidth = 0.8;
-    const keyHeight = 0.2;
-    const keyDepth = 3;
-    const startX = -((12 * keyWidth) / 2) + keyWidth / 2;
-    const keys: THREE.Mesh[] = [];
-    for (let i = 0; i < 12; i++) {
-      const geometry = new THREE.BoxGeometry(keyWidth, keyHeight, keyDepth);
-      const material = new THREE.MeshPhongMaterial({ color: 0xffffff });
-      const keyMesh = new THREE.Mesh(geometry, material);
-      keyMesh.position.x = startX + i * keyWidth;
-      keyMesh.position.y = 0;
-      scene.add(keyMesh);
-      keys.push(keyMesh);
-    }
-    keysRef.current = keys;
-
-    // Add lighting.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 10, 10);
-    scene.add(directionalLight);
-
-    // Animation loop.
-    const animate = () => {
-      requestRef.current = requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    return () => {
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      mountRef.current?.removeChild(renderer.domElement);
-      renderer.dispose();
-    };
-  }, []);
-
-  // Animate a key press when currentNote changes.
-  useEffect(() => {
-    if (currentNote === null) return;
-    const noteIndex = currentNote % 12;
-    const key = keysRef.current[noteIndex];
-    if (!key) return;
-    const originalY = key.position.y;
-    const targetY = originalY - 0.2; // press down by 0.2 units
-    const duration = 200; // ms for full press+release
-    const startTime = performance.now();
-
-    const animateKey = () => {
-      const elapsed = performance.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      if (progress < 0.5) {
-        key.position.y = originalY - (originalY - targetY) * (progress * 2);
-      } else {
-        key.position.y = targetY + (originalY - targetY) * ((progress - 0.5) * 2);
-      }
-      if (progress < 1) {
-        requestAnimationFrame(animateKey);
-      } else {
-        key.position.y = originalY;
-      }
-    };
-    animateKey();
-  }, [currentNote]);
-
-  return <div ref={mountRef} />;
-}
 
 // -------------------- ChordGridVisualizer --------------------
 // A simple inline version so the code compiles.
@@ -774,8 +688,11 @@ export default function Page() {
   // When in manual mode, use the Three.js piano; otherwise, use the chord grid.
   const visualizerComponent =
     mode === "manual" ? (
-      <ThreePianoVisualizer currentNote={currentNote} />
-    ) : (
+      <div className="mx-auto" style={{ width: "640px", height: "280px" }}>
+        <ThreePianoVisualizer currentNote={currentNote} />
+      </div>
+
+      ) : (
       <ChordGridVisualizer
         chords={getChordsForKey(selectedKey)}
         currentCell={currentChordCell}
