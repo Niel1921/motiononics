@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import Header from "@/components/ui/header"; // Our custom header with logo
 
 // Define animation variants for the cards.
 const cardVariants = {
@@ -25,16 +26,21 @@ export default function TutorialsPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Header */}
-      <header className="mb-8 text-center">
-        <h1 className="text-4xl font-bold text-teal-800">Motiononics Tutorials</h1>
+      {/* Use our custom header at the top */}
+      <Header />
+
+      {/* Page Title */}
+      <div className="mt-8 text-center">
+        <h1 className="text-4xl font-bold text-teal-800">
+            Tutorials
+        </h1>
         <p className="mt-2 text-lg text-teal-700">
           Learn how to use our gesture‑based musical instrument platform with our engaging tutorials.
         </p>
-      </header>
+      </div>
 
       {/* Tutorials Grid */}
-      <main className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <main className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
         {[
           {
             title: "Introduction",
@@ -65,7 +71,9 @@ export default function TutorialsPage() {
           >
             <Card className="bg-white hover:shadow-xl transition-shadow">
               <CardHeader>
-                <h2 className="text-2xl font-semibold text-teal-800">{tutorial.title}</h2>
+                <h2 className="text-2xl font-semibold text-teal-800">
+                  {tutorial.title}
+                </h2>
               </CardHeader>
               <CardContent>
                 <p className="text-teal-700">{tutorial.description}</p>

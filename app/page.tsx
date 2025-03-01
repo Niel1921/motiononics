@@ -8,6 +8,8 @@ import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
+import Header from "@/components/ui/header"; 
+
 
 // -------------------- Constants --------------------
 const keySignatures: Record<string, { semitones: number[]; notes: string[] }> = {
@@ -546,6 +548,9 @@ export default function Page() {
     );
 
   return (
+    <main className="min-h-screen bg-gradient-to-b from-white to-teal-50">
+    <Header />
+
     <div className="container mx-auto p-4">
       <div className="flex flex-row gap-4">
         {/* Left Column: Tutorials Prompt */}
@@ -698,59 +703,56 @@ export default function Page() {
                   </select>
                 </label>
                 {mode === "arpeggiator" && (
-                  <>
-                    <label className="flex items-center gap-2 text-teal-700">
-                      Arpeggio Octaves:
-                      <label className="ml-2 flex items-center gap-1">
-                        <input
-                          type="radio"
-                          value={1}
-                          checked={arpeggioOctaves === 1}
-                          onChange={() => setArpeggioOctaves(1)}
-                        />
-                        1
-                      </label>
-                      <label className="ml-2 flex items-center gap-1">
-                        <input
-                          type="radio"
-                          value={2}
-                          checked={arpeggioOctaves === 2}
-                          onChange={() => setArpeggioOctaves(2)}
-                        />
-                        2
-                      </label>
-                    </label>
-                    <label className="flex items-center gap-2 text-teal-700">
-                      Arpeggio Direction:
-                      <label className="ml-2 flex items-center gap-1">
+                <div className="space-y-3 border-t border-gray-200 pt-3">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Octave Span</label>
+                    <select
+                      value={arpeggioOctaves}
+                      onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    >
+                      <option value={1}>1 Octave</option>
+                      <option value={2}>2 Octaves</option>
+                      <option value={3}>3 Octaves</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Direction</label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-1">
                         <input
                           type="radio"
                           value="up"
                           checked={arpeggioDirection === "up"}
                           onChange={() => setArpeggioDirection("up")}
+                          className="accent-teal-600"
                         />
-                        Up
+                        <span className="text-sm">Up</span>
                       </label>
-                      <label className="ml-2 flex items-center gap-1">
+                      <label className="flex items-center gap-1">
                         <input
                           type="radio"
                           value="down"
                           checked={arpeggioDirection === "down"}
                           onChange={() => setArpeggioDirection("down")}
+                          className="accent-teal-600"
                         />
-                        Down
+                        <span className="text-sm">Down</span>
                       </label>
-                      <label className="ml-2 flex items-center gap-1">
+                      <label className="flex items-center gap-1">
                         <input
                           type="radio"
                           value="upDown"
                           checked={arpeggioDirection === "upDown"}
                           onChange={() => setArpeggioDirection("upDown")}
+                          className="accent-teal-600"
                         />
-                        Up &amp; Down
+                        <span className="text-sm">Up & Down</span>
                       </label>
-                    </label>
-                  </>
+                    </div>
+                  </div>
+                </div>
                 )}
               </div>
               <Button
@@ -770,8 +772,40 @@ export default function Page() {
               </Button>
             </CardContent>
           </Card>
+
+
+          {/* Instructions Card */}
+          <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
+            <div className="bg-teal-50 py-3 px-4 border-b border-teal-100">
+              <h2 className="text-lg font-medium text-teal-800">How to Use</h2>
+            </div>
+            <CardContent className="p-4">
+              <div className="prose prose-sm max-w-none">
+                <ol className="space-y-2 text-gray-700">
+                  <li>Enable your webcam using the button in the video panel</li>
+                  <li>Position your hand within the camera view</li>
+                  <li>Make different hand gestures to trigger sounds:</li>
+                </ol>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                  <div className="p-3 bg-teal-50 rounded-md text-center">
+                    <div className="text-xs font-semibold text-teal-800 mb-1">Open Palm</div>
+                    <div className="text-xs text-gray-600">Major chord</div>
+                  </div>
+                  <div className="p-3 bg-teal-50 rounded-md text-center">
+                    <div className="text-xs font-semibold text-teal-800 mb-1">Closed Fist</div>
+                    <div className="text-xs text-gray-600">Minor chord</div>
+                  </div>
+                  <div className="p-3 bg-teal-50 rounded-md text-center">
+                    <div className="text-xs font-semibold text-teal-800 mb-1">Victory Sign</div>
+                    <div className="text-xs text-gray-600">Suspended chord</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
+    </main>
   );
 }
