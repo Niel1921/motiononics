@@ -10,7 +10,6 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
 import Header from "@/components/ui/header"; 
 
-
 // -------------------- Constants --------------------
 const keySignatures: Record<string, { semitones: number[]; notes: string[] }> = {
   "C Major": {
@@ -188,10 +187,13 @@ export default function Page() {
 
   const initGestureRecognizer = useCallback(async () => {
     try {
-      const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.1/wasm");
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.1/wasm"
+      );
       const recognizer = await GestureRecognizer.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
         },
         numHands: 2,
         runningMode: "VIDEO",
@@ -250,7 +252,10 @@ export default function Page() {
   }, [gestureRecognizer, initGestureRecognizer]);
 
   function getHandPosition(landmarks: { x: number; y: number }[]) {
-    const avg = landmarks.reduce((acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }), { x: 0, y: 0 });
+    const avg = landmarks.reduce(
+      (acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }),
+      { x: 0, y: 0 }
+    );
     return { x: 1 - avg.x / landmarks.length, y: avg.y / landmarks.length };
   }
 
@@ -548,264 +553,257 @@ export default function Page() {
     );
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-teal-50">
-    <Header />
+    <>
+      {/* Custom Header */}
+      <Header />
 
-    <div className="container mx-auto p-4">
-      <div className="flex flex-row gap-4">
-        {/* Left Column: Tutorials Prompt */}
-        <div className="w-1/4">
-          <Card className="p-6 rounded-2xl bg-teal-100 shadow-lg">
-            <CardHeader>
-              <h2 className="text-2xl font-bold text-teal-800">Tutorials</h2>
-            </CardHeader>
-            <CardContent>
-              <p className="text-teal-700 mb-4">
-                Learn how to make the most of Motiononics with our step‑by‑step tutorials.
-              </p>
-              <Link href="/tutorials">
-                <Button className="bg-teal-500 hover:bg-teal-600 text-white">View Tutorials</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="container mx-auto p-4">
+        <div className="flex flex-row gap-4">
+          {/* Left Column: Tutorials Prompt */}
+          <div className="w-1/4">
+            <Card className="p-6 rounded-2xl bg-teal-100 shadow-lg">
+              <CardHeader>
+                <h2 className="text-2xl font-bold text-teal-800">Tutorials</h2>
+              </CardHeader>
+              <CardContent>
+                <p className="text-teal-700 mb-4">
+                  Learn how to make the most of Motiononics with our step‑by‑step tutorials.
+                </p>
+                <Link href="/tutorials">
+                  <Button className="bg-teal-500 hover:bg-teal-600 text-white">View Tutorials</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Central Column: Webcam Feed & Visualizer */}
-        <div className="w-1/2">
-          {/* Webcam Feed Container */}
-          <div className="relative inline-block mb-4">
-            {!webcamEnabled ? (
-              <Button
-                onClick={() => {
-                  setWebcamEnabled(true);
-                  if (audioContextRef.current && audioContextRef.current.state === "suspended") {
-                    audioContextRef.current.resume();
-                  }
-                }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 text-xl z-20 bg-teal-500 hover:bg-teal-600 text-white"
-              >
-                Enable Webcam
-              </Button>
-            ) : (
-              <Button
-                onClick={() => {
-                  setWebcamEnabled(false);
-                  if (backingSourceRef.current) {
-                    backingSourceRef.current.stop();
-                    backingSourceRef.current = null;
-                  }
-                  setConductorStarted(false);
-                }}
-                className="absolute top-4 left-4 px-4 py-2 text-base z-20 bg-teal-500 hover:bg-teal-600 text-white"
-              >
-                Stop Video
-              </Button>
-            )}
-            <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
-            <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
-            {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && visualizerComponent}
-            {mode === "conductor" && (
-              <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
-            )}
-            {handPos && (
-              <motion.div
-                animate={{ left: handPos.x * 640 - 25, top: handPos.y * 480 - 25 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="absolute w-12 h-12 rounded-full bg-red-500/50 pointer-events-none z-40"
-              />
-            )}
-            {mode === "conductor" && !conductorStarted && (
-              <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
-                {countdown !== null ? (
-                  <div>{countdown}</div>
-                ) : (
-                  <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white" onClick={startConductorGame}>
-                    Start Conductor Game
-                  </Button>
-                )}
-              </div>
-            )}
-            {mode === "conductor" && conductorStarted && (
-              <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
-                <div className="h-full bg-green-500" style={{ width: `${(conductorGameTime / 30) * 100}%` }} />
-              </div>
-            )}
-            {mode === "conductor" && gameScore !== null && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-4 text-3xl z-50">
-                Your average timing error: {(gameScore * 100).toFixed(2)}%
+          {/* Central Column: Webcam Feed & Visualizer */}
+          <div className="w-1/2 flex flex-col items-center gap-4">
+            {/* Webcam Viewer Box */}
+            <div className="relative w-[640px] h-[480px] border rounded-lg shadow-lg overflow-hidden">
+              {!webcamEnabled ? (
+                <Button
+                  onClick={() => {
+                    setWebcamEnabled(true);
+                    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+                      audioContextRef.current.resume();
+                    }
+                  }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 text-xl z-20 bg-teal-500 hover:bg-teal-600 text-white"
+                >
+                  Enable Webcam
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setWebcamEnabled(false);
+                    if (backingSourceRef.current) {
+                      backingSourceRef.current.stop();
+                      backingSourceRef.current = null;
+                    }
+                    setConductorStarted(false);
+                  }}
+                  className="absolute top-4 left-4 px-4 py-2 text-base z-20 bg-teal-500 hover:bg-teal-600 text-white"
+                >
+                  Stop Video
+                </Button>
+              )}
+              <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
+              <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
+              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && visualizerComponent}
+              {mode === "conductor" && (
+                <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
+              )}
+              {mode === "conductor" && !conductorStarted && (
+                <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
+                  {countdown !== null ? (
+                    <div>{countdown}</div>
+                  ) : (
+                    <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white" onClick={startConductorGame}>
+                      Start Conductor Game
+                    </Button>
+                  )}
+                </div>
+              )}
+              {mode === "conductor" && conductorStarted && (
+                <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
+                  <div className="h-full bg-green-500" style={{ width: `${(conductorGameTime / 30) * 100}%` }} />
+                </div>
+              )}
+              {mode === "conductor" && gameScore !== null && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-4 text-3xl z-50">
+                  Your average timing error: {(gameScore * 100).toFixed(2)}%
+                </div>
+              )}
+            </div>
+            {/* If in manual mode, show the Three.js visualizer below the webcam box */}
+            {mode === "manual" && (
+              <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
+                {visualizerComponent}
               </div>
             )}
           </div>
-          {mode === "manual" && (
-            <div className="mx-auto" style={{ width: "640px", height: "280px" }}>
-              {visualizerComponent}
-            </div>
-          )}
-        </div>
 
-        {/* Right Column: Controls Panel */}
-        <div className="w-1/4">
-          <Card className="max-w-md mx-auto bg-white shadow-lg">
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-teal-800">Controls</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
-                <label className="flex items-center gap-2 text-teal-700">
-                  BPM:
-                  <input
-                    type="number"
-                    value={bpm}
-                    onChange={(e) => setBpm(Number(e.target.value))}
-                    className="w-16 px-2 py-1 border rounded focus:ring-teal-500"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-teal-700">
-                  Note Length:
-                  <select
-                    value={noteLength}
-                    onChange={(e) => setNoteLength(Number(e.target.value))}
-                    className="px-2 py-1 border rounded focus:ring-teal-500"
-                  >
-                    <option value={0.25}>16th</option>
-                    <option value={0.5}>8th</option>
-                    <option value={1}>Quarter</option>
-                    <option value={2}>Half</option>
-                    <option value={4}>Whole</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 text-teal-700">
-                  Key:
-                  <select
-                    value={selectedKey}
-                    onChange={(e) => setSelectedKey(e.target.value)}
-                    className="px-2 py-1 border rounded focus:ring-teal-500"
-                  >
-                    <option value="None">None (Chromatic)</option>
-                    {Object.keys(keySignatures).map((keyName) => (
-                      <option key={keyName} value={keyName}>
-                        {keyName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 text-teal-700">
-                  Mode:
-                  <select
-                    value={mode}
-                    onChange={(e) => setMode(e.target.value as typeof mode)}
-                    className="px-2 py-1 border rounded focus:ring-teal-500"
-                  >
-                    <option value="manual">Manual</option>
-                    <option value="autoChord">Auto Chord</option>
-                    <option value="arpeggiator">Arpeggiator</option>
-                    <option value="conductor">Conductor</option>
-                  </select>
-                </label>
-                {mode === "arpeggiator" && (
-                <div className="space-y-3 border-t border-gray-200 pt-3">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">Octave Span</label>
+          {/* Right Column: Controls Panel */}
+          <div className="w-1/4">
+            <Card className="max-w-md mx-auto bg-white shadow-lg">
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-teal-800">Controls</h3>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
+                  <label className="flex items-center gap-2 text-teal-700">
+                    BPM:
+                    <input
+                      type="number"
+                      value={bpm}
+                      onChange={(e) => setBpm(Number(e.target.value))}
+                      className="w-16 px-2 py-1 border rounded focus:ring-teal-500"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-teal-700">
+                    Note Length:
                     <select
-                      value={arpeggioOctaves}
-                      onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      value={noteLength}
+                      onChange={(e) => setNoteLength(Number(e.target.value))}
+                      className="px-2 py-1 border rounded focus:ring-teal-500"
                     >
-                      <option value={1}>1 Octave</option>
-                      <option value={2}>2 Octaves</option>
-                      <option value={3}>3 Octaves</option>
+                      <option value={0.25}>16th</option>
+                      <option value={0.5}>8th</option>
+                      <option value={1}>Quarter</option>
+                      <option value={2}>Half</option>
+                      <option value={4}>Whole</option>
                     </select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">Direction</label>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-1">
-                        <input
-                          type="radio"
-                          value="up"
-                          checked={arpeggioDirection === "up"}
-                          onChange={() => setArpeggioDirection("up")}
-                          className="accent-teal-600"
-                        />
-                        <span className="text-sm">Up</span>
-                      </label>
-                      <label className="flex items-center gap-1">
-                        <input
-                          type="radio"
-                          value="down"
-                          checked={arpeggioDirection === "down"}
-                          onChange={() => setArpeggioDirection("down")}
-                          className="accent-teal-600"
-                        />
-                        <span className="text-sm">Down</span>
-                      </label>
-                      <label className="flex items-center gap-1">
-                        <input
-                          type="radio"
-                          value="upDown"
-                          checked={arpeggioDirection === "upDown"}
-                          onChange={() => setArpeggioDirection("upDown")}
-                          className="accent-teal-600"
-                        />
-                        <span className="text-sm">Up & Down</span>
-                      </label>
+                  </label>
+                  <label className="flex items-center gap-2 text-teal-700">
+                    Key:
+                    <select
+                      value={selectedKey}
+                      onChange={(e) => setSelectedKey(e.target.value)}
+                      className="px-2 py-1 border rounded focus:ring-teal-500"
+                    >
+                      <option value="None">None (Chromatic)</option>
+                      {Object.keys(keySignatures).map((keyName) => (
+                        <option key={keyName} value={keyName}>
+                          {keyName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-teal-700">
+                    Mode:
+                    <select
+                      value={mode}
+                      onChange={(e) => setMode(e.target.value as typeof mode)}
+                      className="px-2 py-1 border rounded focus:ring-teal-500"
+                    >
+                      <option value="manual">Manual</option>
+                      <option value="autoChord">Auto Chord</option>
+                      <option value="arpeggiator">Arpeggiator</option>
+                      <option value="conductor">Conductor</option>
+                    </select>
+                  </label>
+                  {mode === "arpeggiator" && (
+                    <div className="space-y-3 border-t border-gray-200 pt-3">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Octave Span</label>
+                        <select
+                          value={arpeggioOctaves}
+                          onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
+                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                        >
+                          <option value={1}>1 Octave</option>
+                          <option value={2}>2 Octaves</option>
+                          <option value={3}>3 Octaves</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Direction</label>
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              value="up"
+                              checked={arpeggioDirection === "up"}
+                              onChange={() => setArpeggioDirection("up")}
+                              className="accent-teal-600"
+                            />
+                            <span className="text-sm">Up</span>
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              value="down"
+                              checked={arpeggioDirection === "down"}
+                              onChange={() => setArpeggioDirection("down")}
+                              className="accent-teal-600"
+                            />
+                            <span className="text-sm">Down</span>
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              value="upDown"
+                              checked={arpeggioDirection === "upDown"}
+                              onChange={() => setArpeggioDirection("upDown")}
+                              className="accent-teal-600"
+                            />
+                            <span className="text-sm">Up & Down</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  onClick={() => {
+                    console.log("Test Closed_Fist Sample clicked.");
+                    if (mode === "manual") {
+                      playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 });
+                    } else if (mode === "autoChord") {
+                      playChord("Cmaj");
+                    } else if (mode === "arpeggiator") {
+                      playArpeggio("Cmaj", (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
+                    }
+                  }}
+                  className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white"
+                >
+                  Test Closed_Fist Sample
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Instructions Card */}
+            <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
+              <div className="bg-teal-50 py-3 px-4 border-b border-teal-100">
+                <h2 className="text-lg font-medium text-teal-800">How to Use</h2>
+              </div>
+              <CardContent className="p-4">
+                <div className="prose prose-sm max-w-none">
+                  <ol className="space-y-2 text-gray-700">
+                    <li>Enable your webcam using the button in the video panel</li>
+                    <li>Position your hand within the camera view</li>
+                    <li>Make different hand gestures to trigger sounds:</li>
+                  </ol>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                    <div className="p-3 bg-teal-50 rounded-md text-center">
+                      <div className="text-xs font-semibold text-teal-800 mb-1">Open Palm</div>
+                      <div className="text-xs text-gray-600">Major chord</div>
+                    </div>
+                    <div className="p-3 bg-teal-50 rounded-md text-center">
+                      <div className="text-xs font-semibold text-teal-800 mb-1">Closed Fist</div>
+                      <div className="text-xs text-gray-600">Minor chord</div>
+                    </div>
+                    <div className="p-3 bg-teal-50 rounded-md text-center">
+                      <div className="text-xs font-semibold text-teal-800 mb-1">Victory Sign</div>
+                      <div className="text-xs text-gray-600">Suspended chord</div>
                     </div>
                   </div>
                 </div>
-                )}
-              </div>
-              <Button
-                onClick={() => {
-                  console.log("Test Closed_Fist Sample clicked.");
-                  if (mode === "manual") {
-                    playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 });
-                  } else if (mode === "autoChord") {
-                    playChord("Cmaj");
-                  } else if (mode === "arpeggiator") {
-                    playArpeggio("Cmaj", (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
-                  }
-                }}
-                className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white"
-              >
-                Test Closed_Fist Sample
-              </Button>
-            </CardContent>
-          </Card>
-
-
-          {/* Instructions Card */}
-          <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
-            <div className="bg-teal-50 py-3 px-4 border-b border-teal-100">
-              <h2 className="text-lg font-medium text-teal-800">How to Use</h2>
-            </div>
-            <CardContent className="p-4">
-              <div className="prose prose-sm max-w-none">
-                <ol className="space-y-2 text-gray-700">
-                  <li>Enable your webcam using the button in the video panel</li>
-                  <li>Position your hand within the camera view</li>
-                  <li>Make different hand gestures to trigger sounds:</li>
-                </ol>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                  <div className="p-3 bg-teal-50 rounded-md text-center">
-                    <div className="text-xs font-semibold text-teal-800 mb-1">Open Palm</div>
-                    <div className="text-xs text-gray-600">Major chord</div>
-                  </div>
-                  <div className="p-3 bg-teal-50 rounded-md text-center">
-                    <div className="text-xs font-semibold text-teal-800 mb-1">Closed Fist</div>
-                    <div className="text-xs text-gray-600">Minor chord</div>
-                  </div>
-                  <div className="p-3 bg-teal-50 rounded-md text-center">
-                    <div className="text-xs font-semibold text-teal-800 mb-1">Victory Sign</div>
-                    <div className="text-xs text-gray-600">Suspended chord</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
-    </main>
+    </>
   );
 }
