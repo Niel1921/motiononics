@@ -46,7 +46,7 @@ export default function TutorialsPage() {
             title: "Introduction",
             description:
               "Discover the basics of Motiononics: what it is, how it works, and the technology behind our innovative instrument.",
-            link: "/tutorials/introduction",
+            link: "/tutorials/gesture-walkthrough",
           },
           {
             title: "Setup Your Environment",
