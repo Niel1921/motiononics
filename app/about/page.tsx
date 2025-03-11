@@ -29,7 +29,7 @@ export default function AboutPage() {
         >
           <h1 className="text-4xl font-bold text-teal-800 mb-4">About Motiononics</h1>
           <p className="text-xl text-teal-600 max-w-3xl mx-auto">
-            Bridging the gap between movement and music through intuitive gesture controls
+            Making expression accessible
           </p>
         </motion.div>
         
@@ -40,18 +40,15 @@ export default function AboutPage() {
             variants={fadeIn}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h2 className="text-2xl font-bold text-teal-700 mb-6">Our Mission</h2>
+            <h2 className="text-2xl font-bold text-teal-700 mb-6">Why Motiononics?</h2>
             <div className="prose prose-teal max-w-none">
               <p>
-                At Motiononics, we're dedicated to transforming how people interact with music. 
-                Our mission is to make music creation accessible to everyone through intuitive 
-                gesture-based controls that respond naturally to human movement.
+                Motiononics is a gesture control platform to create and teach music! 
+                With a wide range of options and instruments you can express your vision and creativity with only your webcam.
               </p>
               <p>
-                We believe that musical expression shouldn't be limited by traditional instruments 
-                or technical knowledge. By harnessing the power of motion detection and machine learning, 
-                we're creating tools that allow anyone to compose, conduct, and perform music with 
-                just the movement of their hands.
+                With only your hand movements, you can create music in real-time. 
+                Our platform is designed alongside Google MediaPipe to provide reliable gesture detection.
               </p>
             </div>
           </motion.div>
@@ -82,23 +79,17 @@ export default function AboutPage() {
           How It Works
         </motion.h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
           {[
             {
               title: "Gesture Recognition",
-              icon: "🤚",
-              description: "Advanced computer vision algorithms detect and classify hand gestures in real-time, translating movements into musical commands."
+              description: "Advanced computer vision algorithms can detect and classify hand gestures in real-time, translating movements into music!"
             },
             {
               title: "Musical Mapping",
-              icon: "🎵",
-              description: "Each gesture is mapped to specific musical elements, allowing intuitive control of notes, chords, rhythms, and effects."
-            },
-            {
-              title: "Adaptive Learning",
-              icon: "🧠",
-              description: "Our system learns from your movements over time, becoming more responsive to your unique gestures and expression style."
+              description: "Each gesture is mapped to specific musical elements, allowing close control of notes, chords, rhythms, and effects."
             }
+            
           ].map((item, index) => (
             <motion.div 
               key={index}
@@ -109,7 +100,7 @@ export default function AboutPage() {
             >
               <Card className="h-full border-teal-100 shadow-md hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
-                  <div className="text-4xl mb-4">{item.icon}</div>
+                  <div className="text-4xl mb-4"></div>
                   <h3 className="text-xl font-semibold text-teal-700 mb-2">{item.title}</h3>
                   <p className="text-gray-600">{item.description}</p>
                 </CardContent>
@@ -127,10 +118,9 @@ export default function AboutPage() {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-              <h2 className="text-2xl font-bold mb-4">Ready to experience music in a new dimension?</h2>
+              <h2 className="text-2xl font-bold mb-4">Try it yourself</h2>
               <p className="mb-6">
-                Try our interactive tutorials and start creating music with your movements today.
-                No musical experience required—just your hands and imagination.
+                Try the interactive gesture tutorial and start learning how to make music youself!
               </p>
               <Link href="/tutorials/gesture-walkthrough">
                 <Button className="bg-white text-teal-600 hover:bg-teal-50">
@@ -158,25 +148,25 @@ export default function AboutPage() {
           variants={fadeIn}
           transition={{ duration: 0.5, delay: 0.9 }}
         >
-          Our Team
+          About the Developer
         </motion.h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {[
             {
-              name: "Dr. Sarah Chen",
+              name: "Owen Read",
               role: "Founder & Lead Developer",
               bio: "Computer vision specialist with a passion for making technology more intuitive and accessible.",
               image: "/images/team-1.jpg"
             },
             {
-              name: "Marcus Williams",
+              name: "Alwyn George",
               role: "Music Director",
               bio: "Classically trained musician who bridges the gap between traditional music theory and digital innovation.",
               image: "/images/team-2.jpg"
             },
             {
-              name: "Aisha Patel",
+              name: "Niel GOAT",
               role: "UX Designer",
               bio: "Creates seamless, intuitive interfaces that make complex technology feel natural and approachable.",
               image: "/images/team-3.jpg"
