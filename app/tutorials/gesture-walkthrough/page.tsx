@@ -1,14 +1,23 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image"; // Next.js Image component
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import Header from "@/components/ui/header";
 
 // Import Mediapipe tasks
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
+
+// Piano notes for success feedback
+const pianoNotes = {
+  C4: "/samples/fist.wav",
+  E4: "/samples/fist.wav",
+  G4: "/samples/fist.wav",
+  C5: "/samples/fist.wav",
+};
 
 // Example gestures for the tutorial. Adjust `name` to match exactly how Mediapipe classifies them.
 const gestureList = [
@@ -17,55 +26,129 @@ const gestureList = [
     displayName: "Closed Fist",
     image: "/gestureimg/fistlogo.png",
     description: "Make a closed fist with your hand.",
+    note: "C4",
+    overlayImage: "/gestureimg/fist-overlay.png",
+    color: "#3b82f6" // blue
   },
   {
     name: "Open_Palm",
     displayName: "Open Hand",
     image: "/gestureimg/openhandlogo.jpg",
     description: "Hold your hand wide open, with fingers spread.",
+    note: "E4",
+    overlayImage: "/gestureimg/openhand-overlay.png",
+    color: "#10b981" // green
   },
   {
     name: "Thumb_Up",
     displayName: "Thumbs Up",
     image: "/gestureimg/thumbuplogo.png",
     description: "Show a thumbs up gesture with your hand.",
+    note: "G4",
+    overlayImage: "/gestureimg/thumbup-overlay.png",
+    color: "#f59e0b" // amber
   },
   {
     name: "Victory",
     displayName: "Victory (V)",
     image: "/gestureimg/victorylogo.jpg",
     description: "Make a V shape with your index and middle fingers.",
+    note: "C5",
+    overlayImage: "/gestureimg/victory-overlay.png",
+    color: "#8b5cf6" // purple
   },
 ];
 
-// Basic fade‑in animation for the page.
+// Animations
 const pageVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
 };
 
-export default function GestureWalkthroughWithMediapipe() {
-  // Track the gesture recognized by Mediapipe.
-  const [recognizedGesture, setRecognizedGesture] = useState<string>("");
-  // Track which gesture index the user is on.
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // Track how many consecutive seconds the correct gesture has been held.
-  const [heldTime, setHeldTime] = useState(0);
-  // When all gestures are complete.
-  const isComplete = currentIndex >= gestureList.length;
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
-  // References for the webcam and canvas.
+const successVariants = {
+  hidden: { scale: 0.8, opacity: 0 },
+  visible: { 
+    scale: 1, 
+    opacity: 1,
+    transition: { 
+      type: "spring", 
+      stiffness: 300, 
+      damping: 15 
+    }
+  },
+};
+
+export default function GestureWalkthroughWithMediapipe() {
+  // Track the gesture recognized by Mediapipe
+  const [recognizedGesture, setRecognizedGesture] = useState<string>("");
+  // Track which gesture index the user is on
+  const [currentIndex, setCurrentIndex] = useState(0);
+  // Track how many consecutive seconds the correct gesture has been held
+  const [heldTime, setHeldTime] = useState(0);
+  // When all gestures are complete
+  const isComplete = currentIndex >= gestureList.length;
+  // Show overlay guide
+  const [showOverlay, setShowOverlay] = useState(true);
+  // Success animation
+  const [showSuccess, setShowSuccess] = useState(false);
+  // Loading state
+  const [loading, setLoading] = useState(true);
+  // Track overall progress
+  const [overallProgress, setOverallProgress] = useState(0);
+  // Track hand visibility
+  const [handVisible, setHandVisible] = useState(false);
+
+  // Audio context and elements
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioElementsRef = useRef<Record<string, HTMLAudioElement>>({});
+
+  // References for the webcam and canvas
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // Reference for the Mediapipe gesture recognizer.
+  // Reference for the Mediapipe gesture recognizer
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
-  // Track whether the webcam is enabled.
+  // Track whether the webcam is enabled
   const [webcamEnabled, setWebcamEnabled] = useState(false);
 
-  // 1) Initialize Mediapipe.
+  // Initialize audio
+  useEffect(() => {
+    // Create audio elements for each note
+    Object.entries(pianoNotes).forEach(([note, url]) => {
+      const audio = new Audio(url);
+      audio.preload = "auto";
+      audioElementsRef.current[note] = audio;
+    });
+
+    // Create an AudioContext for more control if needed
+    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    return () => {
+      // Clean up audio context
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
+  // Play success sound when user correctly holds a gesture
+  const playSuccessSound = (note: string = "C5") => {
+    if (audioElementsRef.current[note]) {
+      const audio = audioElementsRef.current[note];
+      audio.currentTime = 0;
+      audio.play().catch(err => console.error("Error playing audio:", err));
+    }
+  };
+
+  // Initialize Mediapipe
   useEffect(() => {
     (async () => {
       try {
+        setLoading(true);
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.1/wasm"
         );
@@ -74,30 +157,40 @@ export default function GestureWalkthroughWithMediapipe() {
             modelAssetPath:
               "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
           },
-          numHands: 2,
+          numHands: 1,
           runningMode: "VIDEO",
         });
         setGestureRecognizer(recognizer);
+        setLoading(false);
         console.log("Gesture recognizer initialized.");
       } catch (error) {
         console.error("Error initializing gesture recognizer:", error);
+        setLoading(false);
       }
     })();
   }, []);
 
-  // 2) Handle enabling/disabling the webcam.
+  // Handle enabling/disabling the webcam
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!webcamEnabled || !videoEl) return;
+    
     let stream: MediaStream | null = null;
     navigator.mediaDevices
-      .getUserMedia({ video: true })
+      .getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user" 
+        } 
+      })
       .then((s) => {
         stream = s;
         videoEl.srcObject = s;
         return videoEl.play();
       })
       .catch((err) => console.error("Error accessing webcam:", err));
+      
     return () => {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
@@ -105,201 +198,508 @@ export default function GestureWalkthroughWithMediapipe() {
     };
   }, [webcamEnabled]);
 
-  // 3) Main Mediapipe loop: analyze frames and update the recognized gesture.
+  // Main Mediapipe loop: analyze frames and update the recognized gesture
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
+    
     const videoEl = videoRef.current;
     const canvasEl = canvasRef.current;
     if (!videoEl || !canvasEl) return;
+    
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
+    
     let lastLogTime = 0;
     let animationFrameId: number;
+    
     async function processFrame() {
       if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
         ctx.save();
+        ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
         ctx.translate(canvasEl.width, 0);
         ctx.scale(-1, 1);
-        // Use non-null assertion (!) since we've already checked videoEl and canvasEl.
+        
+        // Draw video frame
         ctx.drawImage(videoEl!, 0, 0, canvasEl.width, canvasEl.height);
+        
+        // Process with Mediapipe
         const timestamp = performance.now();
         try {
           const results = await gestureRecognizer!.recognizeForVideo(videoEl!, timestamp);
+          
           if (timestamp - lastLogTime > 1000) {
-            console.log("Gesture results:", results);
             lastLogTime = timestamp;
           }
+          
+          // Update hand visibility
+          setHandVisible(results?.landmarks && results.landmarks.length > 0);
+          
           if (results?.gestures && results.gestures.length > 0) {
             const [firstHandGestures] = results.gestures;
             if (firstHandGestures && firstHandGestures.length > 0) {
               const topGesture = firstHandGestures[0];
               setRecognizedGesture(topGesture.categoryName);
             }
+          } else {
+            setRecognizedGesture("");
           }
+          
+          // Draw hand landmarks with improved visualization
           if (results?.landmarks) {
+            ctx.save();
+            
+            // Get current gesture color
+            const currentColor = !isComplete && currentIndex < gestureList.length 
+              ? gestureList[currentIndex].color 
+              : "#14b8a6"; // Default teal color
+            
             results.landmarks.forEach((lmArr) => {
+              // Draw connections between landmarks for better hand visualization
+              ctx.strokeStyle = currentColor;
+              ctx.lineWidth = 3;
+              
+              // Finger connections (simplified)
+              const connections = [
+                [0, 1, 2, 3, 4], // thumb
+                [0, 5, 6, 7, 8], // index
+                [9, 10, 11, 12], // middle
+                [13, 14, 15, 16], // ring
+                [17, 18, 19, 20], // pinky
+                [0, 5, 9, 13, 17] // palm
+              ];
+              
+              connections.forEach(conn => {
+                ctx.beginPath();
+                for (let i = 0; i < conn.length; i++) {
+                  const lm = lmArr[conn[i]];
+                  if (i === 0) {
+                    ctx.moveTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
+                  } else {
+                    ctx.lineTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
+                  }
+                }
+                ctx.stroke();
+              });
+              
+              // Draw landmarks
               lmArr.forEach((lm) => {
                 ctx.beginPath();
-                ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = "red";
+                ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = currentColor;
                 ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
               });
             });
+            
+            ctx.restore();
           }
         } catch (err) {
           console.error("Error processing frame:", err);
         }
+        
         ctx.restore();
+        
+        // Draw semi-transparent overlay guide if enabled and not completed
+        if (showOverlay && !isComplete && currentIndex < gestureList.length) {
+          const currentGesture = gestureList[currentIndex];
+          const img = new window.Image();
+          img.src = currentGesture.overlayImage;
+          
+          ctx.save();
+          ctx.globalAlpha = 0.4;
+          // Center the overlay on the canvas
+          ctx.drawImage(
+            img,
+            (canvasEl.width - 300) / 2,
+            (canvasEl.height - 300) / 2,
+            300,
+            300
+          );
+          ctx.restore();
+        }
       }
+      
       animationFrameId = requestAnimationFrame(processFrame);
     }
+    
     processFrame();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gestureRecognizer, webcamEnabled]);
+  }, [gestureRecognizer, webcamEnabled, currentIndex, isComplete, showOverlay]);
 
-  // 4) 3‑second hold logic: poll the recognized gesture every second.
+  // 3-second hold logic: poll the recognized gesture every second
   useEffect(() => {
+    if (!webcamEnabled || isComplete || showSuccess) return;
+    
+    // Update overall progress when currentIndex changes
+    setOverallProgress((currentIndex / gestureList.length) * 100);
+    
     const intervalId = window.setInterval(() => {
       if (isComplete) return;
+      
       const neededName = gestureList[currentIndex].name;
       if (recognizedGesture === neededName) {
-        setHeldTime((prev) => prev + 1);
+        setHeldTime((prev) => {
+          // Stop incrementing once we reach 3 seconds
+          if (prev >= 3) return 3;
+          return prev + 1;
+        });
       } else {
         setHeldTime(0);
       }
     }, 1000);
+    
     return () => {
       clearInterval(intervalId);
     };
-  }, [recognizedGesture, currentIndex, isComplete]);
+  }, [recognizedGesture, currentIndex, isComplete, webcamEnabled, gestureList.length, showSuccess]);
 
-  // 5) If the correct gesture has been held for 3 seconds, move to the next gesture.
+  // Progress update for current gesture
   useEffect(() => {
-    if (heldTime >= 3) {
-      setHeldTime(0);
-      setCurrentIndex((prev) => prev + 1);
+    if (!webcamEnabled || isComplete || showSuccess) return;
+    
+    // If holding the correct gesture
+    if (heldTime > 0 && heldTime < 3) {
+      // Play a soft tick sound for feedback
+      const tickSound = new Audio("/samples/tick.wav");
+      tickSound.volume = 0.3;
+      tickSound.play().catch(err => console.error("Error playing audio:", err));
     }
-  }, [heldTime]);
+    
+    // If the correct gesture has been held for 3 seconds, move to the next gesture
+    if (heldTime === 3) {
+      // Show success animation
+      setShowSuccess(true);
+      
+      // Play the success sound for this gesture
+      playSuccessSound(gestureList[currentIndex].note);
+      
+      // Reset and advance after a short delay
+      setTimeout(() => {
+        setHeldTime(0);
+        setShowSuccess(false);
+        
+        // If this is the last gesture, we need to update the overall progress one last time
+        if (currentIndex === gestureList.length - 1) {
+          setOverallProgress(100);
+        }
+        
+        setCurrentIndex((prev) => prev + 1);
+      }, 1500);
+    }
+  }, [heldTime, currentIndex, isComplete, webcamEnabled, showSuccess]);
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
       <Header />
+      
       <motion.div
-        className="min-h-screen bg-teal-50 p-6"
+        className="container mx-auto px-4 py-8 max-w-6xl"
         variants={pageVariants}
         initial="hidden"
         animate="visible"
         transition={{ duration: 0.5 }}
       >
-        <div className="max-w-2xl mx-auto text-center mb-8">
-          <h1 className="text-4xl font-bold text-teal-800">Gesture Tutorial</h1>
-          <p className="mt-2 text-lg text-teal-700">
-            Hold each gesture for 3 consecutive seconds to move on!
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-teal-800 mb-2">Gesture Piano Tutorial</h1>
+          <p className="text-lg text-teal-600">
+            Learn to control music with hand gestures
           </p>
-        </div>
-
-        <div className="flex justify-center mb-4">
-          {!webcamEnabled ? (
-            <Button
-              onClick={() => setWebcamEnabled(true)}
-              className="bg-teal-500 hover:bg-teal-600 text-white"
-            >
-              Enable Webcam
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setWebcamEnabled(false)}
-              className="bg-teal-500 hover:bg-teal-600 text-white"
-            >
-              Disable Webcam
-            </Button>
-          )}
-        </div>
-
-        {/* Webcam + Canvas */}
-        <div className="flex justify-center">
-          <div className="relative border border-teal-300">
-            <video
-              ref={videoRef}
-              className="w-[640px] h-[480px] scale-x-[-1]"
-              muted
-              playsInline
-            />
-            <canvas
-              ref={canvasRef}
-              width={640}
-              height={480}
-              className="absolute top-0 left-0"
-            />
+          
+          {/* Overall progress bar */}
+          <div className="mt-6 max-w-md mx-auto">
+            <p className="text-sm text-teal-600 mt-2">
+              {isComplete ? "Complete!" : `${Math.round(overallProgress)}% Complete`}
+            </p>
           </div>
         </div>
-
-        {/* Gesture info card */}
-        <div className="max-w-xl mx-auto mt-8 text-center">
-          {isComplete ? (
-            <Card className="bg-white shadow-xl">
-              <CardHeader>
-                <h2 className="text-2xl font-semibold text-teal-800">
-                  All Gestures Complete!
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Left panel: Instructions & Gesture Info */}
+          <div className="md:col-span-1">
+            <Card className="bg-white shadow-lg rounded-xl overflow-hidden border border-teal-100 h-full">
+              <CardHeader className="bg-teal-50 border-b border-teal-100">
+                <h2 className="text-xl font-semibold text-teal-800">
+                  {isComplete ? "All Gestures Complete!" : `Step ${currentIndex + 1}: ${gestureList[currentIndex]?.displayName}`}
                 </h2>
               </CardHeader>
-              <CardContent>
-                <p className="text-teal-700 mb-4">
-                  You’ve successfully held each gesture for 3 seconds.
-                </p>
+              
+              <CardContent className="p-6">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center h-64">
+                    <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-teal-600">Loading gesture recognizer...</p>
+                  </div>
+                ) : isComplete ? (
+                  <motion.div
+                    className="text-center"
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <div className="mb-6">
+                      <div className="w-24 h-24 bg-teal-100 rounded-full mx-auto flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-teal-800 mt-4">Great Job!</h3>
+                      <p className="text-teal-600 mt-2">
+                        You've mastered all the gestures!
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <Button 
+                        className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                        onClick={() => {
+                          setCurrentIndex(0);
+                          setHeldTime(0);
+                          setOverallProgress(0);
+                        }}
+                      >
+                        Restart Tutorial
+                      </Button>
+                      
+                      <Link href="/piano" passHref>
+                        <Button className="w-full bg-teal-700 hover:bg-teal-800 text-white">
+                          Try the Piano App
+                        </Button>
+                      </Link>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={currentIndex}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="space-y-6"
+                  >
+                    <div className="aspect-square w-full max-w-[240px] mx-auto relative">
+                      <Image
+                        src={gestureList[currentIndex].image}
+                        alt={gestureList[currentIndex].displayName}
+                        layout="fill"
+                        objectFit="contain"
+                        className="rounded-lg"
+                      />
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-medium text-teal-700 mb-2">Instructions:</h3>
+                      <p className="text-gray-600">{gestureList[currentIndex].description}</p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-medium text-teal-700 mb-2">Hold Time:</h3>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className="h-2.5 rounded-full bg-teal-500 transition-all duration-300"
+                          style={{ width: `${(heldTime / 3) * 100}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-right text-sm text-gray-500 mt-1">
+                        {heldTime}/3 seconds
+                      </p>
+                    </div>
+                    
+                    <div className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Show Overlay Guide
+                        </label>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={showOverlay}
+                            onChange={() => setShowOverlay(!showOverlay)} 
+                            className="sr-only peer" 
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Right panel: Webcam Feed and Canvas */}
+          <div className="md:col-span-2">
+            <Card className="bg-white shadow-lg rounded-xl overflow-hidden border border-teal-100">
+              <CardHeader className="bg-teal-50 border-b border-teal-100 flex flex-row justify-between items-center">
+                <h2 className="text-xl font-semibold text-teal-800">Camera Feed</h2>
                 <Button
-                  className="bg-teal-500 hover:bg-teal-600 text-white"
-                  onClick={() => {
-                    setCurrentIndex(0);
-                    setHeldTime(0);
-                  }}
+                  onClick={() => setWebcamEnabled(!webcamEnabled)}
+                  className={`${webcamEnabled ? 'bg-red-500 hover:bg-red-600' : 'bg-teal-500 hover:bg-teal-600'} text-white`}
+                  size="sm"
                 >
-                  Restart
+                  {webcamEnabled ? 'Disable Camera' : 'Enable Camera'}
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="bg-white shadow-xl">
-              <CardHeader>
-                <h2 className="text-2xl font-semibold text-teal-800">
-                  {gestureList[currentIndex].displayName}
-                </h2>
               </CardHeader>
-              <CardContent>
-                <img
-                  src={gestureList[currentIndex].image}
-                  alt={gestureList[currentIndex].displayName}
-                  className="w-40 h-40 object-contain mx-auto mb-4"
-                />
-                <p className="text-teal-700 mb-4">
-                  {gestureList[currentIndex].description}
-                </p>
-                <p className="text-teal-800 font-semibold">
-                  Time Held: {heldTime} / 3 seconds
-                </p>
+              
+              <CardContent className="p-0 relative">
+                {/* Camera placeholder when not enabled */}
+                {!webcamEnabled ? (
+                  <div className="aspect-video bg-gray-100 flex flex-col items-center justify-center p-8 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M12 18.75H4.5a2.25 2.25 0 01-2.25-2.25V9a2.25 2.25 0 012.25-2.25H12" />
+                    </svg>
+                    <h3 className="text-xl font-medium text-gray-600 mb-2">Camera Access Required</h3>
+                    <p className="text-gray-500 max-w-md">
+                      Enable the camera to start the gesture tutorial. Your camera feed is processed locally and never uploaded or stored.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative aspect-video">
+                    <video
+                      ref={videoRef}
+                      className="w-full h-full"
+                      muted
+                      playsInline
+                    />
+                    <canvas
+                      ref={canvasRef}
+                      width={1280}
+                      height={720}
+                      className="absolute top-0 left-0 w-full h-full"
+                    />
+                    
+                    {/* Hand not visible alert */}
+                    <AnimatePresence>
+                      {webcamEnabled && !handVisible && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-lg"
+                        >
+                          Please show your hand in the camera
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    {/* Success animation */}
+                    <AnimatePresence>
+                      {showSuccess && (
+                        <motion.div
+                          className="absolute inset-0 flex items-center justify-center"
+                          variants={successVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit={{ opacity: 0, scale: 1.2, transition: { duration: 0.3 } }}
+                        >
+                          <div className="bg-white/80 backdrop-blur-sm rounded-full p-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    {/* Current gesture label */}
+                    {webcamEnabled && recognizedGesture && (
+                      <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded text-sm">
+                        {recognizedGesture}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+              
+              {/* Keyboard visualization at the bottom */}
+              <div className="p-4 bg-gray-50 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Piano Notes</h3>
+                <div className="flex justify-center">
+                  <div className="flex h-16 relative">
+                    {/* White keys */}
+                    {['C4', 'E4', 'G4', 'C5'].map((note, i) => {
+                      const isActive = !isComplete && gestureList[currentIndex]?.note === note;
+                      return (
+                        <div
+                          key={note}
+                          className={`w-12 h-full rounded-b border border-gray-300 flex items-end justify-center pb-1 ${
+                            isActive ? 'bg-teal-100 border-teal-400' : 'bg-white'
+                          }`}
+                        >
+                          <span className="text-xs text-gray-500">{note}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </Card>
+            
+            {/* Tip card */}
+            <Card className="mt-6 bg-white shadow-lg rounded-xl overflow-hidden border border-teal-100">
+              <CardContent className="p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-teal-800">Pro Tip</h3>
+                    <p className="text-sm text-gray-600">
+                      Make sure you have good lighting and keep your hand within the camera frame. 
+                      Each gesture will play a unique piano note when recognized.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
+          </div>
         </div>
-
-        {/* Debug info */}
-        <div className="mt-8 max-w-lg mx-auto text-center text-sm text-gray-500">
-          <p>Currently recognized: {recognizedGesture || "None"}</p>
-          <p className="mt-2">
-            (Hold the correct gesture in front of the webcam for 3 seconds!)
-          </p>
-          <div className="mt-4">
-            <Link href="/">
-              <Button
+        
+        {/* Navigation buttons */}
+        <div className="mt-8 flex justify-between">
+          <Link href="/" passHref>
+            <Button variant="outline" className="border-teal-500 text-teal-500 hover:bg-teal-50">
+              Back to Home
+            </Button>
+          </Link>
+          
+          <div className="space-x-2">
+            {!isComplete && (
+              <Button 
                 variant="outline"
-                className="border-teal-500 text-teal-500 hover:bg-teal-500 hover:text-white"
+                className="border-teal-500 text-teal-500 hover:bg-teal-50"
+                onClick={() => {
+                  if (currentIndex > 0) {
+                    setCurrentIndex(currentIndex - 1);
+                    setHeldTime(0);
+                  }
+                }}
+                disabled={currentIndex === 0}
               >
-                Back Home
+                Previous
               </Button>
-            </Link>
+            )}
+            
+            <Button
+              className="bg-teal-500 hover:bg-teal-600 text-white"
+              onClick={() => {
+                if (!isComplete) {
+                  setCurrentIndex(Math.min(currentIndex + 1, gestureList.length));
+                  setHeldTime(0);
+                } else {
+                  setCurrentIndex(0);
+                  setHeldTime(0);
+                  setOverallProgress(0);
+                }
+              }}
+            >
+              {isComplete ? "Restart Tutorial" : "Skip This Gesture"}
+            </Button>
           </div>
         </div>
       </motion.div>
-    </>
+    </div>
   );
 }
