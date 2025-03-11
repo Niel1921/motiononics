@@ -55,18 +55,6 @@ export interface KeySignature {
       semitones: [0, 2, 4, 5, 7, 9, 11, 12],
       notes: ["Ab", "Bb", "C", "Db", "Eb", "F", "G", "Ab"],
     },
-    "Db Major": {
-      semitones: [0, 2, 4, 5, 7, 9, 11, 12],
-      notes: ["Db", "Eb", "F", "Gb", "Ab", "Bb", "C", "Db"],
-    },
-    "Gb Major": {
-      semitones: [0, 2, 4, 5, 7, 9, 11, 12],
-      notes: ["Gb", "Ab", "Bb", "Cb", "Db", "Eb", "F", "Gb"],
-    },
-    "Cb Major": {
-      semitones: [0, 2, 4, 5, 7, 9, 11, 12],
-      notes: ["Cb", "Db", "Eb", "Fb", "Gb", "Ab", "Bb", "Cb"],
-    },
   
     // Natural Minor Keys (Relative minors of the majors)
     "A Minor": {
