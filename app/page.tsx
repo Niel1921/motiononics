@@ -9,15 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
 import Header from "@/components/ui/header"; 
+import { keySignatures } from "./data/keySignatures";
 
-// -------------------- Constants --------------------
-const keySignatures: Record<string, { semitones: number[]; notes: string[] }> = {
-  "C Major": {
-    semitones: [0, 2, 4, 5, 7, 9, 11, 12],
-    notes: ["C", "D", "E", "F", "G", "A", "B", "C"],
-  },
-  // ... add other keys as needed
-};
+// -------------------- Constants -------------------- 
 
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",
