@@ -202,11 +202,11 @@ export default function GestureWalkthroughWithMediapipe() {
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
     
-    const videoEl = videoRef.current;
-    const canvasEl = canvasRef.current;
+    const videoEl = videoRef.current!;
+    const canvasEl = canvasRef.current!;
     if (!videoEl || !canvasEl) return;
     
-    const ctx = canvasEl.getContext("2d");
+    const ctx = canvasEl.getContext("2d")!;
     if (!ctx) return;
     
     let lastLogTime = 0;
