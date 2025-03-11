@@ -10,6 +10,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
 import Header from "@/components/ui/header"; 
 import { keySignatures } from "./data/keySignatures";
+import CircleOfFifths from "../components/CircleOfFifths"; // Circle component
 
 // -------------------- Constants -------------------- 
 
@@ -564,8 +565,25 @@ export default function Page() {
                   Learn how to make the most of Motiononics with our step‑by‑step tutorials.
                 </p>
                 <Link href="/tutorials">
-                  <Button className="bg-teal-500 hover:bg-teal-600 text-white">View Tutorials</Button>
+                  <Button className="bg-teal-500 hover:bg-teal-600 text-white">
+                    View Tutorials
+                  </Button>
                 </Link>
+              </CardContent>
+            </Card>
+
+            {/* Circle of Fifths Card */}
+            <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
+              <CardHeader className="bg-teal-50 py-3 px-4 border-b border-teal-100">
+                <h2 className="text-lg font-medium text-teal-800">Circle of Fifths</h2>
+              </CardHeader>
+              <CardContent className="p-4 flex justify-center">
+                <CircleOfFifths
+                  selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
+                  onSelectKey={(keyName) => {
+                    setSelectedKey(keyName);
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -578,7 +596,10 @@ export default function Page() {
                 <Button
                   onClick={() => {
                     setWebcamEnabled(true);
-                    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+                    if (
+                      audioContextRef.current &&
+                      audioContextRef.current.state === "suspended"
+                    ) {
                       audioContextRef.current.resume();
                     }
                   }}
@@ -601,18 +622,37 @@ export default function Page() {
                   Stop Video
                 </Button>
               )}
-              <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
-              <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
-              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && visualizerComponent}
+              <video
+                ref={videoRef}
+                className="w-[640px] h-[480px] scale-x-[-1]"
+                muted
+                playsInline
+              />
+              <canvas
+                ref={canvasRef}
+                width={640}
+                height={480}
+                className="absolute top-0 left-0"
+              />
+              {(mode === "autoChord" ||
+                mode === "arpeggiator" ||
+                mode === "conductor") &&
+                visualizerComponent}
               {mode === "conductor" && (
-                <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
+                <ConductorOverlay
+                  progress={conductorProgress}
+                  expectedProgress={expectedProgress}
+                />
               )}
               {mode === "conductor" && !conductorStarted && (
                 <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
                   {countdown !== null ? (
                     <div>{countdown}</div>
                   ) : (
-                    <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white" onClick={startConductorGame}>
+                    <Button
+                      className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white"
+                      onClick={startConductorGame}
+                    >
                       Start Conductor Game
                     </Button>
                   )}
@@ -620,7 +660,10 @@ export default function Page() {
               )}
               {mode === "conductor" && conductorStarted && (
                 <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
-                  <div className="h-full bg-green-500" style={{ width: `${(conductorGameTime / 30) * 100}%` }} />
+                  <div
+                    className="h-full bg-green-500"
+                    style={{ width: `${(conductorGameTime / 30) * 100}%` }}
+                  />
                 </div>
               )}
               {mode === "conductor" && gameScore !== null && (
@@ -687,7 +730,9 @@ export default function Page() {
                     Mode:
                     <select
                       value={mode}
-                      onChange={(e) => setMode(e.target.value as typeof mode)}
+                      onChange={(e) =>
+                        setMode(e.target.value as typeof mode)
+                      }
                       className="px-2 py-1 border rounded focus:ring-teal-500"
                     >
                       <option value="manual">Manual</option>
@@ -699,10 +744,14 @@ export default function Page() {
                   {mode === "arpeggiator" && (
                     <div className="space-y-3 border-t border-gray-200 pt-3">
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Octave Span</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Octave Span
+                        </label>
                         <select
                           value={arpeggioOctaves}
-                          onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
+                          onChange={(e) =>
+                            setArpeggioOctaves(Number(e.target.value))
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                         >
                           <option value={1}>1 Octave</option>
@@ -711,14 +760,18 @@ export default function Page() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Direction</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Direction
+                        </label>
                         <div className="flex flex-col gap-2">
                           <label className="flex items-center gap-1">
                             <input
                               type="radio"
                               value="up"
                               checked={arpeggioDirection === "up"}
-                              onChange={() => setArpeggioDirection("up")}
+                              onChange={() =>
+                                setArpeggioDirection("up")
+                              }
                               className="accent-teal-600"
                             />
                             <span className="text-sm">Up</span>
@@ -728,7 +781,9 @@ export default function Page() {
                               type="radio"
                               value="down"
                               checked={arpeggioDirection === "down"}
-                              onChange={() => setArpeggioDirection("down")}
+                              onChange={() =>
+                                setArpeggioDirection("down")
+                              }
                               className="accent-teal-600"
                             />
                             <span className="text-sm">Down</span>
@@ -738,7 +793,9 @@ export default function Page() {
                               type="radio"
                               value="upDown"
                               checked={arpeggioDirection === "upDown"}
-                              onChange={() => setArpeggioDirection("upDown")}
+                              onChange={() =>
+                                setArpeggioDirection("upDown")
+                              }
                               className="accent-teal-600"
                             />
                             <span className="text-sm">Up & Down</span>
@@ -765,6 +822,8 @@ export default function Page() {
                 </Button>
               </CardContent>
             </Card>
+
+            
 
             {/* Instructions Card */}
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
