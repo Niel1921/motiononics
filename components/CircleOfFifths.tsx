@@ -3,13 +3,14 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-// Helper: Convert polar coordinates to Cartesian coordinates.
+// --------------------- Utility Functions ---------------------
 function polarToCartesian(
   centerX: number,
   centerY: number,
   radius: number,
   angleInDegrees: number
 ) {
+  // 0° => 12 o'clock
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
   return {
     x: centerX + radius * Math.cos(angleInRadians),
@@ -17,39 +18,78 @@ function polarToCartesian(
   };
 }
 
-// Helper: Build an SVG path for a wedge (arc) from startAngle to endAngle.
-function describeArc(
-  centerX: number,
-  centerY: number,
-  radius: number,
+/**
+ * Creates an SVG path for a "ring wedge" between innerRadius and outerRadius
+ * from startAngle to endAngle. This yields a donut-slice shape.
+ */
+function describeRingArc(
+  cx: number,
+  cy: number,
   startAngle: number,
-  endAngle: number
+  endAngle: number,
+  innerRadius: number,
+  outerRadius: number
 ) {
-  const start = polarToCartesian(centerX, centerY, radius, endAngle);
-  const end = polarToCartesian(centerX, centerY, radius, startAngle);
+  // Outer arc
+  const outerStart = polarToCartesian(cx, cy, outerRadius, endAngle);
+  const outerEnd = polarToCartesian(cx, cy, outerRadius, startAngle);
+
+  // Inner arc
+  const innerEnd = polarToCartesian(cx, cy, innerRadius, startAngle);
+  const innerStart = polarToCartesian(cx, cy, innerRadius, endAngle);
+
   const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+
   return [
-    `M ${start.x} ${start.y}`,
-    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
-    `L ${centerX} ${centerY}`,
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${innerStart.x} ${innerStart.y}`,
     "Z",
   ].join(" ");
 }
 
-// Array of 12 major keys in circle-of-fifths order.
-const majorKeys = [
-  "C Major",
-  "G Major",
-  "D Major",
-  "A Major",
-  "E Major",
-  "B Major",
-  "F# Major",
-  "C# Major",
-  "Ab Major",
-  "Eb Major",
-  "Bb Major",
-  "F Major",
+// --------------------- Circle of Fifths Data ---------------------
+/**
+ * 12 slices: each has a major key + its relative minor key.
+ * You can reorder or rename these if you prefer a different arrangement.
+ */
+const circleData = [
+  { major: "C Major", minor: "A Minor" },
+  { major: "G Major", minor: "E Minor" },
+  { major: "D Major", minor: "B Minor" },
+  { major: "A Major", minor: "F# Minor" },
+  { major: "E Major", minor: "C# Minor" },
+  { major: "B Major", minor: "G# Minor" },
+  { major: "F# Major", minor: "D# Minor" },
+  { major: "C# Major", minor: "A# Minor" },
+  { major: "Ab Major", minor: "F Minor" },
+  { major: "Eb Major", minor: "C Minor" },
+  { major: "Bb Major", minor: "G Minor" },
+  { major: "F Major", minor: "D Minor" },
+];
+
+// Find which slice has the given key in either major or minor.
+function findIndexByKey(keyName: string) {
+  const i = circleData.findIndex(
+    (slice) => slice.major === keyName || slice.minor === keyName
+  );
+  return i >= 0 ? i : 0;
+}
+
+// --------------------- Static Chord Labels ---------------------
+// Place them at specific angles so they remain fixed on the outside/inside
+// even as the wheel rotates.
+const outsideChordLabels = [
+  { label: "I", angle: 0 },   // top
+  { label: "V", angle: 30 }, // right
+  { label: "IV", angle: 330 } // left
+];
+
+const insideChordLabels = [
+  { label: "vi", angle: 0 },  // top
+  { label: "iii", angle: 35 }, // right
+  { label: "ii", angle: 325 }  // left
 ];
 
 interface CircleOfFifthsProps {
@@ -57,70 +97,111 @@ interface CircleOfFifthsProps {
   onSelectKey: (keyName: string) => void;
 }
 
+// --------------------- Main Component ---------------------
 export default function CircleOfFifths({
   selectedKey,
   onSelectKey,
 }: CircleOfFifthsProps) {
-  // Dimensions and geometry.
   const width = 400;
   const height = 400;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const radius = 140;
-  const wedgeAngle = 360 / majorKeys.length;
 
-  // Determine the selected key's index (default to 0 if not found).
-  const selectedIndex = majorKeys.indexOf(selectedKey);
-  const safeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  // Center
+  const cx = width / 2;
+  const cy = height / 2;
 
-  // Calculate rotation needed so that the selected wedge's midpoint is at the top.
-  // Midpoint of wedge i is at (i + 0.5) * wedgeAngle.
-  const groupRotation = -((safeIndex + 0.5) * wedgeAngle);
+  // Outer ring for major keys
+  const radiusMajorInner = 100;
+  const radiusMajorOuter = 140;
 
-  // Static chord function labels.
-  // You can customize these labels and angles as desired.
-  const staticChordLabels = ["IV", "I", "V"];
-  const staticLabelRadius = radius + 30; // Place these a bit outside the wheel.
-  const staticLabelAngleIncrement = 90 / staticChordLabels.length;
+  // Inner ring for minor keys
+  const radiusMinorInner = 60;
+  const radiusMinorOuter = 100;
+
+  // Each slice => 360/12 = 30°
+  const wedgeAngle = 360 / circleData.length;
+
+  // Figure out which slice is selected
+  const selectedIndex = findIndexByKey(selectedKey);
+  // Rotate so that the midpoint of slice i is at the top
+  const rotation = -((selectedIndex + 0.5) * wedgeAngle);
+
+  // Radii for placing the static chord labels
+  const outsideChordRadius = radiusMajorOuter + 25; // slightly outside the major ring
+  const insideChordRadius = radiusMinorInner - 20;  // slightly inside the minor ring
 
   return (
     <svg width={width} height={height} viewBox="0 0 400 400">
-      {/* The rotating group for wedges and key labels */}
+      {/* 
+        1) The rotating group for major/minor wedges and labels 
+      */}
       <motion.g
         style={{ transformOrigin: "200px 200px" }}
-        animate={{ rotate: groupRotation }}
+        animate={{ rotate: rotation }}
         transition={{ duration: 0.8, ease: "easeInOut" }}
       >
-        {/* Wedges */}
-        {majorKeys.map((keyName, i) => {
+        {circleData.map((slice, i) => {
           const startAngle = i * wedgeAngle;
           const endAngle = (i + 1) * wedgeAngle;
-          const pathData = describeArc(centerX, centerY, radius, startAngle, endAngle);
-          const isSelected = selectedKey === keyName;
-          const fillColor = isSelected ? "#FFD700" : "#4FD1C5";
+
+          // Outer wedge (major)
+          const majorPath = describeRingArc(
+            cx,
+            cy,
+            startAngle,
+            endAngle,
+            radiusMajorInner,
+            radiusMajorOuter
+          );
+          // Inner wedge (minor)
+          const minorPath = describeRingArc(
+            cx,
+            cy,
+            startAngle,
+            endAngle,
+            radiusMinorInner,
+            radiusMinorOuter
+          );
+
+          // Highlight whichever wedge is the selectedKey
+          const majorIsSelected = slice.major === selectedKey;
+          const minorIsSelected = slice.minor === selectedKey;
+          const majorColor = majorIsSelected ? "#FFD700" : "#4FD1C5"; // gold vs teal
+          const minorColor = minorIsSelected ? "#FFD700" : "#A78BFA"; // gold vs purple
+
           return (
-            <path
-              key={keyName}
-              d={pathData}
-              fill={fillColor}
-              stroke="#fff"
-              strokeWidth={2}
-              style={{ cursor: "pointer" }}
-              onClick={() => onSelectKey(keyName)}
-            />
+            <React.Fragment key={i}>
+              {/* Major wedge */}
+              <path
+                d={majorPath}
+                fill={majorColor}
+                stroke="#fff"
+                strokeWidth={2}
+                style={{ cursor: "pointer" }}
+                onClick={() => onSelectKey(slice.major)}
+              />
+              {/* Minor wedge */}
+              <path
+                d={minorPath}
+                fill={minorColor}
+                stroke="#fff"
+                strokeWidth={2}
+                style={{ cursor: "pointer" }}
+                onClick={() => onSelectKey(slice.minor)}
+              />
+            </React.Fragment>
           );
         })}
 
-        {/* Key Labels: Counter-rotate each text element so it remains horizontal */}
-        {majorKeys.map((keyName, i) => {
-          // Calculate the wedge's midpoint angle in the unrotated space.
-          const labelAngle = (i + 0.5) * wedgeAngle;
-          const labelRadius = radius * 0.65;
-          const pos = polarToCartesian(centerX, centerY, labelRadius, labelAngle);
-          // Cancel out the group's rotation so the text stays horizontal.
+        {/* Major Key Labels */}
+        {circleData.map((slice, i) => {
+          const angle = (i + 0.5) * wedgeAngle;
+          // Position near the center of the major ring
+          const labelRadius = (radiusMajorInner + radiusMajorOuter) / 2;
+          const pos = polarToCartesian(cx, cy, labelRadius, angle);
+
           return (
             <text
-              key={`${keyName}-label`}
+              key={`major-label-${i}`}
               x={pos.x}
               y={pos.y}
               fill="#fff"
@@ -129,22 +210,50 @@ export default function CircleOfFifths({
               textAnchor="middle"
               alignmentBaseline="middle"
               style={{ pointerEvents: "none" }}
-              transform={`rotate(${-groupRotation} ${pos.x} ${pos.y})`}
+              transform={`rotate(${-rotation} ${pos.x} ${pos.y})`}
             >
-              {keyName.replace(" Major", "")}
+              {slice.major.replace(" Major", "")}
+            </text>
+          );
+        })}
+
+        {/* Minor Key Labels */}
+        {circleData.map((slice, i) => {
+          const angle = (i + 0.5) * wedgeAngle;
+          // Position near the center of the minor ring
+          const labelRadius = (radiusMinorInner + radiusMinorOuter) / 2;
+          const pos = polarToCartesian(cx, cy, labelRadius, angle);
+
+          return (
+            <text
+              key={`minor-label-${i}`}
+              x={pos.x}
+              y={pos.y}
+              fill="#fff"
+              fontSize="14"
+              fontWeight="bold"
+              textAnchor="middle"
+              alignmentBaseline="middle"
+              style={{ pointerEvents: "none" }}
+              transform={`rotate(${-rotation} ${pos.x} ${pos.y})`}
+            >
+              {slice.minor.replace(" Minor", "m")}
             </text>
           );
         })}
       </motion.g>
 
-      {/* Static Chord Function Labels: Remain fixed in position as the wheel rotates */}
-      {staticChordLabels.map((label, i) => {
-        // Evenly distribute the static labels around the circle.
-        const angle = (i - 1) * staticLabelAngleIncrement;
-        const pos = polarToCartesian(centerX, centerY, staticLabelRadius, angle);
+      {/* 
+        2) Static chord function labels (outside ring: I, IV, V; inside ring: iii, ii, vi) 
+        These do NOT rotate, so they're outside the <motion.g> 
+      */}
+
+      {/* Outside chord labels */}
+      {outsideChordLabels.map(({ label, angle }) => {
+        const pos = polarToCartesian(cx, cy, outsideChordRadius, angle);
         return (
           <text
-            key={`static-${label}`}
+            key={`outside-${label}`}
             x={pos.x}
             y={pos.y}
             fill="#000"
@@ -152,7 +261,25 @@ export default function CircleOfFifths({
             fontWeight="bold"
             textAnchor="middle"
             alignmentBaseline="middle"
-            // No rotation transform needed so they remain horizontal.
+          >
+            {label}
+          </text>
+        );
+      })}
+
+      {/* Inside chord labels */}
+      {insideChordLabels.map(({ label, angle }) => {
+        const pos = polarToCartesian(cx, cy, insideChordRadius, angle);
+        return (
+          <text
+            key={`inside-${label}`}
+            x={pos.x}
+            y={pos.y}
+            fill="#000"
+            fontSize="16"
+            fontWeight="bold"
+            textAnchor="middle"
+            alignmentBaseline="middle"
           >
             {label}
           </text>
