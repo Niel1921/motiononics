@@ -76,26 +76,45 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
     // --------------------------------------------------
     // 2) Sound Hole
     // --------------------------------------------------
-    const holeRadius = 0.3;
+    const holeRadius = 0.5;
     const holeGeo = new THREE.CircleGeometry(holeRadius, 32);
     const holeMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
     const holeMesh = new THREE.Mesh(holeGeo, holeMat);
-    holeMesh.rotation.x = -Math.PI / 2; 
-    holeMesh.position.set(0, 0.01, -0.2);
-    scene.add(holeMesh);
+    holeMesh.rotation.x = -Math.PI / 2;
+
+    // Position the hole slightly above the top surface
+    // The top of the guitar is at ~ y=1.3 after extrusion,
+    // so place hole at y ~ 1.31 to avoid z-fighting
+    holeMesh.position.set(0, 1.31, -0.35);
+    holeMesh.castShadow = false;
+    holeMesh.receiveShadow = false;
+    guitarGroup.add(holeMesh); // add to the same group
 
     // --------------------------------------------------
     // 3) Neck
     // --------------------------------------------------
     const neckLength = 5;
-    const neckGeo = new THREE.BoxGeometry(0.4, 0.08, neckLength);
+    const neckGeo = new THREE.BoxGeometry(0.9, 0.04, neckLength);
     const neckMat = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
     const neckMesh = new THREE.Mesh(neckGeo, neckMat);
-    neckMesh.rotation.x = -Math.PI / 2;
-    neckMesh.position.set(0, 0.05, -3.5);
+    neckMesh.rotation.x = -Math.PI ;
+
+    // The guitar’s top is y=1.3. Place neck slightly above (1.31).
+    // Move it behind the guitar shape on z axis.
+    neckMesh.position.set(0, 1.31, -4);
     neckMesh.castShadow = true;
     neckMesh.receiveShadow = true;
-    scene.add(neckMesh);
+    guitarGroup.add(neckMesh);
+
+    const bridgeGeo = new THREE.BoxGeometry(0.8, 0.08, 0.2);
+    const bridgeMat = new THREE.MeshPhongMaterial({ color: 0x654321 });
+    const bridgeMesh = new THREE.Mesh(bridgeGeo, bridgeMat);
+    // Lay it flat
+    bridgeMesh.rotation.x = -Math.PI / 2;
+    // Place it near the top surface, at z=1.2
+    bridgeMesh.position.set(0, 1.31, 1.2);
+    bridgeMesh.castShadow = true;
+    guitarGroup.add(bridgeMesh);
 
     // --------------------------------------------------
     // 4) Strings (pure white)
