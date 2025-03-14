@@ -95,7 +95,7 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
     // --------------------------------------------------
     const neckLength = 5;
     const neckGeo = new THREE.BoxGeometry(0.9, 0.04, neckLength);
-    const neckMat = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+    const neckMat = new THREE.MeshPhongMaterial({ color: 0x654321 });
     const neckMesh = new THREE.Mesh(neckGeo, neckMat);
     neckMesh.rotation.x = -Math.PI ;
 
