@@ -1,0 +1,146 @@
+"use client";
+
+import React, { useRef, useEffect } from "react";
+import * as THREE from "three";
+
+interface ThreeGuitarVisualizerProps {
+  /** The chord name currently being played, e.g. "Cmaj" or "Amin". */
+  currentChord: string | null;
+}
+
+export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisualizerProps) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const requestRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Create Scene, Camera, Renderer
+    const scene = new THREE.Scene();
+    const textureLoader = new THREE.TextureLoader();
+
+    const camera = new THREE.PerspectiveCamera(50, 640 / 280, 0.1, 1000);
+    camera.position.set(0, 2, 4);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(640, 280);
+    renderer.shadowMap.enabled = true;
+    mountRef.current?.appendChild(renderer.domElement);
+
+    // Basic Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    dirLight.position.set(0, 10, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // --------------------------------------------------
+    // 1) Guitar Body Shape + Extrude
+    // --------------------------------------------------
+    const guitarShape = new THREE.Shape();
+    // Roughly outline an acoustic guitar top from bottom center
+    guitarShape.moveTo(0, -2.8);
+    // Left half
+    guitarShape.bezierCurveTo(-1.8, -2.8, -2.1, -1.2, -1.3, -0.8);
+    guitarShape.bezierCurveTo(-1.0, -0.6, -1.0, 0.6, -1.3, 0.8);
+    guitarShape.bezierCurveTo(-2.1, 1.2, -1.8, 2.8, 0, 2.8);
+    // Right half (mirror)
+    guitarShape.bezierCurveTo(1.8, 2.8, 2.1, 1.2, 1.3, 0.8);
+    guitarShape.bezierCurveTo(1.0, 0.6, 1.0, -0.6, 1.3, -0.8);
+    guitarShape.bezierCurveTo(2.1, -1.2, 1.8, -2.8, 0, -2.8);
+    guitarShape.closePath();
+
+    // Extrude settings for thickness
+    const extrudeSettings: THREE.ExtrudeGeometryOptions = {
+      depth: 0.3,
+      bevelEnabled: false,
+    };
+    const guitarBodyGeo = new THREE.ExtrudeGeometry(guitarShape, extrudeSettings);
+
+    // Load guitarwood texture
+    const guitarTexture = textureLoader.load("/textures/guitarwood.jpg");
+    guitarTexture.wrapS = THREE.RepeatWrapping;
+    guitarTexture.wrapT = THREE.RepeatWrapping;
+    // Adjust if you want more or less repetition
+    guitarTexture.repeat.set(1, 1);
+
+    const guitarBodyMat = new THREE.MeshPhongMaterial({ map: guitarTexture });
+    const guitarBody = new THREE.Mesh(guitarBodyGeo, guitarBodyMat);
+    guitarBody.rotation.x = -Math.PI / 2;
+    guitarBody.castShadow = true;
+    guitarBody.receiveShadow = true;
+    scene.add(guitarBody);
+
+    // --------------------------------------------------
+    // 2) Sound Hole
+    // --------------------------------------------------
+    const holeRadius = 0.3;
+    const holeGeo = new THREE.CircleGeometry(holeRadius, 32);
+    const holeMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
+    const holeMesh = new THREE.Mesh(holeGeo, holeMat);
+    holeMesh.rotation.x = -Math.PI / 2; 
+    holeMesh.position.set(0, 0.01, -0.2);
+    scene.add(holeMesh);
+
+    // --------------------------------------------------
+    // 3) Neck
+    // --------------------------------------------------
+    const neckLength = 5;
+    const neckGeo = new THREE.BoxGeometry(0.4, 0.08, neckLength);
+    const neckMat = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+    const neckMesh = new THREE.Mesh(neckGeo, neckMat);
+    neckMesh.rotation.x = -Math.PI / 2;
+    neckMesh.position.set(0, 0.05, -3.5);
+    neckMesh.castShadow = true;
+    neckMesh.receiveShadow = true;
+    scene.add(neckMesh);
+
+    // --------------------------------------------------
+    // 4) Strings (pure white)
+    // --------------------------------------------------
+    const numStrings = 6;
+    const totalWidth = 0.7;
+    const startX = -totalWidth / 2;
+    for (let i = 0; i < numStrings; i++) {
+      const x = startX + (i * totalWidth) / (numStrings - 1);
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array([
+        x, 0.1, 1.2, // near bridge
+        x, 0.1, -5.0 // top of neck
+      ]);
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.LineBasicMaterial({ color: 0xffffff }); // pure white
+      const line = new THREE.Line(geometry, material);
+      scene.add(line);
+    }
+
+    // --------------------------------------------------
+    // 5) Table plane using table.jpg
+    // --------------------------------------------------
+    const tableTexture = textureLoader.load("/textures/table.jpg");
+    // A big plane behind the guitar
+    const tableGeo = new THREE.PlaneGeometry(100, 100);
+    const tableMat = new THREE.MeshPhongMaterial({ map: tableTexture });
+    const tableMesh = new THREE.Mesh(tableGeo, tableMat);
+    tableMesh.rotation.x = -Math.PI / 2;
+    tableMesh.position.y = -0.25;
+    tableMesh.receiveShadow = true;
+    scene.add(tableMesh);
+
+    // Render loop
+    const animate = () => {
+      requestRef.current = requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      mountRef.current?.removeChild(renderer.domElement);
+      renderer.dispose();
+    };
+  }, []);
+
+  // We do NOT highlight strings based on chord; strings remain pure white.
+
+  return <div ref={mountRef} />;
+}

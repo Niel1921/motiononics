@@ -8,11 +8,12 @@ import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
+import ThreeGuitarVisualizer from "../components/ThreeGuitarVisualizer";
 import Header from "@/components/ui/header"; 
 import { keySignatures } from "./data/keySignatures";
-import CircleOfFifths from "../components/CircleOfFifths"; // Circle component
+import CircleOfFifths from "../components/CircleOfFifths";
 
-// -------------------- Constants -------------------- 
+// -------------------- Constants --------------------
 
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",
@@ -133,6 +134,9 @@ export default function Page() {
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const errorSumRef = useRef<number>(0);
   const errorCountRef = useRef<number>(0);
+
+  // New state: instrument selector ("piano" or "guitar")
+  const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
 
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
@@ -537,9 +541,18 @@ export default function Page() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [gestureRecognizer, webcamEnabled, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection]);
 
+  const currentChordName =
+    currentChordCell !== null
+      ? getChordsForKey(selectedKey)[currentChordCell]?.name
+      : null;
+
   const visualizerComponent =
     mode === "manual" ? (
-      <ThreePianoVisualizer currentNote={currentNote} />
+      instrument === "guitar" ? (
+        <ThreeGuitarVisualizer currentChord={currentChordName} />
+      ) : (
+        <ThreePianoVisualizer currentNote={currentNote} />
+      )
     ) : (
       <ChordGridVisualizer
         chords={getChordsForKey(selectedKey)}
@@ -727,6 +740,19 @@ export default function Page() {
                     </select>
                   </label>
                   <label className="flex items-center gap-2 text-teal-700">
+                    Instrument:
+                    <select
+                      value={instrument}
+                      onChange={(e) =>
+                        setInstrument(e.target.value as "piano" | "guitar")
+                      }
+                      className="px-2 py-1 border rounded focus:ring-teal-500"
+                    >
+                      <option value="piano">Piano</option>
+                      <option value="guitar">Guitar</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-teal-700">
                     Mode:
                     <select
                       value={mode}
@@ -822,8 +848,6 @@ export default function Page() {
                 </Button>
               </CardContent>
             </Card>
-
-            
 
             {/* Instructions Card */}
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
