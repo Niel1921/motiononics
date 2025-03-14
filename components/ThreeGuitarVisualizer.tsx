@@ -13,12 +13,12 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
   const requestRef = useRef<number>(0);
 
   useEffect(() => {
-    // Create Scene, Camera, Renderer
+    // Create Scene, Camera, and Renderer
     const scene = new THREE.Scene();
     const textureLoader = new THREE.TextureLoader();
 
-    const camera = new THREE.PerspectiveCamera(50, 640 / 280, 0.1, 1000);
-    camera.position.set(0, 2, 4);
+    const camera = new THREE.PerspectiveCamera(70, 640 / 280, 0.1, 1000);
+    camera.position.set(0, 4, 0);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -32,6 +32,9 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
     dirLight.position.set(0, 10, 10);
     dirLight.castShadow = true;
     scene.add(dirLight);
+
+    // Create a group to hold all guitar parts
+    const guitarGroup = new THREE.Group();
 
     // --------------------------------------------------
     // 1) Guitar Body Shape + Extrude
@@ -51,24 +54,24 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
 
     // Extrude settings for thickness
     const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-      depth: 0.3,
+      depth: 1.3,
       bevelEnabled: false,
     };
     const guitarBodyGeo = new THREE.ExtrudeGeometry(guitarShape, extrudeSettings);
 
-    // Load guitarwood texture
+    // Load the wood texture from "guitarwood.jpeg"
     const guitarTexture = textureLoader.load("/textures/guitarwood.jpg");
     guitarTexture.wrapS = THREE.RepeatWrapping;
     guitarTexture.wrapT = THREE.RepeatWrapping;
-    // Adjust if you want more or less repetition
     guitarTexture.repeat.set(1, 1);
 
     const guitarBodyMat = new THREE.MeshPhongMaterial({ map: guitarTexture });
     const guitarBody = new THREE.Mesh(guitarBodyGeo, guitarBodyMat);
+    // Rotate so that the extruded dimension becomes vertical
     guitarBody.rotation.x = -Math.PI / 2;
     guitarBody.castShadow = true;
     guitarBody.receiveShadow = true;
-    scene.add(guitarBody);
+    guitarGroup.add(guitarBody);
 
     // --------------------------------------------------
     // 2) Sound Hole
@@ -103,21 +106,21 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
     for (let i = 0; i < numStrings; i++) {
       const x = startX + (i * totalWidth) / (numStrings - 1);
       const geometry = new THREE.BufferGeometry();
+      // Set y position to 0.35 so strings are above the body
       const positions = new Float32Array([
-        x, 0.1, 1.2, // near bridge
-        x, 0.1, -5.0 // top of neck
+        x, 1.35, 1.2, // near bridge area
+        x, 1.35, -5.0 // near top of neck
       ]);
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      const material = new THREE.LineBasicMaterial({ color: 0xffffff }); // pure white
+      const material = new THREE.LineBasicMaterial({ color: 0xffffff });
       const line = new THREE.Line(geometry, material);
-      scene.add(line);
+      guitarGroup.add(line);
     }
 
     // --------------------------------------------------
-    // 5) Table plane using table.jpg
+    // 5) Table Plane using "table.jpg"
     // --------------------------------------------------
     const tableTexture = textureLoader.load("/textures/table.jpg");
-    // A big plane behind the guitar
     const tableGeo = new THREE.PlaneGeometry(100, 100);
     const tableMat = new THREE.MeshPhongMaterial({ map: tableTexture });
     const tableMesh = new THREE.Mesh(tableGeo, tableMat);
@@ -125,6 +128,15 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
     tableMesh.position.y = -0.25;
     tableMesh.receiveShadow = true;
     scene.add(tableMesh);
+
+    // --------------------------------------------------
+    // Group Rotation: Rotate the entire guitar 90° about the Y-axis
+    // so that it appears horizontal.
+    // --------------------------------------------------
+    guitarGroup.rotation.y = Math.PI / 2;
+
+    // Add the guitar group to the scene
+    scene.add(guitarGroup);
 
     // Render loop
     const animate = () => {
@@ -139,8 +151,6 @@ export default function ThreeGuitarVisualizer({ currentChord }: ThreeGuitarVisua
       renderer.dispose();
     };
   }, []);
-
-  // We do NOT highlight strings based on chord; strings remain pure white.
 
   return <div ref={mountRef} />;
 }
