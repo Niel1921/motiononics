@@ -8,13 +8,12 @@ import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
-import ThreeGuitarVisualizer from "../components/ThreeGuitarVisualizer";
-import Header from "@/components/ui/header"; 
+import ThreeGuitarVisualizer, { ThreeGuitarVisualizerHandle } from "../components/ThreeGuitarVisualizer";
+import Header from "@/components/ui/header";
 import { keySignatures } from "./data/keySignatures";
 import CircleOfFifths from "../components/CircleOfFifths";
 
 // -------------------- Constants --------------------
-
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",
 };
@@ -104,15 +103,25 @@ function getChordsForKey(keyName: string) {
   return chords.map((c, i) => ({ name: c, roman: roman[i] }));
 }
 
+// -------------------- Helper: getStringIndexFromY --------------------
+function getStringIndexFromY(yNorm: number): number {
+  // yNorm is normalized (0 at top, 1 at bottom)
+  const index = Math.floor(yNorm * 6);
+  return Math.min(5, Math.max(0, index));
+}
+
 // -------------------- Main Page Component --------------------
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null);
+
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
   const [webcamEnabled, setWebcamEnabled] = useState(false);
   const [bpm, setBpm] = useState<number>(120);
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
+  const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" | "conductor">("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
@@ -134,9 +143,6 @@ export default function Page() {
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const errorSumRef = useRef<number>(0);
   const errorCountRef = useRef<number>(0);
-
-  // New state: instrument selector ("piano" or "guitar")
-  const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
 
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
@@ -512,11 +518,19 @@ export default function Page() {
               if (!handLandmarks) return;
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
-              if (mode === "conductor") return;
+              // In guitar mode, if Closed_Fist is detected, use Y to determine string index.
               if (gesture.categoryName === "Closed_Fist") {
-                if (mode === "manual") playNoteManual("Closed_Fist", pos);
-                else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
-                else if (mode === "arpeggiator") playArpeggioFromHandPosition("Closed_Fist", pos);
+                if (instrument === "guitar") {
+                  const stringIndex = getStringIndexFromY(pos.y);
+                  // Trigger string vibration on the 3D guitar visualizer.
+                  guitarRef.current?.triggerString(stringIndex);
+                  // Optionally, also play a corresponding note (if you have an audio sample for each string)
+                  //console.log("Guitar string triggered:", stringIndex);
+                } else {
+                  if (mode === "manual") playNoteManual("Closed_Fist", pos);
+                  else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
+                  else if (mode === "arpeggiator") playArpeggioFromHandPosition("Closed_Fist", pos);
+                }
               }
             });
           }
@@ -539,7 +553,7 @@ export default function Page() {
     };
     processFrame();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gestureRecognizer, webcamEnabled, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection]);
+  }, [gestureRecognizer, webcamEnabled, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection, instrument]);
 
   const currentChordName =
     currentChordCell !== null
@@ -549,7 +563,7 @@ export default function Page() {
   const visualizerComponent =
     mode === "manual" ? (
       instrument === "guitar" ? (
-        <ThreeGuitarVisualizer currentChord={currentChordName} />
+        <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
       ) : (
         <ThreePianoVisualizer currentNote={currentNote} />
       )
@@ -562,12 +576,10 @@ export default function Page() {
 
   return (
     <>
-      {/* Custom Header */}
       <Header />
-
       <div className="container mx-auto p-4">
         <div className="flex flex-row gap-4">
-          {/* Left Column: Tutorials Prompt */}
+          {/* Left Column: Tutorials & Circle of Fifths */}
           <div className="w-1/4">
             <Card className="p-6 rounded-2xl bg-teal-100 shadow-lg">
               <CardHeader>
@@ -593,26 +605,19 @@ export default function Page() {
               <CardContent className="p-4 flex justify-center">
                 <CircleOfFifths
                   selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
-                  onSelectKey={(keyName) => {
-                    setSelectedKey(keyName);
-                  }}
+                  onSelectKey={(keyName) => setSelectedKey(keyName)}
                 />
               </CardContent>
             </Card>
           </div>
-
           {/* Central Column: Webcam Feed & Visualizer */}
-          <div className="w-1/2 flex flex-col items-center gap-4">
-            {/* Webcam Viewer Box */}
+          <div className="w-1/2 flex flex-col items-center gap-4 relative">
             <div className="relative w-[640px] h-[480px] border rounded-lg shadow-lg overflow-hidden">
               {!webcamEnabled ? (
                 <Button
                   onClick={() => {
                     setWebcamEnabled(true);
-                    if (
-                      audioContextRef.current &&
-                      audioContextRef.current.state === "suspended"
-                    ) {
+                    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
                       audioContextRef.current.resume();
                     }
                   }}
@@ -647,9 +652,28 @@ export default function Page() {
                 height={480}
                 className="absolute top-0 left-0"
               />
-              {(mode === "autoChord" ||
-                mode === "arpeggiator" ||
-                mode === "conductor") &&
+              {/* If instrument is guitar, overlay 6 horizontal string lines */}
+              {instrument === "guitar" && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {[0, 1, 2, 3, 4, 5].map((i) => {
+                    const topPercent = ((i + 0.5) / 6) * 100;
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          top: `${topPercent}%`,
+                          left: 0,
+                          right: 0,
+                          height: "1px",
+                          background: "rgba(255,255,255,0.8)",
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") &&
                 visualizerComponent}
               {mode === "conductor" && (
                 <ConductorOverlay
@@ -662,10 +686,7 @@ export default function Page() {
                   {countdown !== null ? (
                     <div>{countdown}</div>
                   ) : (
-                    <Button
-                      className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white"
-                      onClick={startConductorGame}
-                    >
+                    <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white" onClick={startConductorGame}>
                       Start Conductor Game
                     </Button>
                   )}
@@ -673,10 +694,7 @@ export default function Page() {
               )}
               {mode === "conductor" && conductorStarted && (
                 <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
-                  <div
-                    className="h-full bg-green-500"
-                    style={{ width: `${(conductorGameTime / 30) * 100}%` }}
-                  />
+                  <div className="h-full bg-green-500" style={{ width: `${(conductorGameTime / 30) * 100}%` }} />
                 </div>
               )}
               {mode === "conductor" && gameScore !== null && (
@@ -685,14 +703,12 @@ export default function Page() {
                 </div>
               )}
             </div>
-            {/* If in manual mode, show the Three.js visualizer below the webcam box */}
             {mode === "manual" && (
               <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
                 {visualizerComponent}
               </div>
             )}
           </div>
-
           {/* Right Column: Controls Panel */}
           <div className="w-1/4">
             <Card className="max-w-md mx-auto bg-white shadow-lg">
@@ -756,9 +772,7 @@ export default function Page() {
                     Mode:
                     <select
                       value={mode}
-                      onChange={(e) =>
-                        setMode(e.target.value as typeof mode)
-                      }
+                      onChange={(e) => setMode(e.target.value as typeof mode)}
                       className="px-2 py-1 border rounded focus:ring-teal-500"
                     >
                       <option value="manual">Manual</option>
@@ -770,14 +784,10 @@ export default function Page() {
                   {mode === "arpeggiator" && (
                     <div className="space-y-3 border-t border-gray-200 pt-3">
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Octave Span
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700">Octave Span</label>
                         <select
                           value={arpeggioOctaves}
-                          onChange={(e) =>
-                            setArpeggioOctaves(Number(e.target.value))
-                          }
+                          onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                         >
                           <option value={1}>1 Octave</option>
@@ -786,18 +796,14 @@ export default function Page() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Direction
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700">Direction</label>
                         <div className="flex flex-col gap-2">
                           <label className="flex items-center gap-1">
                             <input
                               type="radio"
                               value="up"
                               checked={arpeggioDirection === "up"}
-                              onChange={() =>
-                                setArpeggioDirection("up")
-                              }
+                              onChange={() => setArpeggioDirection("up")}
                               className="accent-teal-600"
                             />
                             <span className="text-sm">Up</span>
@@ -807,9 +813,7 @@ export default function Page() {
                               type="radio"
                               value="down"
                               checked={arpeggioDirection === "down"}
-                              onChange={() =>
-                                setArpeggioDirection("down")
-                              }
+                              onChange={() => setArpeggioDirection("down")}
                               className="accent-teal-600"
                             />
                             <span className="text-sm">Down</span>
@@ -819,9 +823,7 @@ export default function Page() {
                               type="radio"
                               value="upDown"
                               checked={arpeggioDirection === "upDown"}
-                              onChange={() =>
-                                setArpeggioDirection("upDown")
-                              }
+                              onChange={() => setArpeggioDirection("upDown")}
                               className="accent-teal-600"
                             />
                             <span className="text-sm">Up & Down</span>
@@ -859,7 +861,8 @@ export default function Page() {
                   <ol className="space-y-2 text-gray-700">
                     <li>Enable your webcam using the button in the video panel</li>
                     <li>Position your hand within the camera view</li>
-                    <li>Make different hand gestures to trigger sounds:</li>
+                    <li>In guitar mode, move your hand vertically to select a string</li>
+                    <li>Make a Closed Fist gesture to trigger that string’s vibration and sound</li>
                   </ol>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
                     <div className="p-3 bg-teal-50 rounded-md text-center">
@@ -868,7 +871,7 @@ export default function Page() {
                     </div>
                     <div className="p-3 bg-teal-50 rounded-md text-center">
                       <div className="text-xs font-semibold text-teal-800 mb-1">Closed Fist</div>
-                      <div className="text-xs text-gray-600">Minor chord</div>
+                      <div className="text-xs text-gray-600">Minor chord / Guitar string</div>
                     </div>
                     <div className="p-3 bg-teal-50 rounded-md text-center">
                       <div className="text-xs font-semibold text-teal-800 mb-1">Victory Sign</div>
