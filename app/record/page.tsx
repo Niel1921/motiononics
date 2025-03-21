@@ -51,26 +51,6 @@ function getChordsForKey(keyName: string) {
   return chords.map((c, i) => ({ name: c, roman: roman[i] }));
 }
 
-// -------------------- Helper: ConductorOverlay --------------------
-function ConductorOverlay({
-  progress,
-  expectedProgress,
-}: {
-  progress: number;
-  expectedProgress: number;
-}) {
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-white bg-black/50 p-2 rounded">
-          Conductor progress: {(progress * 100).toFixed(1)}% <br />
-          Expected progress: {(expectedProgress * 100).toFixed(1)}%
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // -------------------- Audio Sample URLs --------------------
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",
@@ -252,105 +232,109 @@ function playArpeggio(
   }, duration * 1000);
 }
 
-// ==================== Sequencer Component ====================
+// ------------------- Updated Sequencer Component -------------------
 interface SequencerProps {
-  bpm: number;
-  noteLength: number;
-  selectedKey: string;
-  arpeggioOctaves: number;
-  arpeggioDirection: "up" | "down" | "upDown";
-  triggerNote: (cellIndex: number, noteType: "note" | "chord" | "arpeggio") => void;
-}
-
-function Sequencer({
-  bpm,
-  noteLength,
-  selectedKey,
-  arpeggioOctaves,
-  arpeggioDirection,
-  triggerNote,
-}: SequencerProps) {
-  const NUM_BARS = 8;
-  const BEATS_PER_BAR = 4;
-  const SUBDIVISIONS = 2;
-  const TOTAL_CELLS = NUM_BARS * BEATS_PER_BAR * SUBDIVISIONS;
-
-  type Note = { time: number; type: "note" | "chord" | "arpeggio" };
-  type Layer = { id: number; notes: Note[] };
-
-  const createEmptyLayer = (id: number): Layer => ({ id, notes: [] });
-  const [layers, setLayers] = useState<Layer[]>([createEmptyLayer(1)]);
-  const [playhead, setPlayhead] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const toggleNote = (layerId: number, cellIndex: number, noteType: "note" | "chord" | "arpeggio") => {
-    setLayers(prev =>
-      prev.map(layer => {
-        if (layer.id !== layerId) return layer;
-        const exists = layer.notes.find(n => n.time === cellIndex && n.type === noteType);
-        let newNotes;
-        if (exists) {
-          newNotes = layer.notes.filter(n => !(n.time === cellIndex && n.type === noteType));
-        } else {
-          newNotes = [...layer.notes, { time: cellIndex, type: noteType }];
-        }
-        return { ...layer, notes: newNotes };
-      })
-    );
-  };
-
-  useEffect(() => {
-    if (!isPlaying) return;
-    const startTime = Date.now();
-    const cellDuration = (60 / bpm / SUBDIVISIONS) * 1000;
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const currentCell = Math.floor((elapsed / cellDuration) % TOTAL_CELLS);
-      setPlayhead(currentCell);
-      layers.forEach(layer => {
-        layer.notes.forEach(note => {
-          if (note.time === currentCell) {
-            triggerNote(currentCell, note.type);
-          }
+    bpm: number;
+    noteLength: number;
+    selectedKey: string;
+    arpeggioOctaves: number;
+    arpeggioDirection: "up" | "down" | "upDown";
+    triggerNote: (cellIndex: number, noteType: "note" | "chord" | "arpeggio") => void;
+  }
+  
+  function Sequencer({
+    bpm,
+    noteLength,
+    selectedKey,
+    arpeggioOctaves,
+    arpeggioDirection,
+    triggerNote,
+  }: SequencerProps) {
+    const NUM_BARS = 8;
+    const BEATS_PER_BAR = 8;
+    const TOTAL_CELLS = NUM_BARS * BEATS_PER_BAR;
+  
+    // For simplicity, each layer is an array of global cell indices (0 to TOTAL_CELLS-1)
+    type Note = { time: number; type: "note" | "chord" | "arpeggio" };
+    type Layer = { id: number; notes: Note[] };
+  
+    const createEmptyLayer = (id: number): Layer => ({ id, notes: [] });
+    const [layers, setLayers] = useState<Layer[]>([createEmptyLayer(1)]);
+    const [playhead, setPlayhead] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+  
+    const toggleNote = (layerId: number, cellIndex: number, noteType: "note" | "chord" | "arpeggio") => {
+      setLayers(prev =>
+        prev.map(layer => {
+          if (layer.id !== layerId) return layer;
+          const exists = layer.notes.find(n => n.time === cellIndex && n.type === noteType);
+          const newNotes = exists
+            ? layer.notes.filter(n => !(n.time === cellIndex && n.type === noteType))
+            : [...layer.notes, { time: cellIndex, type: noteType }];
+          return { ...layer, notes: newNotes };
+        })
+      );
+    };
+  
+    // Playback loop uses the global cell index (0 to TOTAL_CELLS-1)
+    useEffect(() => {
+      if (!isPlaying) return;
+      const startTime = Date.now();
+      const cellDuration = (60 / bpm) * 1000; // ms per beat (no subdivisions)
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const currentCell = Math.floor((elapsed / cellDuration) % TOTAL_CELLS);
+        setPlayhead(currentCell);
+        layers.forEach(layer => {
+          layer.notes.forEach(note => {
+            if (note.time === currentCell) {
+              triggerNote(currentCell, note.type);
+            }
+          });
         });
-      });
-    }, cellDuration);
-    return () => clearInterval(interval);
-  }, [isPlaying, bpm, layers, triggerNote]);
-
-  return (
-    <div>
-      <div className="flex justify-between mb-2">
-        <Button onClick={() => setIsPlaying(!isPlaying)} className="px-4 py-2 bg-teal-500 text-white">
-          {isPlaying ? "Stop Playback" : "Start Playback"}
-        </Button>
-        <Button onClick={() => setLayers([createEmptyLayer(1)])} className="px-4 py-2 bg-red-500 text-white">
-          Clear
-        </Button>
+      }, cellDuration);
+      return () => clearInterval(interval);
+    }, [isPlaying, bpm, layers, triggerNote]);
+  
+    return (
+      <div>
+        <div className="flex justify-between mb-2">
+          <Button onClick={() => setIsPlaying(!isPlaying)} className="px-4 py-2 bg-teal-500 text-white">
+            {isPlaying ? "Stop Playback" : "Start Playback"}
+          </Button>
+          <Button onClick={() => setLayers([createEmptyLayer(1)])} className="px-4 py-2 bg-red-500 text-white">
+            Clear
+          </Button>
+        </div>
+        <div className="border border-gray-300">
+          {Array.from({ length: NUM_BARS }).map((_, rowIndex) => {
+            // For each row, compute the starting cell index
+            const rowStart = rowIndex * BEATS_PER_BAR;
+            return (
+              <div key={rowIndex} className="flex">
+                {Array.from({ length: BEATS_PER_BAR }).map((_, beatIndex) => {
+                  const cellIndex = rowStart + beatIndex;
+                  // Check if any layer has a note at this global cell index
+                  const active = layers.some(layer => layer.notes.some(n => n.time === cellIndex));
+                  // Check if playhead is within this cell
+                  const isActiveCell = playhead === cellIndex;
+                  return (
+                    <div
+                      key={beatIndex}
+                      onClick={() => toggleNote(1, cellIndex, "note")}
+                      className={`w-8 h-8 border cursor-pointer 
+                        ${active ? "bg-teal-300" : "bg-white"} 
+                        ${isActiveCell ? "bg-yellow-300" : ""}`}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="overflow-auto border border-gray-300">
-        {layers.map(layer => (
-          <div key={layer.id} className="flex">
-            {Array.from({ length: TOTAL_CELLS }, (_, i) => {
-              const active = layer.notes.some(n => n.time === i);
-              const isActiveCell = playhead === i;
-              const isBarStart = i % (BEATS_PER_BAR * SUBDIVISIONS) === 0;
-              return (
-                <div
-                  key={i}
-                  onClick={() => toggleNote(layer.id, i, "note")}
-                  className={`w-6 h-6 border ${isBarStart ? "border-l-4" : "border-l"} cursor-pointer ${
-                    active ? "bg-teal-300" : ""
-                  } ${isActiveCell ? "bg-yellow-300" : ""}`}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+    );
+  }
 
 // ==================== ControlPanel Component ====================
 interface ControlPanelProps {
@@ -362,8 +346,8 @@ interface ControlPanelProps {
   setSelectedKey: (key: string) => void;
   instrument: "piano" | "guitar";
   setInstrument: (inst: "piano" | "guitar") => void;
-  mode: "manual" | "autoChord" | "arpeggiator" | "conductor";
-  setMode: (mode: "manual" | "autoChord" | "arpeggiator" | "conductor") => void;
+  mode: "manual" | "autoChord" | "arpeggiator" ;
+  setMode: (mode: "manual" | "autoChord" | "arpeggiator" ) => void;
   arpeggioOctaves: number;
   setArpeggioOctaves: (oct: number) => void;
   arpeggioDirection: "up" | "down" | "upDown";
@@ -451,7 +435,6 @@ function ControlPanel({
               <option value="manual">Manual</option>
               <option value="autoChord">Auto Chord</option>
               <option value="arpeggiator">Arpeggiator</option>
-              <option value="conductor">Conductor</option>
             </select>
           </label>
           {mode === "arpeggiator" && (
@@ -538,7 +521,7 @@ export default function Page() {
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
   const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
-  const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" | "conductor">("manual");
+  const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" >("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
 
@@ -556,15 +539,7 @@ export default function Page() {
   const notePlayingRef = useRef<boolean>(false);
   const [backingBuffer, setBackingBuffer] = useState<AudioBuffer | null>(null);
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const [conductorProgress, setConductorProgress] = useState<number>(0);
-  const [conductorStarted, setConductorStarted] = useState<boolean>(false);
-  const [countdown, setCountdown] = useState<number | string | null>(null);
-  const [conductorGameTime, setConductorGameTime] = useState<number>(0);
-  const [conductorStartTime, setConductorStartTime] = useState<number | null>(null);
-  const [expectedProgress, setExpectedProgress] = useState<number>(0);
-  const [gameScore, setGameScore] = useState<number | null>(null);
-  const errorSumRef = useRef<number>(0);
-  const errorCountRef = useRef<number>(0);
+
 
   // -------------------- Audio Initialization --------------------
   const initAudio = useCallback(async () => {
@@ -692,12 +667,81 @@ export default function Page() {
 
   function updateHandPos(landmarks: { x: number; y: number }[]) {
     const pos = getHandPosition(landmarks);
-    if (mode === "conductor") {
-      const p = Math.max(0, Math.min(1, 1 - pos.y));
-      setConductorProgress(p);
-    }
   }
 
+  // -------------------- Gesture Loop --------------------
+  useEffect(() => {
+    if (!gestureRecognizer || !webcamEnabled) return;
+    const videoEl = videoRef.current;
+    const canvasEl = canvasRef.current;
+    if (!videoEl || !canvasEl) return;
+    const ctx = canvasEl.getContext("2d");
+    let animationFrameId: number;
+    let lastLogTime = 0;
+
+    const processFrame = async () => {
+      console.log("Processing frame"); // debug
+      if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA && ctx) {
+        ctx.save();
+        ctx.translate(canvasEl.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+        const timestamp = performance.now();
+        try {
+          const results = await gestureRecognizer.recognizeForVideo(videoEl, timestamp);
+          if (timestamp - lastLogTime > 1000) {
+            console.log("Gesture recognition results:", results);
+            lastLogTime = timestamp;
+          }
+          if (results?.gestures) {
+            results.gestures.forEach((gestureArray, index) => {
+              if (gestureArray.length === 0) return;
+              const gesture = gestureArray[0];
+              console.log("Detected gesture:", gesture.categoryName);
+              const handLandmarks = results.landmarks[index];
+              if (!handLandmarks) return;
+              const pos = getHandPosition(handLandmarks);
+              updateHandPos(handLandmarks);
+              // Use lowercase for comparison to handle case differences.
+              if (gesture.categoryName.toLowerCase() === "closed_fist") {
+                if (instrument === "guitar") {
+                  const stringIndex = Math.floor(pos.y * 6); // Using same getStringIndexFromY logic here if needed.
+                  guitarRef.current?.triggerString(stringIndex);
+                } else {
+                  if (mode === "manual") {
+                    playNoteManual("Closed_Fist", pos, bpm, noteLength, audioContextRef, samplesRef, convolverRef, notePlayingRef, setCurrentNote);
+                  } else if (mode === "autoChord") {
+                    playChordFromHandPosition("Closed_Fist", pos);
+                  } else if (mode === "arpeggiator") {
+                    playArpeggioFromHandPosition("Closed_Fist", pos);
+                  }
+                }
+              }
+            });
+          }
+          if (results?.landmarks) {
+            results.landmarks.forEach((lmArr) => {
+              lmArr.forEach((lm) => {
+                ctx.beginPath();
+                ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 4, 0, 2 * Math.PI);
+                ctx.fillStyle = "blue";
+                ctx.fill();
+              });
+            });
+          }
+        } catch (err) {
+          console.error("Error processing frame:", err);
+        }
+        ctx.restore();
+      }
+      animationFrameId = requestAnimationFrame(processFrame);
+    };
+
+    processFrame();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [gestureRecognizer, webcamEnabled, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection, instrument]);
+
+  // -------------------- Gesture-to-Audio Helpers --------------------
   function playChordFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
     if (gestureLabel !== "Closed_Fist") return;
     if (notePlayingRef.current) return;
@@ -708,7 +752,8 @@ export default function Page() {
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
-    if (chordObj) playChord(chordObj.name, bpm, noteLength, audioContextRef, samplesRef, convolverRef, notePlayingRef);
+    if (chordObj)
+      playChord(chordObj.name, bpm, noteLength, audioContextRef, samplesRef, convolverRef, notePlayingRef);
   }
 
   function playArpeggioFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
@@ -812,7 +857,6 @@ export default function Page() {
                       backingSourceRef.current.stop();
                       backingSourceRef.current = null;
                     }
-                    setConductorStarted(false);
                   }}
                   className="absolute top-4 left-4 px-4 py-2 text-base z-20 bg-teal-500 hover:bg-teal-600 text-white"
                 >
@@ -841,7 +885,7 @@ export default function Page() {
                   })}
                 </div>
               )}
-              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && (
+              {(mode === "autoChord" || mode === "arpeggiator" ) && (
                 <div className="absolute top-0 left-0 w-[640px] h-[480px] grid grid-cols-3 grid-rows-3 gap-0 bg-white/40">
                   {getChordsForKey(selectedKey).map((chord, index) => (
                     <div
@@ -856,9 +900,6 @@ export default function Page() {
                   ))}
                 </div>
               )}
-              {mode === "conductor" && (
-                <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
-              )}
             </div>
             {mode === "manual" && (
               <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
@@ -872,172 +913,34 @@ export default function Page() {
           </div>
           {/* Right Column: Control Panel */}
           <div className="w-1/4">
-            <Card className="max-w-md mx-auto bg-white shadow-lg">
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-teal-800">Controls</h3>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
-                  <label className="flex items-center gap-2 text-teal-700">
-                    BPM:
-                    <input
-                      type="number"
-                      value={bpm}
-                      onChange={(e) => setBpm(Number(e.target.value))}
-                      className="w-16 px-2 py-1 border rounded focus:ring-teal-500"
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Note Length:
-                    <select
-                      value={noteLength}
-                      onChange={(e) => setNoteLength(Number(e.target.value))}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value={0.25}>16th</option>
-                      <option value={0.5}>8th</option>
-                      <option value={1}>Quarter</option>
-                      <option value={2}>Half</option>
-                      <option value={4}>Whole</option>
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Key:
-                    <select
-                      value={selectedKey}
-                      onChange={(e) => setSelectedKey(e.target.value)}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value="None">None (Chromatic)</option>
-                      {Object.keys(keySignatures).map((keyName) => (
-                        <option key={keyName} value={keyName}>
-                          {keyName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Instrument:
-                    <select
-                      value={instrument}
-                      onChange={(e) => setInstrument(e.target.value as "piano" | "guitar")}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value="piano">Piano</option>
-                      <option value="guitar">Guitar</option>
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Mode:
-                    <select
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value as typeof mode)}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value="manual">Manual</option>
-                      <option value="autoChord">Auto Chord</option>
-                      <option value="arpeggiator">Arpeggiator</option>
-                      <option value="conductor">Conductor</option>
-                    </select>
-                  </label>
-                  {mode === "arpeggiator" && (
-                    <div className="space-y-3 border-t border-gray-200 pt-3">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Octave Span</label>
-                        <select
-                          value={arpeggioOctaves}
-                          onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                        >
-                          <option value={1}>1 Octave</option>
-                          <option value={2}>2 Octaves</option>
-                          <option value={3}>3 Octaves</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Direction</label>
-                        <div className="flex flex-col gap-2">
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              value="up"
-                              checked={arpeggioDirection === "up"}
-                              onChange={() => setArpeggioDirection("up")}
-                              className="accent-teal-600"
-                            />
-                            <span className="text-sm">Up</span>
-                          </label>
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              value="down"
-                              checked={arpeggioDirection === "down"}
-                              onChange={() => setArpeggioDirection("down")}
-                              className="accent-teal-600"
-                            />
-                            <span className="text-sm">Down</span>
-                          </label>
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              value="upDown"
-                              checked={arpeggioDirection === "upDown"}
-                              onChange={() => setArpeggioDirection("upDown")}
-                              className="accent-teal-600"
-                            />
-                            <span className="text-sm">Up & Down</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <Card className="mt-4 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
-                  <CardHeader className="bg-teal-50 py-3 px-4 border-b border-teal-100">
-                    <h2 className="text-lg font-medium text-teal-800">Circle of Fifths</h2>
-                  </CardHeader>
-                  <CardContent className="p-4 flex justify-center">
-                    <CircleOfFifths
-                      selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
-                      onSelectKey={(keyName) => setSelectedKey(keyName)}
-                    />
-                  </CardContent>
-                </Card>
-                <Button
-                  onClick={() => {
-                    console.log("Test Closed_Fist Sample clicked.");
-                    if (mode === "manual") {
-                      playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 }, bpm, noteLength, audioContextRef, samplesRef, convolverRef, notePlayingRef, setCurrentNote);
-                    } else if (mode === "autoChord") {
-                      const chords = getChordsForKey(selectedKey);
-                      if (chords.length)
-                        playChord(chords[0].name, bpm, noteLength, audioContextRef, samplesRef, convolverRef, notePlayingRef);
-                    } else if (mode === "arpeggiator") {
-                      const chords = getChordsForKey(selectedKey);
-                      if (chords.length)
-                        playArpeggio(
-                          chords[0].name,
-                          (60 / bpm) * noteLength,
-                          arpeggioOctaves,
-                          arpeggioDirection,
-                          bpm,
-                          noteLength,
-                          audioContextRef,
-                          samplesRef,
-                          convolverRef,
-                          notePlayingRef
-                        );
-                    }
-                  }}
-                  className="mt-4 w-full px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white"
-                >
-                  Test Closed_Fist Sample
-                </Button>
-              </CardContent>
-            </Card>
+            <ControlPanel
+              bpm={bpm}
+              setBpm={setBpm}
+              noteLength={noteLength}
+              setNoteLength={setNoteLength}
+              selectedKey={selectedKey}
+              setSelectedKey={setSelectedKey}
+              instrument={instrument}
+              setInstrument={setInstrument}
+              mode={mode}
+              setMode={setMode}
+              arpeggioOctaves={arpeggioOctaves}
+              setArpeggioOctaves={setArpeggioOctaves}
+              arpeggioDirection={arpeggioDirection}
+              setArpeggioDirection={setArpeggioDirection}
+            />
           </div>
         </div>
       </div>
     </>
   );
+}
+
+// Custom hook to maintain a ref for the gesture recognizer.
+function useGestureRecognizerRef(gestureRecognizer: GestureRecognizer | null) {
+  const gestureRecognizerRef = useRef<GestureRecognizer | null>(null);
+  useEffect(() => {
+    gestureRecognizerRef.current = gestureRecognizer;
+  }, [gestureRecognizer]);
+  return gestureRecognizerRef;
 }

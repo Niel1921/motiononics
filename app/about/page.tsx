@@ -151,24 +151,12 @@ export default function AboutPage() {
           About the Developer
         </motion.h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1  gap-8 mb-16">
           {[
             {
-              name: "Owen Read",
-              role: "Founder & Lead Developer",
-              bio: "Computer vision specialist with a passion for making technology more intuitive and accessible.",
-              image: "/images/team-1.jpg"
-            },
-            {
-              name: "Alwyn George",
-              role: "Music Director",
-              bio: "Classically trained musician who bridges the gap between traditional music theory and digital innovation.",
-              image: "/images/team-2.jpg"
-            },
-            {
-              name: "Niel GOAT",
-              role: "UX Designer",
-              bio: "Creates seamless, intuitive interfaces that make complex technology feel natural and approachable.",
+              name: "Niel ",
+              role: "Designer",
+              bio: "I made it all",
               image: "/images/team-3.jpg"
             }
           ].map((member, index) => (
@@ -224,16 +212,6 @@ export default function AboutPage() {
         </motion.div>
       </div>
       
-      <footer className="bg-teal-800 text-white py-8 mt-20">
-        <div className="container mx-auto px-4 text-center">
-          <p>© {new Date().getFullYear()} Motiononics. All rights reserved.</p>
-          <div className="mt-4 space-x-6">
-            <Link href="/terms" className="text-teal-200 hover:text-white">Terms</Link>
-            <Link href="/privacy" className="text-teal-200 hover:text-white">Privacy</Link>
-            <Link href="/about" className="text-teal-200 hover:text-white">About</Link>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }
