@@ -107,6 +107,9 @@ function getStringIndexFromY(yNorm: number): number {
   return Math.min(5, Math.max(0, index));
 }
 
+
+
+
 // -------------------- Main Page Component --------------------
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -142,9 +145,12 @@ export default function Page() {
   const errorSumRef = useRef<number>(0);
   const errorCountRef = useRef<number>(0);
 
-  // Refs for theremin oscillator and gain node
+  // Refs for theremin nodes
   const thereminOscillatorRef = useRef<OscillatorNode | null>(null);
   const thereminGainRef = useRef<GainNode | null>(null);
+  const thereminFilterRef = useRef<BiquadFilterNode | null>(null);
+  const thereminVibratoOscRef = useRef<OscillatorNode | null>(null);
+  const thereminVibratoGainRef = useRef<GainNode | null>(null);
 
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
@@ -279,25 +285,69 @@ export default function Page() {
   useEffect(() => {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
+
     if (instrument === "theremin") {
+      // Create theremin nodes if not already created
       if (!thereminOscillatorRef.current) {
-        const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        osc.start();
-        thereminOscillatorRef.current = osc;
-        thereminGainRef.current = gainNode;
+        // Main oscillator (the sound generator)
+        const mainOsc = audioCtx.createOscillator();
+        mainOsc.type = "square";
+
+        // Lowpass filter for tone shaping
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 1200; // adjust for desired brightness
+
+        // Main gain node (controls overall amplitude)
+        const mainGain = audioCtx.createGain();
+        mainGain.gain.value = 0; // start silent
+
+        // Connect main oscillator -> filter -> gain -> destination (or reverb if available)
+        if (convolverRef.current) {
+          mainOsc.connect(filter);
+          filter.connect(mainGain);
+          mainGain.connect(convolverRef.current);
+          convolverRef.current.connect(audioCtx.destination);
+        } else {
+          mainOsc.connect(filter);
+          filter.connect(mainGain);
+          mainGain.connect(audioCtx.destination);
+        }
+
+        mainOsc.start();
+
+        // Vibrato oscillator (LFO)
+        const vibratoOsc = audioCtx.createOscillator();
+        vibratoOsc.frequency.value = 5; // vibrato rate in Hz
+        const vibratoGain = audioCtx.createGain();
+        // We'll update vibratoGain.gain dynamically based on finger distance.
+        vibratoGain.gain.value = 2; // initial value; will be updated
+
+        // Connect vibrato oscillator -> vibrato gain -> main oscillator's frequency
+        vibratoOsc.connect(vibratoGain);
+        vibratoGain.connect(mainOsc.frequency);
+        vibratoOsc.start();
+
+        // Save references
+        thereminOscillatorRef.current = mainOsc;
+        thereminGainRef.current = mainGain;
+        thereminFilterRef.current = filter;
+        thereminVibratoOscRef.current = vibratoOsc;
+        thereminVibratoGainRef.current = vibratoGain;
       }
     } else {
+      // Stop and clear theremin nodes if switching away
       if (thereminOscillatorRef.current) {
         thereminOscillatorRef.current.stop();
         thereminOscillatorRef.current = null;
-        thereminGainRef.current = null;
       }
+      if (thereminVibratoOscRef.current) {
+        thereminVibratoOscRef.current.stop();
+        thereminVibratoOscRef.current = null;
+      }
+      thereminGainRef.current = null;
+      thereminFilterRef.current = null;
+      thereminVibratoGainRef.current = null;
     }
   }, [instrument]);
 
@@ -457,38 +507,6 @@ export default function Page() {
     }, duration * 1000);
   }
 
-  function startConductorGame() {
-    setGameScore(null);
-    setCountdown(3);
-    const cdInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          clearInterval(cdInterval);
-          setCountdown("Go!");
-          setTimeout(() => {
-            setCountdown(null);
-            setConductorStarted(true);
-            setConductorStartTime(performance.now());
-            setConductorGameTime(0);
-            errorSumRef.current = 0;
-            errorCountRef.current = 0;
-            if (backingBuffer && audioContextRef.current) {
-              const source = audioContextRef.current.createBufferSource();
-              source.buffer = backingBuffer;
-              source.loop = true;
-              source.connect(audioContextRef.current.destination);
-              source.start();
-              backingSourceRef.current = source;
-            }
-          }, 1000);
-          return prev;
-        }
-        if (typeof prev === "number") return prev - 1;
-        return prev;
-      });
-    }, 1000);
-  }
-
   // -------------------- Main Gesture Loop --------------------
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
@@ -496,32 +514,28 @@ export default function Page() {
     const canvasEl = canvasRef.current;
     if (!videoEl || !canvasEl) return;
     let animationFrameId: number;
-    let lastLogTime = 0;
     const ctx = canvasEl.getContext("2d");
+
     const processFrame = async () => {
       if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA && ctx) {
         ctx.save();
         ctx.translate(canvasEl.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-        const timestamp = performance.now();
+
         try {
           const results = await gestureRecognizer.recognizeForVideo(videoEl, performance.now());
-
+          
           // ------------------ Theremin Mode ------------------
           if (instrument === "theremin" && results.landmarks && results.handedness) {
             let leftHandLandmarks: { x: number; y: number }[] | null = null;
             let rightHandLandmarks: { x: number; y: number }[] | null = null;
-  
-            // results.handedness and results.landmarks should have the same length
-            // each index i corresponds to one hand
+
+            // Each index i in results.handedness corresponds to the same index in results.landmarks
             for (let i = 0; i < results.handedness.length; i++) {
               const handednessArray = results.handedness[i];
-              // If there's at least one category in the handedness array
               if (handednessArray && handednessArray[0]) {
                 const handLabel = handednessArray[0].categoryName;
-  
-                // Assign landmarks to left or right based on the label
                 if (handLabel === "Left") {
                   leftHandLandmarks = results.landmarks[i];
                 } else if (handLabel === "Right") {
@@ -529,34 +543,59 @@ export default function Page() {
                 }
               }
             }
-        console.log("Left hand landmarks:", results.handedness[0]);
-        console.log("Right hand landmarks:", results.handedness[1]);
-        
-        if (leftHandLandmarks && rightHandLandmarks) {
-          const leftHandPos = getHandPosition(leftHandLandmarks);
-          const rightHandPos = getHandPosition(rightHandLandmarks);
 
-          const minFreq = 200;
-          const maxFreq = 600;
-          const frequency = minFreq + leftHandPos.x * (maxFreq - minFreq);
-          const volume = 1 - rightHandPos.y;
+            if (leftHandLandmarks && rightHandLandmarks) {
+              const leftHandPos = getHandPosition(leftHandLandmarks);
+              const rightHandPos = getHandPosition(rightHandLandmarks);
 
-          if (thereminOscillatorRef.current && audioContextRef.current) {
-            thereminOscillatorRef.current.frequency.setValueAtTime(
-              frequency,
-              audioContextRef.current.currentTime
-            );
+              // Map left hand's x to pitch and right hand's y to volume
+              const minFreq = 200;
+              const maxFreq = 600;
+              const frequency = minFreq + leftHandPos.x * (maxFreq - minFreq);
+              const volume = 1 - rightHandPos.y;
+              if (thereminOscillatorRef.current && audioContextRef.current) {
+                const now = audioContextRef.current.currentTime;
+                thereminOscillatorRef.current.frequency.setTargetAtTime(
+                  frequency,
+                  now,
+                  0.05
+                );
+              }
+              if (thereminGainRef.current && audioContextRef.current) {
+                const now = audioContextRef.current.currentTime;
+                thereminGainRef.current.gain.setTargetAtTime(
+                  volume,
+                  now,
+                  0.05
+                );
+              }
+
+              // ------------------ Vibrato Mapping ------------------
+              // Map vibrato amount to how close the thumb and index finger (landmarks 4 and 8) are in the left hand
+              if (leftHandLandmarks.length > 8 && audioContextRef.current && thereminVibratoGainRef.current) {
+                const thumb = leftHandLandmarks[4];
+                const indexTip = leftHandLandmarks[8];
+                const dx = thumb.x - indexTip.x;
+                const dy = thumb.y - indexTip.y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                // Adjust these values based on experimentation (expected normalized range ~0.05 to ~0.3)
+                const minDistance = 0.05;
+                const maxDistance = 0.3;
+                const clampedDistance = Math.min(maxDistance, Math.max(minDistance, d));
+                const maxVibratoAmplitude = 10; // maximum vibrato in Hz
+                const computedVibrato = ((clampedDistance - minDistance) / (maxDistance - minDistance)) * maxVibratoAmplitude;
+                // Log the computed vibrato amount
+                console.log("Computed vibrato amplitude:", computedVibrato, "for distance:", d);
+                thereminVibratoGainRef.current.gain.setTargetAtTime(
+                  computedVibrato,
+                  audioContextRef.current.currentTime,
+                  0.05
+                );
+              }
+            }
           }
-          if (thereminGainRef.current && audioContextRef.current) {
-            thereminGainRef.current.gain.setValueAtTime(
-              volume,
-              audioContextRef.current.currentTime
-            );
-          }
-        }
-      }
-          
-          // -------------------- Other Instrument Modes --------------------
+
+          // ------------------ Other Instrument Modes ------------------
           if (instrument !== "theremin" && results?.gestures) {
             results.gestures.forEach((gestureArray, index) => {
               if (gestureArray.length === 0) return;
@@ -577,6 +616,7 @@ export default function Page() {
               }
             });
           }
+          // Draw landmarks
           if (results?.landmarks) {
             results.landmarks.forEach((lmArr) => {
               lmArr.forEach((lm) => {
@@ -730,7 +770,7 @@ export default function Page() {
                   {countdown !== null ? (
                     <div>{countdown}</div>
                   ) : (
-                    <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white" onClick={startConductorGame}>
+                    <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white">
                       Start Conductor Game
                     </Button>
                   )}
@@ -837,7 +877,6 @@ export default function Page() {
                         >
                           <option value={1}>1 Octave</option>
                           <option value={2}>2 Octaves</option>
-                          <option value={3}>3 Octaves</option>
                         </select>
                       </div>
                       <div className="space-y-2">
