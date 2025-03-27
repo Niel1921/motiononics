@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Header from "@/components/ui/header";
 
@@ -19,12 +17,6 @@ const itemVariants = {
 };
 
 export default function ContactPage() {
-  const [formState, setFormState] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-white to-teal-50">
@@ -148,8 +140,6 @@ export default function ContactPage() {
           </div>
         </motion.div>
       </motion.div>
-
-      
     </main>
   );
 }

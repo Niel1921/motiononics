@@ -18,8 +18,6 @@ const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",
 };
 
-const defaultScale = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
 // -------------------- Conductor Overlay --------------------
 function ConductorOverlay({
   progress,
@@ -105,7 +103,6 @@ function getChordsForKey(keyName: string) {
 
 // -------------------- Helper: getStringIndexFromY --------------------
 function getStringIndexFromY(yNorm: number): number {
-  // yNorm is normalized (0 at top, 1 at bottom)
   const index = Math.floor(yNorm * 6);
   return Math.min(5, Math.max(0, index));
 }
@@ -121,7 +118,8 @@ export default function Page() {
   const [bpm, setBpm] = useState<number>(120);
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
-  const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
+  // Extend instrument to include theremin
+  const [instrument, setInstrument] = useState<"piano" | "guitar" | "theremin">("piano");
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" | "conductor">("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
@@ -143,6 +141,10 @@ export default function Page() {
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const errorSumRef = useRef<number>(0);
   const errorCountRef = useRef<number>(0);
+
+  // Refs for theremin oscillator and gain node
+  const thereminOscillatorRef = useRef<OscillatorNode | null>(null);
+  const thereminGainRef = useRef<GainNode | null>(null);
 
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
@@ -272,6 +274,32 @@ export default function Page() {
       setConductorProgress(p);
     }
   }
+
+  // -------------------- Theremin Oscillator Management --------------------
+  useEffect(() => {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx) return;
+    if (instrument === "theremin") {
+      if (!thereminOscillatorRef.current) {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start();
+        thereminOscillatorRef.current = osc;
+        thereminGainRef.current = gainNode;
+      }
+    } else {
+      if (thereminOscillatorRef.current) {
+        thereminOscillatorRef.current.stop();
+        thereminOscillatorRef.current = null;
+        thereminGainRef.current = null;
+      }
+    }
+  }, [instrument]);
 
   function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
     const audioCtx = audioContextRef.current;
@@ -461,33 +489,6 @@ export default function Page() {
     }, 1000);
   }
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (!conductorStartTime) return;
-      const elapsed = (performance.now() - conductorStartTime) / 1000;
-      setConductorGameTime(elapsed);
-      const measureDuration = (60 / bpm) * 4;
-      const expected = (elapsed % measureDuration) / measureDuration;
-      setExpectedProgress(expected);
-      if (handPos) {
-        const err = Math.abs(expected - conductorProgress);
-        errorSumRef.current += err;
-        errorCountRef.current += 1;
-      }
-      if (elapsed >= 30) {
-        clearInterval(intervalId);
-        setConductorStarted(false);
-        if (backingSourceRef.current) {
-          backingSourceRef.current.stop();
-          backingSourceRef.current = null;
-        }
-        const avgError = errorCountRef.current ? errorSumRef.current / errorCountRef.current : 0;
-        setGameScore(avgError);
-      }
-    }, 100);
-    return () => clearInterval(intervalId);
-  }, [conductorStarted, bpm, conductorProgress, conductorStartTime, handPos]);
-
   // -------------------- Main Gesture Loop --------------------
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
@@ -505,12 +506,58 @@ export default function Page() {
         ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
         const timestamp = performance.now();
         try {
-          const results = await gestureRecognizer.recognizeForVideo(videoEl, timestamp);
-          if (timestamp - lastLogTime > 1000) {
-            console.log("Gesture recognition results:", results);
-            lastLogTime = timestamp;
+          const results = await gestureRecognizer.recognizeForVideo(videoEl, performance.now());
+
+          // ------------------ Theremin Mode ------------------
+          if (instrument === "theremin" && results.landmarks && results.handedness) {
+            let leftHandLandmarks: { x: number; y: number }[] | null = null;
+            let rightHandLandmarks: { x: number; y: number }[] | null = null;
+  
+            // results.handedness and results.landmarks should have the same length
+            // each index i corresponds to one hand
+            for (let i = 0; i < results.handedness.length; i++) {
+              const handednessArray = results.handedness[i];
+              // If there's at least one category in the handedness array
+              if (handednessArray && handednessArray[0]) {
+                const handLabel = handednessArray[0].categoryName;
+  
+                // Assign landmarks to left or right based on the label
+                if (handLabel === "Left") {
+                  leftHandLandmarks = results.landmarks[i];
+                } else if (handLabel === "Right") {
+                  rightHandLandmarks = results.landmarks[i];
+                }
+              }
+            }
+        console.log("Left hand landmarks:", results.handedness[0]);
+        console.log("Right hand landmarks:", results.handedness[1]);
+        
+        if (leftHandLandmarks && rightHandLandmarks) {
+          const leftHandPos = getHandPosition(leftHandLandmarks);
+          const rightHandPos = getHandPosition(rightHandLandmarks);
+
+          const minFreq = 200;
+          const maxFreq = 600;
+          const frequency = minFreq + leftHandPos.x * (maxFreq - minFreq);
+          const volume = 1 - rightHandPos.y;
+
+          if (thereminOscillatorRef.current && audioContextRef.current) {
+            thereminOscillatorRef.current.frequency.setValueAtTime(
+              frequency,
+              audioContextRef.current.currentTime
+            );
           }
-          if (results?.gestures) {
+          if (thereminGainRef.current && audioContextRef.current) {
+            thereminGainRef.current.gain.setValueAtTime(
+              volume,
+              audioContextRef.current.currentTime
+            );
+          }
+        }
+      }
+          
+          // -------------------- Other Instrument Modes --------------------
+          if (instrument !== "theremin" && results?.gestures) {
             results.gestures.forEach((gestureArray, index) => {
               if (gestureArray.length === 0) return;
               const gesture = gestureArray[0];
@@ -518,14 +565,10 @@ export default function Page() {
               if (!handLandmarks) return;
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
-              // In guitar mode, if Closed_Fist is detected, use Y to determine string index.
               if (gesture.categoryName === "Closed_Fist") {
                 if (instrument === "guitar") {
                   const stringIndex = getStringIndexFromY(pos.y);
-                  // Trigger string vibration on the 3D guitar visualizer.
                   guitarRef.current?.triggerString(stringIndex);
-                  // Optionally, also play a corresponding note (if you have an audio sample for each string)
-                  //console.log("Guitar string triggered:", stringIndex);
                 } else {
                   if (mode === "manual") playNoteManual("Closed_Fist", pos);
                   else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
@@ -560,19 +603,20 @@ export default function Page() {
       ? getChordsForKey(selectedKey)[currentChordCell]?.name
       : null;
 
+  // Only render the piano/guitar visualizer when not in theremin mode.
   const visualizerComponent =
-    mode === "manual" ? (
-      instrument === "guitar" ? (
-        <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
-      ) : (
-        <ThreePianoVisualizer currentNote={currentNote} />
-      )
-    ) : (
-      <ChordGridVisualizer
-        chords={getChordsForKey(selectedKey)}
-        currentCell={currentChordCell}
-      />
-    );
+    instrument === "theremin"
+      ? null
+      : mode === "manual"
+      ? instrument === "guitar"
+        ? <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
+        : <ThreePianoVisualizer currentNote={currentNote} />
+      : (
+          <ChordGridVisualizer
+            chords={getChordsForKey(selectedKey)}
+            currentCell={currentChordCell}
+          />
+        );
 
   return (
     <>
@@ -760,12 +804,13 @@ export default function Page() {
                     <select
                       value={instrument}
                       onChange={(e) =>
-                        setInstrument(e.target.value as "piano" | "guitar")
+                        setInstrument(e.target.value as "piano" | "guitar" | "theremin")
                       }
                       className="px-2 py-1 border rounded focus:ring-teal-500"
                     >
                       <option value="piano">Piano</option>
                       <option value="guitar">Guitar</option>
+                      <option value="theremin">Theremin</option>
                     </select>
                   </label>
                   <label className="flex items-center gap-2 text-teal-700">
