@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import ThreePianoVisualizer from "../components/ThreePianoVisualizer";
 import ThreeGuitarVisualizer, { ThreeGuitarVisualizerHandle } from "../components/ThreeGuitarVisualizer";
+import ThreeThereminVisualizer from "../components/ThreeThereminVisualizer";
 import Header from "@/components/ui/header";
 import { keySignatures } from "./data/keySignatures";
 import CircleOfFifths from "../components/CircleOfFifths";
@@ -107,9 +108,6 @@ function getStringIndexFromY(yNorm: number): number {
   return Math.min(5, Math.max(0, index));
 }
 
-
-
-
 // -------------------- Main Page Component --------------------
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -136,6 +134,14 @@ export default function Page() {
   const [conductorStartTime, setConductorStartTime] = useState<number | null>(null);
   const [expectedProgress, setExpectedProgress] = useState<number>(0);
   const [gameScore, setGameScore] = useState<number | null>(null);
+
+  // New state for theremin parameters
+  const [thereminFrequency, setThereminFrequency] = useState<number>(440);
+  const [thereminVolume, setThereminVolume] = useState<number>(0);
+  const [thereminVibrato, setThereminVibrato] = useState<number>(2);
+  // You can let waveform be selectable; for now, we set it constant.
+  const [thereminWaveform, setThereminWaveform] = useState<string>("sine");
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
   const convolverRef = useRef<ConvolverNode | null>(null);
@@ -281,82 +287,13 @@ export default function Page() {
     }
   }
 
-  // -------------------- Theremin Oscillator Management --------------------
-  useEffect(() => {
-    const audioCtx = audioContextRef.current;
-    if (!audioCtx) return;
-
-    if (instrument === "theremin") {
-      // Create theremin nodes if not already created
-      if (!thereminOscillatorRef.current) {
-        // Main oscillator (the sound generator)
-        const mainOsc = audioCtx.createOscillator();
-        mainOsc.type = "square";
-
-        // Lowpass filter for tone shaping
-        const filter = audioCtx.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.value = 1200; // adjust for desired brightness
-
-        // Main gain node (controls overall amplitude)
-        const mainGain = audioCtx.createGain();
-        mainGain.gain.value = 0; // start silent
-
-        // Connect main oscillator -> filter -> gain -> destination (or reverb if available)
-        if (convolverRef.current) {
-          mainOsc.connect(filter);
-          filter.connect(mainGain);
-          mainGain.connect(convolverRef.current);
-          convolverRef.current.connect(audioCtx.destination);
-        } else {
-          mainOsc.connect(filter);
-          filter.connect(mainGain);
-          mainGain.connect(audioCtx.destination);
-        }
-
-        mainOsc.start();
-
-        // Vibrato oscillator (LFO)
-        const vibratoOsc = audioCtx.createOscillator();
-        vibratoOsc.frequency.value = 5; // vibrato rate in Hz
-        const vibratoGain = audioCtx.createGain();
-        // We'll update vibratoGain.gain dynamically based on finger distance.
-        vibratoGain.gain.value = 2; // initial value; will be updated
-
-        // Connect vibrato oscillator -> vibrato gain -> main oscillator's frequency
-        vibratoOsc.connect(vibratoGain);
-        vibratoGain.connect(mainOsc.frequency);
-        vibratoOsc.start();
-
-        // Save references
-        thereminOscillatorRef.current = mainOsc;
-        thereminGainRef.current = mainGain;
-        thereminFilterRef.current = filter;
-        thereminVibratoOscRef.current = vibratoOsc;
-        thereminVibratoGainRef.current = vibratoGain;
-      }
-    } else {
-      // Stop and clear theremin nodes if switching away
-      if (thereminOscillatorRef.current) {
-        thereminOscillatorRef.current.stop();
-        thereminOscillatorRef.current = null;
-      }
-      if (thereminVibratoOscRef.current) {
-        thereminVibratoOscRef.current.stop();
-        thereminVibratoOscRef.current = null;
-      }
-      thereminGainRef.current = null;
-      thereminFilterRef.current = null;
-      thereminVibratoGainRef.current = null;
-    }
-  }, [instrument]);
 
   function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
     const sampleBuffer = samplesRef.current[gestureLabel];
     if (!sampleBuffer) {
-      console.warn(`No sample loaded for gesture: ${gestureLabel}`);
+      console.warn("No sample loaded for gesture: ${gestureLabel}");
       return;
     }
     if (notePlayingRef.current) return;
@@ -507,6 +444,77 @@ export default function Page() {
     }, duration * 1000);
   }
 
+  // -------------------- Theremin Oscillator Management --------------------
+  useEffect(() => {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx) return;
+
+    if (instrument === "theremin") {
+      // Create theremin nodes if not already created
+      if (!thereminOscillatorRef.current) {
+        // Main oscillator (the sound generator)
+        const mainOsc = audioCtx.createOscillator();
+        // We'll set the waveform based on our state.
+        mainOsc.type = thereminWaveform as OscillatorType;
+
+        // Lowpass filter for tone shaping
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 1200; // adjust for desired brightness
+
+        // Main gain node (controls overall amplitude)
+        const mainGain = audioCtx.createGain();
+        mainGain.gain.value = 0; // start silent
+
+        // Connect main oscillator -> filter -> gain -> destination (or reverb if available)
+        if (convolverRef.current) {
+          mainOsc.connect(filter);
+          filter.connect(mainGain);
+          mainGain.connect(convolverRef.current);
+          convolverRef.current.connect(audioCtx.destination);
+        } else {
+          mainOsc.connect(filter);
+          filter.connect(mainGain);
+          mainGain.connect(audioCtx.destination);
+        }
+
+        mainOsc.start();
+
+        // Vibrato oscillator (LFO)
+        const vibratoOsc = audioCtx.createOscillator();
+        vibratoOsc.frequency.value = 5; // vibrato rate in Hz
+        const vibratoGain = audioCtx.createGain();
+        // Initial vibrato gain is set from state; it will be updated dynamically.
+        vibratoGain.gain.value = thereminVibrato;
+
+        // Connect vibrato oscillator -> vibrato gain -> main oscillator's frequency
+        vibratoOsc.connect(vibratoGain);
+        vibratoGain.connect(mainOsc.frequency);
+        vibratoOsc.start();
+
+        // Save references
+        thereminOscillatorRef.current = mainOsc;
+        thereminGainRef.current = mainGain;
+        thereminFilterRef.current = filter;
+        thereminVibratoOscRef.current = vibratoOsc;
+        thereminVibratoGainRef.current = vibratoGain;
+      }
+    } else {
+      // If switching away from theremin, stop and clear nodes
+      if (thereminOscillatorRef.current) {
+        thereminOscillatorRef.current.stop();
+        thereminOscillatorRef.current = null;
+      }
+      if (thereminVibratoOscRef.current) {
+        thereminVibratoOscRef.current.stop();
+        thereminVibratoOscRef.current = null;
+      }
+      thereminGainRef.current = null;
+      thereminFilterRef.current = null;
+      thereminVibratoGainRef.current = null;
+    }
+  }, [instrument, thereminWaveform, thereminVibrato]);
+
   // -------------------- Main Gesture Loop --------------------
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
@@ -555,43 +563,36 @@ export default function Page() {
               const volume = 1 - rightHandPos.y;
               if (thereminOscillatorRef.current && audioContextRef.current) {
                 const now = audioContextRef.current.currentTime;
-                thereminOscillatorRef.current.frequency.setTargetAtTime(
-                  frequency,
-                  now,
-                  0.05
-                );
+                thereminOscillatorRef.current.frequency.setTargetAtTime(frequency, now, 0.05);
               }
               if (thereminGainRef.current && audioContextRef.current) {
                 const now = audioContextRef.current.currentTime;
-                thereminGainRef.current.gain.setTargetAtTime(
-                  volume,
-                  now,
-                  0.05
-                );
+                thereminGainRef.current.gain.setTargetAtTime(volume, now, 0.05);
               }
 
               // ------------------ Vibrato Mapping ------------------
-              // Map vibrato amount to how close the thumb and index finger (landmarks 4 and 8) are in the left hand
+              // Map vibrato amount to the distance between thumb (landmark 4) and index finger (landmark 8) in the left hand
               if (leftHandLandmarks.length > 8 && audioContextRef.current && thereminVibratoGainRef.current) {
                 const thumb = leftHandLandmarks[4];
                 const indexTip = leftHandLandmarks[8];
                 const dx = thumb.x - indexTip.x;
                 const dy = thumb.y - indexTip.y;
                 const d = Math.sqrt(dx * dx + dy * dy);
-                // Adjust these values based on experimentation (expected normalized range ~0.05 to ~0.3)
+                // Expected normalized distance range ~0.05 to ~0.3; adjust as needed.
                 const minDistance = 0.05;
                 const maxDistance = 0.3;
                 const clampedDistance = Math.min(maxDistance, Math.max(minDistance, d));
                 const maxVibratoAmplitude = 10; // maximum vibrato in Hz
                 const computedVibrato = ((clampedDistance - minDistance) / (maxDistance - minDistance)) * maxVibratoAmplitude;
-                // Log the computed vibrato amount
                 console.log("Computed vibrato amplitude:", computedVibrato, "for distance:", d);
-                thereminVibratoGainRef.current.gain.setTargetAtTime(
-                  computedVibrato,
-                  audioContextRef.current.currentTime,
-                  0.05
-                );
+                thereminVibratoGainRef.current.gain.setTargetAtTime(computedVibrato, audioContextRef.current.currentTime, 0.05);
+                // Update state for visualizer:
+                setThereminVibrato(computedVibrato);
               }
+
+              // Update state for visualizer:
+              setThereminFrequency(frequency);
+              setThereminVolume(volume);
             }
           }
 
@@ -616,6 +617,7 @@ export default function Page() {
               }
             });
           }
+
           // Draw landmarks
           if (results?.landmarks) {
             results.landmarks.forEach((lmArr) => {
@@ -636,27 +638,44 @@ export default function Page() {
     };
     processFrame();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gestureRecognizer, webcamEnabled, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection, instrument]);
+  }, [
+    gestureRecognizer,
+    webcamEnabled,
+    instrument,
+    bpm,
+    noteLength,
+    selectedKey,
+    mode,
+    arpeggioOctaves,
+    arpeggioDirection,
+  ]);
 
   const currentChordName =
     currentChordCell !== null
       ? getChordsForKey(selectedKey)[currentChordCell]?.name
       : null;
 
-  // Only render the piano/guitar visualizer when not in theremin mode.
+  // Visualizer Component: Render the appropriate Three.js visualizer based on instrument.
   const visualizerComponent =
-    instrument === "theremin"
-      ? null
-      : mode === "manual"
-      ? instrument === "guitar"
-        ? <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
-        : <ThreePianoVisualizer currentNote={currentNote} />
-      : (
-          <ChordGridVisualizer
-            chords={getChordsForKey(selectedKey)}
-            currentCell={currentChordCell}
-          />
-        );
+    instrument === "theremin" ? (
+      <ThreeThereminVisualizer
+        frequency={thereminFrequency}
+        volume={thereminVolume}
+        vibrato={thereminVibrato}
+        waveform={thereminWaveform}
+      />
+    ) : mode === "manual" ? (
+      instrument === "guitar" ? (
+        <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
+      ) : (
+        <ThreePianoVisualizer currentNote={currentNote} />
+      )
+    ) : (
+      <ChordGridVisualizer
+        chords={getChordsForKey(selectedKey)}
+        currentCell={currentChordCell}
+      />
+    );
 
   return (
     <>
