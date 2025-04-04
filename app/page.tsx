@@ -949,7 +949,7 @@ export default function Page() {
                   }}
                   className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white"
                 >
-                  Test Closed_Fist Sample
+                  Test Sample
                 </Button>
               </CardContent>
             </Card>

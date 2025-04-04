@@ -55,10 +55,10 @@ export default function TutorialsPage() {
             link: "/tutorials/setup",
           },
           {
-            title: "Using Gesture Controls",
+            title: "Chords and the circle of fifths",
             description:
-              "Learn how to use hand gestures to control musical notes, chords, and effects with Motiononics.",
-            link: "/tutorials/gesture-controls",
+              "Learn how to write songs with chords, and how the circle of fifths can help you!.",
+            link: "/tutorials/chord-modes",
           },
         ].map((tutorial, index) => (
           <motion.div
