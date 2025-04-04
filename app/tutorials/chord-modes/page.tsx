@@ -9,208 +9,64 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import Header from "@/components/ui/header";
 import CircleOfFifths from "@/components/CircleOfFifths";
+// IMPORTANT: Import keySignatures from your data file
 import { keySignatures } from "../../data/keySignatures";
 
 // Animation variants
 const pageVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.5 } }
+  visible: { opacity: 1, transition: { duration: 0.5 } },
 };
-
-function getChordsForKey(keyName: string) {
-    if (!keySignatures[keyName] && keyName !== "None") {
-      // Return a default set of chords if key signature is not found
-      return [
-        { name: "C", roman: "I" },
-        { name: "Dm", roman: "ii" },
-        { name: "F", roman: "IV" },
-        { name: "Em", roman: "iii" },
-        { name: "G", roman: "V" },
-        { name: "Am", roman: "vi" },
-        { name: "Bdim", roman: "vii°" },
-        { name: "E", roman: "V/vi" },
-        { name: "D", roman: "V/V" }
-      ];
-    }
-    
-    let chords: string[] = [];
-    let roman: string[] = [];
-    if (keyName === "None") keyName = "C Major";
-    
-    if (keyName.includes("Major")) {
-      const sig = keySignatures[keyName];
-      chords = [
-        sig.notes[5] + "min", // vi - top left
-        sig.notes[1] + "min", // ii - top middle
-        sig.notes[3] + "maj", // IV - top right
-        sig.notes[2] + "min", // iii - middle left
-        sig.notes[0] + "maj", // I - center
-        sig.notes[4] + "maj", // V - middle right
-        sig.notes[6] + "dim", // vii° - bottom left
-        sig.secDom?.vi || sig.notes[2] + "maj", // V/vi - bottom middle
-        sig.secDom?.V || sig.notes[1] + "maj",  // V/V - bottom right
-      ];
-      roman = ["vi", "ii", "IV", "iii", "I", "V", "vii°", "V/vi", "V/V"];
-    } else if (keyName.includes("Minor")) {
-      const sig = keySignatures[keyName];
-      chords = [
-        sig.notes[2] + "maj", // III - top left
-        sig.notes[4] + "min", // v - top middle
-        sig.notes[5] + "maj", // VI - top right
-        sig.notes[1] + "dim", // ii° - middle left
-        sig.notes[0] + "min", // i - center
-        sig.notes[4] + "maj", // V (harmonic minor) - middle right
-        sig.notes[6] + "dim", // vii° - bottom left
-        sig.secDom?.VI || sig.notes[2] + "maj", // V/VI - bottom middle
-        sig.secDom?.V || sig.notes[1] + "maj",  // V/v - bottom right
-      ];
-      roman = ["III", "v", "VI", "ii°", "i", "V", "vii°", "V/VI", "V/v"];
-    }
-    
-    return chords.map((c, i) => ({ name: c, roman: roman[i] }));
-  }
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.5 }
-  }
+    transition: { duration: 0.5 },
+  },
 };
 
-// Update the sampleProgressions object to include all common keys
+// Updated sampleProgressions object (if needed)
 const sampleProgressions: Record<string, Array<{ name: string, chords: string, description: string }>> = {
-    "C Major": [
-      { name: "I-IV-V", chords: "C - F - G", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "C - G - Am - F", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Dm - G - C", description: "The quintessential jazz progression" }
-    ],
-    "G Major": [
-      { name: "I-IV-V", chords: "G - C - D", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "G - D - Em - C", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Am - D - G", description: "The quintessential jazz progression" }
-    ],
-    "D Major": [
-      { name: "I-IV-V", chords: "D - G - A", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "D - A - Bm - G", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Em - A - D", description: "The quintessential jazz progression" }
-    ],
-    "A Major": [
-      { name: "I-IV-V", chords: "A - D - E", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "A - E - F#m - D", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Bm - E - A", description: "The quintessential jazz progression" }
-    ],
-    "E Major": [
-      { name: "I-IV-V", chords: "E - A - B", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "E - B - C#m - A", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "F#m - B - E", description: "The quintessential jazz progression" }
-    ],
-    "B Major": [
-      { name: "I-IV-V", chords: "B - E - F#", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "B - F# - G#m - E", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "C#m - F# - B", description: "The quintessential jazz progression" }
-    ],
-    "F# Major": [
-      { name: "I-IV-V", chords: "F# - B - C#", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "F# - C# - D#m - B", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "G#m - C# - F#", description: "The quintessential jazz progression" }
-    ],
-    "F Major": [
-      { name: "I-IV-V", chords: "F - Bb - C", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "F - C - Dm - Bb", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Gm - C - F", description: "The quintessential jazz progression" }
-    ],
-    "Bb Major": [
-      { name: "I-IV-V", chords: "Bb - Eb - F", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "Bb - F - Gm - Eb", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Cm - F - Bb", description: "The quintessential jazz progression" }
-    ],
-    "Eb Major": [
-      { name: "I-IV-V", chords: "Eb - Ab - Bb", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "Eb - Bb - Cm - Ab", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Fm - Bb - Eb", description: "The quintessential jazz progression" }
-    ],
-    "Ab Major": [
-      { name: "I-IV-V", chords: "Ab - Db - Eb", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "Ab - Eb - Fm - Db", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Bbm - Eb - Ab", description: "The quintessential jazz progression" }
-    ],
-    "Db Major": [
-      { name: "I-IV-V", chords: "Db - Gb - Ab", description: "The most common progression in pop and rock" },
-      { name: "I-V-vi-IV", chords: "Db - Ab - Bbm - Gb", description: "Used in countless pop hits" },
-      { name: "ii-V-I", chords: "Ebm - Ab - Db", description: "The quintessential jazz progression" }
-    ],
-    "A Minor": [
-      { name: "i-iv-v", chords: "Am - Dm - Em", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Am - F - G", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Am - Dm - E", description: "Using harmonic minor's V chord" }
-    ],
-    "E Minor": [
-      { name: "i-iv-v", chords: "Em - Am - Bm", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Em - C - D", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Em - Am - B", description: "Using harmonic minor's V chord" }
-    ],
-    "B Minor": [
-      { name: "i-iv-v", chords: "Bm - Em - F#m", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Bm - G - A", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Bm - Em - F#", description: "Using harmonic minor's V chord" }
-    ],
-    "F# Minor": [
-      { name: "i-iv-v", chords: "F#m - Bm - C#m", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "F#m - D - E", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "F#m - Bm - C#", description: "Using harmonic minor's V chord" }
-    ],
-    "C# Minor": [
-      { name: "i-iv-v", chords: "C#m - F#m - G#m", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "C#m - A - B", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "C#m - F#m - G#", description: "Using harmonic minor's V chord" }
-    ],
-    "G# Minor": [
-      { name: "i-iv-v", chords: "G#m - C#m - D#m", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "G#m - E - F#", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "G#m - C#m - D#", description: "Using harmonic minor's V chord" }
-    ],
-    "D# Minor": [
-      { name: "i-iv-v", chords: "D#m - G#m - A#m", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "D#m - B - C#", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "D#m - G#m - A#", description: "Using harmonic minor's V chord" }
-    ],
-    "D Minor": [
-      { name: "i-iv-v", chords: "Dm - Gm - Am", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Dm - Bb - C", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Dm - Gm - A", description: "Using harmonic minor's V chord" }
-    ],
-    "G Minor": [
-      { name: "i-iv-v", chords: "Gm - Cm - Dm", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Gm - Eb - F", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Gm - Cm - D", description: "Using harmonic minor's V chord" }
-    ],
-    "C Minor": [
-      { name: "i-iv-v", chords: "Cm - Fm - Gm", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Cm - Ab - Bb", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Cm - Fm - G", description: "Using harmonic minor's V chord" }
-    ],
-    "F Minor": [
-      { name: "i-iv-v", chords: "Fm - Bbm - Cm", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Fm - Db - Eb", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Fm - Bbm - C", description: "Using harmonic minor's V chord" }
-    ],
-    "Bb Minor": [
-      { name: "i-iv-v", chords: "Bbm - Ebm - Fm", description: "Natural minor progression" },
-      { name: "i-VI-VII", chords: "Bbm - Gb - Ab", description: "Common in rock ballads" },
-      { name: "i-iv-V", chords: "Bbm - Ebm - F", description: "Using harmonic minor's V chord" }
-    ],
-  };
-  
-  // Add a default fallback
-  const defaultProgressions = [
-    { name: "I-IV-V", chords: "I - IV - V", description: "The most common progression in pop and rock" },
-    { name: "I-V-vi-IV", chords: "I - V - vi - IV", description: "Used in countless pop hits" },
-    { name: "ii-V-I", chords: "ii - V - I", description: "The quintessential jazz progression" }
-  ];
+  "C Major": [
+    { name: "I-IV-V", chords: "C - F - G", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "C - G - Am - F", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Dm - G - C", description: "The quintessential jazz progression" },
+  ],
+  "G Major": [
+    { name: "I-IV-V", chords: "G - C - D", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "G - D - Em - C", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Am - D - G", description: "The quintessential jazz progression" },
+  ],
+  "D Major": [
+    { name: "I-IV-V", chords: "D - G - A", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "D - A - Bm - G", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Em - A - D", description: "The quintessential jazz progression" },
+  ],
+  "A Major": [
+    { name: "I-IV-V", chords: "A - D - E", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "A - E - F#m - D", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Bm - E - A", description: "The quintessential jazz progression" }
+  ],
+  "E Major": [
+    { name: "I-IV-V", chords: "E - A - B", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "E - B - C#m - A", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "F#m - B - E", description: "The quintessential jazz progression" }
+  ],
+  "A Minor": [
+    { name: "i-iv-v", chords: "Am - Dm - Em", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Am - F - G", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Am - Dm - E", description: "Using harmonic minor's V chord" }
+  ],
+};
 
-// Roman numeral explanations
+const defaultProgressions = [
+  { name: "I-IV-V", chords: "I - IV - V", description: "The most common progression in pop and rock" },
+  { name: "I-V-vi-IV", chords: "I - V - vi - IV", description: "Used in countless pop hits" },
+  { name: "ii-V-I", chords: "ii - V - I", description: "The quintessential jazz progression" },
+];
+
 const romanNumerals = [
   { numeral: "I", description: "Major chord built on the 1st scale degree", examples: "C in C Major" },
   { numeral: "ii", description: "Minor chord built on the 2nd scale degree", examples: "Dm in C Major" },
@@ -220,6 +76,60 @@ const romanNumerals = [
   { numeral: "vi", description: "Minor chord built on the 6th scale degree", examples: "Am in C Major" },
   { numeral: "vii°", description: "Diminished chord built on the 7th scale degree", examples: "Bdim in C Major" },
 ];
+
+function getChordsForKey(keyName: string) {
+  if (!keySignatures[keyName] && keyName !== "None") {
+    return [
+      { name: "C", roman: "I" },
+      { name: "Dm", roman: "ii" },
+      { name: "F", roman: "IV" },
+      { name: "Em", roman: "iii" },
+      { name: "G", roman: "V" },
+      { name: "Am", roman: "vi" },
+      { name: "Bdim", roman: "vii°" },
+      { name: "E", roman: "V/vi" },
+      { name: "D", roman: "V/V" },
+    ];
+  }
+  
+  let chords: string[] = [];
+  let roman: string[] = [];
+  if (keyName === "None") keyName = "C Major";
+  
+  if (keyName.includes("Major")) {
+    const sig = keySignatures[keyName];
+    chords = [
+      sig.notes[5] + "min", // vi
+      sig.notes[1] + "min", // ii
+      sig.notes[3] + "maj", // IV
+      sig.notes[2] + "min", // iii
+      sig.notes[0] + "maj", // I
+      sig.notes[4] + "maj", // V
+      sig.notes[6] + "dim", // vii°
+      // Fixed: secDom property doesn't exist on KeySignature
+      sig.notes[2] + "maj", // Use a fallback value instead
+      sig.notes[1] + "maj",
+    ];
+    roman = ["vi", "ii", "IV", "iii", "I", "V", "vii°", "V/vi", "V/V"];
+  } else if (keyName.includes("Minor")) {
+    const sig = keySignatures[keyName];
+    chords = [
+      sig.notes[2] + "maj", // III
+      sig.notes[4] + "min", // v
+      sig.notes[5] + "maj", // VI
+      sig.notes[1] + "dim", // ii°
+      sig.notes[0] + "min", // i
+      sig.notes[4] + "maj", // V
+      sig.notes[6] + "dim", // vii°
+      // Fixed: secDom property doesn't exist on KeySignature
+      sig.notes[2] + "maj", // Use a fallback value instead
+      sig.notes[1] + "maj",
+    ];
+    roman = ["III", "v", "VI", "ii°", "i", "V", "vii°", "V/VI", "V/v"];
+  }
+  
+  return chords.map((c, i) => ({ name: c, roman: roman[i] }));
+}
 
 export default function ChordModesPage() {
   // State for selected key and section navigation
@@ -249,9 +159,8 @@ export default function ChordModesPage() {
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [currentChordName, setCurrentChordName] = useState<string | null>(null);
   
-// Key selection handler
+  // Key selection handler
   const handleKeyChange = (key: string) => {
-    // Only update if we have progressions for this key, otherwise default to C Major
     const newKey = sampleProgressions[key] ? key : "C Major";
     setSelectedKey(newKey);
   };
@@ -259,14 +168,12 @@ export default function ChordModesPage() {
   // Scroll listener to show/hide floating Circle of Fifths
   useEffect(() => {
     const handleScroll = () => {
-      // Start showing floating circle after user scrolls past the regular circle section
       const circleSection = document.getElementById("circle");
       if (circleSection) {
         const circleSectionBottom = circleSection.getBoundingClientRect().bottom;
         setShowFloatingCircle(circleSectionBottom < 100);
       }
     };
-    
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -281,7 +188,7 @@ export default function ChordModesPage() {
       const audioCtx = audioContextRef.current;
       const samples: Record<string, AudioBuffer> = {};
       
-      // Load piano sample
+      // Load sample for piano (used for chords)
       try {
         const response = await fetch("/samples/fist.wav");
         if (!response.ok) {
@@ -291,7 +198,7 @@ export default function ChordModesPage() {
           samples["piano"] = await audioCtx.decodeAudioData(arrayBuffer);
         }
       } catch (error) {
-        console.error(`Error loading piano sample:`, error);
+        console.error("Error loading piano sample:", error);
       }
       
       samplesRef.current = samples;
@@ -305,8 +212,8 @@ export default function ChordModesPage() {
           convolver.buffer = await audioCtx.decodeAudioData(irBuffer);
           convolverRef.current = convolver;
         }
-      } catch (err) {
-        console.error("Error loading impulse response:", err);
+      } catch (error) {
+        console.error("Error loading impulse response:", error);
       }
     } catch (error) {
       console.error("Audio initialization error:", error);
@@ -342,7 +249,9 @@ export default function ChordModesPage() {
     initAudio();
     
     return () => {
-      gestureRecognizer?.close();
+      if (gestureRecognizer) {
+        gestureRecognizer.close();
+      }
       if (audioContextRef.current && audioContextRef.current.state !== "closed") {
         try {
           audioContextRef.current.close();
@@ -401,12 +310,13 @@ export default function ChordModesPage() {
         ctx.translate(canvasEl.width, 0);
         ctx.scale(-1, 1);
         
-        // Draw video frame
+        // Draw video frame - Fix null check with non-null assertion operator
         ctx.drawImage(videoEl!, 0, 0, canvasEl.width, canvasEl.height);
         
         // Process with MediaPipe
         const timestamp = performance.now();
         try {
+          // Fix null check with non-null assertion operator
           const results = await gestureRecognizer!.recognizeForVideo(videoEl!, timestamp);
           
           // Update hand visibility
@@ -492,8 +402,10 @@ export default function ChordModesPage() {
         
         ctx.restore();
         
-        // Draw chord grid overlay
-        drawChordGrid(ctx, canvasEl.width, canvasEl.height);
+        // Draw chord grid overlay - Fix null check
+        if (ctx) {
+          drawChordGrid(ctx, canvasEl.width, canvasEl.height);
+        }
       }
       
       animationFrameId = requestAnimationFrame(processFrame);
@@ -1083,64 +995,64 @@ export default function ChordModesPage() {
 
         {/* Common Progressions Section */}
         <motion.section 
-        id="progressions"
-        className="mb-16"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={sectionVariants}
+          id="progressions"
+          className="mb-16"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={sectionVariants}
         >
-        <Card className="bg-white shadow-md">
+          <Card className="bg-white shadow-md">
             <CardHeader className="bg-teal-50 border-b border-teal-100 flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-teal-800">Common Chord Progressions</h2>
-            <div className="flex space-x-2">
+              <h2 className="text-2xl font-bold text-teal-800">Common Chord Progressions</h2>
+              <div className="flex space-x-2">
                 <Button 
-                variant="outline" 
-                className={`text-sm ${selectedKey === "C Major" ? "bg-teal-100 border-teal-500" : ""}`}
-                onClick={() => setSelectedKey("C Major")}
+                  variant="outline" 
+                  className={`text-sm ${selectedKey === "C Major" ? "bg-teal-100 border-teal-500" : ""}`}
+                  onClick={() => setSelectedKey("C Major")}
                 >
-                C Major
+                  C Major
                 </Button>
                 <Button 
-                variant="outline" 
-                className={`text-sm ${selectedKey === "A Minor" ? "bg-teal-100 border-teal-500" : ""}`}
-                onClick={() => setSelectedKey("A Minor")}
+                  variant="outline" 
+                  className={`text-sm ${selectedKey === "A Minor" ? "bg-teal-100 border-teal-500" : ""}`}
+                  onClick={() => setSelectedKey("A Minor")}
                 >
-                A Minor
+                  A Minor
                 </Button>
-            </div>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
-            <div className="prose prose-teal max-w-none mb-6">
+              <div className="prose prose-teal max-w-none mb-6">
                 <p>
-                Understanding common chord progressions helps you create music that sounds familiar and
-                satisfying. Here are some popular progressions in {selectedKey} that you can try 
-                with our chord grid interface.
+                  Understanding common chord progressions helps you create music that sounds familiar and
+                  satisfying. Here are some popular progressions in {selectedKey} that you can try 
+                  with our chord grid interface.
                 </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {(sampleProgressions[selectedKey] || defaultProgressions).map((prog, index) => (
-                <div key={index} className="bg-white border border-teal-100 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div key={index} className="bg-white border border-teal-100 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
                     <h3 className="text-xl font-bold text-teal-800 mb-2">{prog.name}</h3>
                     <div className="bg-teal-50 p-3 rounded-md mb-3">
-                    <p className="text-2xl text-center font-mono text-teal-700">{prog.chords}</p>
+                      <p className="text-2xl text-center font-mono text-teal-700">{prog.chords}</p>
                     </div>
                     <p className="text-teal-600">{prog.description}</p>
-                </div>
+                  </div>
                 ))}
                 
                 <div className="bg-gradient-to-r from-teal-500 to-blue-500 text-white border rounded-lg p-5 shadow-sm md:col-span-2">
-                <h3 className="text-xl font-bold mb-2">Try This!</h3>
-                <p>
+                  <h3 className="text-xl font-bold mb-2">Try This!</h3>
+                  <p>
                     Select the chord mode in Motiononics, choose {selectedKey} as your key, and try moving your hand 
                     to different positions to create these progressions. Notice how they create different emotional qualities 
                     and how they resolve back to the tonic (I or i) chord.
-                </p>
+                  </p>
                 </div>
-            </div>
+              </div>
             </CardContent>
-        </Card>
+          </Card>
         </motion.section>
 
         {/* Practice Exercises Section */}
