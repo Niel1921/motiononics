@@ -49,9 +49,9 @@ export default function TutorialsPage() {
             link: "/tutorials/gesture-walkthrough",
           },
           {
-            title: "Setup Your Environment",
+            title: "Learn the Instruments",
             description:
-              "Follow our step‑by‑step guide to setting up Next.js, Tailwind CSS, and our gesture recognition system.",
+              "Follow our step‑by‑step guide to using gestures to play the Piano, Guitar, or Theremin!",
             link: "/tutorials/setup",
           },
           {
