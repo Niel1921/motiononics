@@ -32,17 +32,17 @@ const sampleProgressions: Record<string, Array<{ name: string, chords: string, d
   "C Major": [
     { name: "I-IV-V", chords: "C - F - G", description: "The most common progression in pop and rock" },
     { name: "I-V-vi-IV", chords: "C - G - Am - F", description: "Used in countless pop hits" },
-    { name: "ii-V-I", chords: "Dm - G - C", description: "The quintessential jazz progression" },
+    { name: "ii-V-I", chords: "Dm - G - C", description: "The quintessential jazz progression" }
   ],
   "G Major": [
     { name: "I-IV-V", chords: "G - C - D", description: "The most common progression in pop and rock" },
     { name: "I-V-vi-IV", chords: "G - D - Em - C", description: "Used in countless pop hits" },
-    { name: "ii-V-I", chords: "Am - D - G", description: "The quintessential jazz progression" },
+    { name: "ii-V-I", chords: "Am - D - G", description: "The quintessential jazz progression" }
   ],
   "D Major": [
     { name: "I-IV-V", chords: "D - G - A", description: "The most common progression in pop and rock" },
     { name: "I-V-vi-IV", chords: "D - A - Bm - G", description: "Used in countless pop hits" },
-    { name: "ii-V-I", chords: "Em - A - D", description: "The quintessential jazz progression" },
+    { name: "ii-V-I", chords: "Em - A - D", description: "The quintessential jazz progression" }
   ],
   "A Major": [
     { name: "I-IV-V", chords: "A - D - E", description: "The most common progression in pop and rock" },
@@ -54,10 +54,100 @@ const sampleProgressions: Record<string, Array<{ name: string, chords: string, d
     { name: "I-V-vi-IV", chords: "E - B - C#m - A", description: "Used in countless pop hits" },
     { name: "ii-V-I", chords: "F#m - B - E", description: "The quintessential jazz progression" }
   ],
+  "B Major": [
+    { name: "I-IV-V", chords: "B - E - F#", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "B - F# - G#m - E", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "C#m - F# - B", description: "The quintessential jazz progression" }
+  ],
+  "F# Major": [
+    { name: "I-IV-V", chords: "F# - B - C#", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "F# - C# - D#m - B", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "G#m - C# - F#", description: "The quintessential jazz progression" }
+  ],
+  "F Major": [
+    { name: "I-IV-V", chords: "F - Bb - C", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "F - C - Dm - Bb", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Gm - C - F", description: "The quintessential jazz progression" }
+  ],
+  "Bb Major": [
+    { name: "I-IV-V", chords: "Bb - Eb - F", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "Bb - F - Gm - Eb", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Cm - F - Bb", description: "The quintessential jazz progression" }
+  ],
+  "Eb Major": [
+    { name: "I-IV-V", chords: "Eb - Ab - Bb", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "Eb - Bb - Cm - Ab", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Fm - Bb - Eb", description: "The quintessential jazz progression" }
+  ],
+  "Ab Major": [
+    { name: "I-IV-V", chords: "Ab - Db - Eb", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "Ab - Eb - Fm - Db", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Bbm - Eb - Ab", description: "The quintessential jazz progression" }
+  ],
+  "Db Major": [
+    { name: "I-IV-V", chords: "Db - Gb - Ab", description: "The most common progression in pop and rock" },
+    { name: "I-V-vi-IV", chords: "Db - Ab - Bbm - Gb", description: "Used in countless pop hits" },
+    { name: "ii-V-I", chords: "Ebm - Ab - Db", description: "The quintessential jazz progression" }
+  ],
   "A Minor": [
     { name: "i-iv-v", chords: "Am - Dm - Em", description: "Natural minor progression" },
     { name: "i-VI-VII", chords: "Am - F - G", description: "Common in rock ballads" },
     { name: "i-iv-V", chords: "Am - Dm - E", description: "Using harmonic minor's V chord" }
+  ],
+  "E Minor": [
+    { name: "i-iv-v", chords: "Em - Am - Bm", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Em - C - D", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Em - Am - B", description: "Using harmonic minor's V chord" }
+  ],
+  "B Minor": [
+    { name: "i-iv-v", chords: "Bm - Em - F#m", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Bm - G - A", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Bm - Em - F#", description: "Using harmonic minor's V chord" }
+  ],
+  "F# Minor": [
+    { name: "i-iv-v", chords: "F#m - Bm - C#m", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "F#m - D - E", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "F#m - Bm - C#", description: "Using harmonic minor's V chord" }
+  ],
+  "C# Minor": [
+    { name: "i-iv-v", chords: "C#m - F#m - G#m", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "C#m - A - B", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "C#m - F#m - G#", description: "Using harmonic minor's V chord" }
+  ],
+  "G# Minor": [
+    { name: "i-iv-v", chords: "G#m - C#m - D#m", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "G#m - E - F#", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "G#m - C#m - D#", description: "Using harmonic minor's V chord" }
+  ],
+  "D# Minor": [
+    { name: "i-iv-v", chords: "D#m - G#m - A#m", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "D#m - B - C#", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "D#m - G#m - A#", description: "Using harmonic minor's V chord" }
+  ],
+  "D Minor": [
+    { name: "i-iv-v", chords: "Dm - Gm - Am", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Dm - Bb - C", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Dm - Gm - A", description: "Using harmonic minor's V chord" }
+  ],
+  "G Minor": [
+    { name: "i-iv-v", chords: "Gm - Cm - Dm", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Gm - Eb - F", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Gm - Cm - D", description: "Using harmonic minor's V chord" }
+  ],
+  "C Minor": [
+    { name: "i-iv-v", chords: "Cm - Fm - Gm", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Cm - Ab - Bb", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Cm - Fm - G", description: "Using harmonic minor's V chord" }
+  ],
+  "F Minor": [
+    { name: "i-iv-v", chords: "Fm - Bbm - Cm", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Fm - Db - Eb", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Fm - Bbm - C", description: "Using harmonic minor's V chord" }
+  ],
+  "Bb Minor": [
+    { name: "i-iv-v", chords: "Bbm - Ebm - Fm", description: "Natural minor progression" },
+    { name: "i-VI-VII", chords: "Bbm - Gb - Ab", description: "Common in rock ballads" },
+    { name: "i-iv-V", chords: "Bbm - Ebm - F", description: "Using harmonic minor's V chord" }
   ],
 };
 
