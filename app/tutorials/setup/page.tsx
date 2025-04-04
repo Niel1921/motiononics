@@ -153,6 +153,8 @@ export default function InstrumentTutorialPage() {
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
   const notePlayingRef = useRef<boolean>(false);
   const convolverRef = useRef<ConvolverNode | null>(null);
+  const [currentChordName, setCurrentChordName] = useState<string | null>(null);
+
 
   // State for selected instrument and its steps
   const [selectedInstrument, setSelectedInstrument] = useState<"piano" | "guitar" | "theremin">("piano");
@@ -298,7 +300,7 @@ export default function InstrumentTutorialPage() {
     if (!ctx) return;
     let animationFrameId: number;
     async function processFrame() {
-      if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
+      if (videoEl!.readyState >= videoEl!.HAVE_ENOUGH_DATA && ctx &&  canvasEl && videoEl) {  
         ctx.save();
         ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
         ctx.translate(canvasEl.width, 0);
@@ -306,7 +308,7 @@ export default function InstrumentTutorialPage() {
         ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
         const timestamp = performance.now();
         try {
-          const results = await gestureRecognizer.recognizeForVideo(videoEl, timestamp);
+          const results = await gestureRecognizer!.recognizeForVideo(videoEl, timestamp);
           const isHandVisible = results?.landmarks && results.landmarks.length > 0;
           setHandVisible(isHandVisible);
           if (results?.gestures && results.gestures.length > 0) {
@@ -713,7 +715,7 @@ export default function InstrumentTutorialPage() {
                   <ThreePianoVisualizer currentNote={currentNote} />
                 )}
                 {selectedInstrument === "guitar" && (
-                  <ThreeGuitarVisualizer currentNote={currentNote} />
+                  <ThreeGuitarVisualizer currentChord={currentChordName} />
                 )}
                 {selectedInstrument === "theremin" && (
                   <ThreeThereminVisualizer
