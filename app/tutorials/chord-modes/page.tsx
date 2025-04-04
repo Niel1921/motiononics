@@ -383,25 +383,23 @@ export default function ChordModesPage() {
   // Process webcam frames and recognize gestures
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
-    
     const videoEl = videoRef.current;
     const canvasEl = canvasRef.current;
     if (!videoEl || !canvasEl) return;
-    
+    let animationFrameId: number;
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
     
-    let animationFrameId: number;
     
     async function processFrame() {
-      if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
+      if (videoEl!.readyState >= videoEl!.HAVE_ENOUGH_DATA && ctx) {
         ctx.save();
-        ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-        ctx.translate(canvasEl.width, 0);
+        ctx.clearRect(0, 0, canvasEl!.width, canvasEl!.height);
+        ctx.translate(canvasEl!.width, 0);
         ctx.scale(-1, 1);
         
         // Draw video frame - Fix null check with non-null assertion operator
-        ctx.drawImage(videoEl!, 0, 0, canvasEl.width, canvasEl.height);
+        ctx.drawImage(videoEl!, 0, 0, canvasEl!.width, canvasEl!.height);
         
         // Process with MediaPipe
         const timestamp = performance.now();
@@ -464,9 +462,9 @@ export default function ChordModesPage() {
                 for (let i = 0; i < conn.length; i++) {
                   const lm = lmArr[conn[i]];
                   if (i === 0) {
-                    ctx.moveTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
+                    ctx.moveTo(lm.x * canvasEl!.width, lm.y * canvasEl!.height);
                   } else {
-                    ctx.lineTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
+                    ctx.lineTo(lm.x * canvasEl!.width, lm.y * canvasEl!.height);
                   }
                 }
                 ctx.stroke();
@@ -475,7 +473,7 @@ export default function ChordModesPage() {
               // Draw landmarks
               lmArr.forEach((lm) => {
                 ctx.beginPath();
-                ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 6, 0, 2 * Math.PI);
+                ctx.arc(lm.x * canvasEl!.width, lm.y * canvasEl!.height, 6, 0, 2 * Math.PI);
                 ctx.fillStyle = currentColor;
                 ctx.fill();
                 ctx.strokeStyle = "white";
@@ -494,7 +492,7 @@ export default function ChordModesPage() {
         
         // Draw chord grid overlay - Fix null check
         if (ctx) {
-          drawChordGrid(ctx, canvasEl.width, canvasEl.height);
+          drawChordGrid(ctx, canvasEl!.width, canvasEl!.height);
         }
       }
       
