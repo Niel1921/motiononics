@@ -1091,24 +1091,8 @@ export default function ChordModesPage() {
           variants={sectionVariants}
         >
           <Card className="bg-white shadow-md">
-            <CardHeader className="bg-teal-50 border-b border-teal-100 flex justify-between items-center">
+            <CardHeader className="bg-teal-50 border-b border-teal-100 flex justify-between">
               <h2 className="text-2xl font-bold text-teal-800">Common Chord Progressions</h2>
-              <div className="flex space-x-2">
-                <Button 
-                  variant="outline" 
-                  className={`text-sm ${selectedKey === "C Major" ? "bg-teal-100 border-teal-500" : ""}`}
-                  onClick={() => setSelectedKey("C Major")}
-                >
-                  C Major
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className={`text-sm ${selectedKey === "A Minor" ? "bg-teal-100 border-teal-500" : ""}`}
-                  onClick={() => setSelectedKey("A Minor")}
-                >
-                  A Minor
-                </Button>
-              </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className="prose prose-teal max-w-none mb-6">
@@ -1258,18 +1242,25 @@ export default function ChordModesPage() {
       {/* Floating Circle of Fifths */}
       <AnimatePresence>
         {showFloatingCircle && (
-          <motion.div 
-            className="fixed bottom-4 right-4 z-50 bg-white rounded-lg shadow-xl p-2 border border-teal-200"
+          <motion.div
+            className="fixed top-1/2 right-4 transform -translate-y-1/2 z-100
+                      bg-white rounded-lg shadow-xl p-2 border border-teal-200
+                      flex flex-col items-center"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
           >
-            <div className="w-48 h-48 md:w-64 md:h-64">
+            {/* Inner container for the circle, with extra padding and centering */}
+            <div className="prose prose-teal max-w-none mb-6">
+              <h2 className="text-xl font-bold text-teal-800">Try Picking a key</h2>
+            </div>
+            <div className="flex items-center justify-center w-64 h-64">
               <CircleOfFifths selectedKey={selectedKey} onSelectKey={handleKeyChange} />
             </div>
-            <div className="text-center mt-1">
-              <Button 
+            
+            <div className="mt-4">
+              <Button
                 variant="outline"
                 size="sm"
                 className="text-xs bg-teal-50 border-teal-200"
