@@ -17,7 +17,7 @@ import CircleOfFifths from "../components/CircleOfFifths";
 // -------------------- Constants --------------------
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",   // Sample for closed fist (used for chords/arpeggios)
-  None: "/samples/guitar.wav",        // Guitar sample (assumed to be tuned to E4)
+  None: "/samples/guitarnew.wav",        // Guitar sample (assumed to be tuned to E4)
 };
 
 // Tweak this value as needed (in normalized coordinates)
@@ -39,8 +39,18 @@ const guitarStringMapping = [
   { semitoneOffset: 0 },
 ];
 
+// -------------------- Global Debounce Object --------------------
+// Tracks which guitar strings are currently playing.
+let playingStrings: Record<number, boolean> = {};
+
 // -------------------- Conductor Overlay --------------------
-function ConductorOverlay({ progress, expectedProgress }: { progress: number; expectedProgress: number; }) {
+function ConductorOverlay({
+  progress,
+  expectedProgress,
+}: {
+  progress: number;
+  expectedProgress: number;
+}) {
   return (
     <div className="absolute inset-0 pointer-events-none">
       <div className="absolute inset-0 flex items-center justify-center">
@@ -54,13 +64,21 @@ function ConductorOverlay({ progress, expectedProgress }: { progress: number; ex
 }
 
 // -------------------- Chord Grid Visualizer --------------------
-function ChordGridVisualizer({ chords, currentCell }: { chords: { name: string; roman: string }[]; currentCell: number | null; }) {
+function ChordGridVisualizer({
+  chords,
+  currentCell,
+}: {
+  chords: { name: string; roman: string }[];
+  currentCell: number | null;
+}) {
   return (
     <div className="absolute top-0 left-0 w-[640px] h-[480px] grid grid-cols-3 grid-rows-3 gap-0 bg-white/40">
       {chords.map((chord, index) => (
         <div
           key={index}
-          className={`border border-teal-500 flex flex-col items-center justify-center ${currentCell === index ? "bg-teal-300" : "bg-transparent"}`}
+          className={`border border-teal-500 flex flex-col items-center justify-center ${
+            currentCell === index ? "bg-teal-300" : "bg-transparent"
+          }`}
         >
           <div className="text-lg text-teal-800">{chord.name}</div>
           <div className="text-sm text-teal-600">{chord.roman}</div>
@@ -139,7 +157,7 @@ function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
     z: v1.x * v2.y - v1.y * v2.x,
   };
 
-  // If cross.z is positive, then the palm is away and the back of the hand faces the camera.
+  // Back of hand is detected only when cross.z is positive.
   return cross.z > 0;
 }
 
@@ -147,7 +165,9 @@ function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
 let lastNoneY: number | null = null;
 
 // -------------------- Helper: playGuitarString --------------------
-// This function plays the guitar note for a given string index using the "None" sample.
+// Plays the guitar note for a given string index using the "None" sample.
+// Uses a linear gain ramp to sustain the note for the duration calculated from BPM and noteLength.
+// Debounces so only one note per string plays at a time.
 function playGuitarString(
   stringIndex: number,
   audioContext: AudioContext,
@@ -160,16 +180,26 @@ function playGuitarString(
     console.warn("Guitar sample not loaded.");
     return;
   }
+  
+  // Debounce: if this string is already playing, return early.
+  if (playingStrings[stringIndex]) {
+    console.log("String", stringIndex, "is already playing. Debouncing.");
+    return;
+  }
+  
+  playingStrings[stringIndex] = true;
+  
   const sampleBuffer = samples["None"];
   const source = audioContext.createBufferSource();
   source.buffer = sampleBuffer;
+  
   // Get the mapping for the given string index (default to high E if out of range)
   const mapping = guitarStringMapping[stringIndex] || guitarStringMapping[guitarStringMapping.length - 1];
   // Adjust playback rate based on semitone offset: 2^(semitoneOffset/12)
   source.playbackRate.value = Math.pow(2, mapping.semitoneOffset / 12);
   
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.5; // Adjust volume as needed
+  gainNode.gain.value = 0.5; // Initial volume
   
   source.connect(gainNode);
   if (convolver) {
@@ -178,17 +208,27 @@ function playGuitarString(
   } else {
     gainNode.connect(audioContext.destination);
   }
-  // Calculate duration based on BPM and noteLength.
+  
+  // Calculate duration in seconds from BPM and noteLength.
   const duration = (60 / bpm) * noteLength;
+  // Sustain the note by ramping the gain to 0 over the duration.
+  gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
+  
   source.start();
-  source.stop(audioContext.currentTime + duration);
+  source.stop(audioContext.currentTime + duration + 0.1);
+  
+  // Reset debounce for this string after the note finishes.
+  setTimeout(() => {
+    playingStrings[stringIndex] = false;
+  }, (duration + 0.1) * 1000);
 }
 
 // -------------------- Page Component --------------------
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // guitarRef remains for visualization if needed but audio is handled here.
+  // guitarRef remains for visualization if needed.
   const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null);
 
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
@@ -381,7 +421,7 @@ export default function Page() {
   }
 
   // ---------------------------------------------------------------------
-  // Audio / chord / note (other helper functions remain unchanged)
+  // Audio / chord / note helper functions (unchanged except for note length handling)
   // ---------------------------------------------------------------------
   function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
     const audioCtx = audioContextRef.current;
@@ -621,6 +661,7 @@ export default function Page() {
   // ---------------------------------------------------------------------
   function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
     console.log("processNoneGesture called!");
+    // Only proceed if the back of the hand is detected.
     const isBack = isBackOfHand(handLandmarks);
     console.log("Is back of hand?", isBack);
     if (!isBack) {
@@ -672,27 +713,19 @@ export default function Page() {
           
           // ------------------ Theremin Mode ------------------
           if (instrument === "theremin" && results.landmarks && results.handedness) {
-            let leftHandLandmarks: { x: number; y: number }[] | null = null;
-            let rightHandLandmarks: { x: number; y: number }[] | null = null;
-
-            // Each index i in results.handedness corresponds to the same index in results.landmarks
+            let leftHandLandmarks = null;
+            let rightHandLandmarks = null;
             for (let i = 0; i < results.handedness.length; i++) {
               const handednessArray = results.handedness[i];
               if (handednessArray && handednessArray[0]) {
                 const handLabel = handednessArray[0].categoryName;
-                if (handLabel === "Left") {
-                  leftHandLandmarks = results.landmarks[i];
-                } else if (handLabel === "Right") {
-                  rightHandLandmarks = results.landmarks[i];
-                }
+                if (handLabel === "Left") leftHandLandmarks = results.landmarks[i];
+                else if (handLabel === "Right") rightHandLandmarks = results.landmarks[i];
               }
             }
-
             if (leftHandLandmarks && rightHandLandmarks) {
               const leftHandPos = getHandPosition(leftHandLandmarks);
               const rightHandPos = getHandPosition(rightHandLandmarks);
-
-              // Map left hand's x to pitch and right hand's y to volume
               const minFreq = 200;
               const maxFreq = 600;
               const frequency = minFreq + leftHandPos.x * (maxFreq - minFreq);
@@ -705,28 +738,6 @@ export default function Page() {
                 const now = audioContextRef.current.currentTime;
                 thereminGainRef.current.gain.setTargetAtTime(volume, now, 0.05);
               }
-
-              // ------------------ Vibrato Mapping ------------------
-              // Map vibrato amount to the distance between thumb (landmark 4) and index finger (landmark 8) in the left hand
-              if (leftHandLandmarks.length > 8 && audioContextRef.current && thereminVibratoGainRef.current) {
-                const thumb = leftHandLandmarks[4];
-                const indexTip = leftHandLandmarks[8];
-                const dx = thumb.x - indexTip.x;
-                const dy = thumb.y - indexTip.y;
-                const d = Math.sqrt(dx * dx + dy * dy);
-                // Expected normalized distance range ~0.05 to ~0.3; adjust as needed.
-                const minDistance = 0.05;
-                const maxDistance = 0.3;
-                const clampedDistance = Math.min(maxDistance, Math.max(minDistance, d));
-                const maxVibratoAmplitude = 10; // maximum vibrato in Hz
-                const computedVibrato = ((clampedDistance - minDistance) / (maxDistance - minDistance)) * maxVibratoAmplitude;
-                console.log("Computed vibrato amplitude:", computedVibrato, "for distance:", d);
-                thereminVibratoGainRef.current.gain.setTargetAtTime(computedVibrato, audioContextRef.current.currentTime, 0.05);
-                // Update state for visualizer:
-                setThereminVibrato(computedVibrato);
-              }
-
-              // Update state for visualizer:
               setThereminFrequency(frequency);
               setThereminVolume(volume);
             }
@@ -743,11 +754,11 @@ export default function Page() {
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
               if (instrument === "guitar") {
-                // In manual mode, for both Closed_Fist and "None" gestures, play the corresponding guitar note.
                 const stringIndex = getStringIndexFromY(pos.y);
-                console.log("Playing string based on gesture:", stringIndex);
-                if ( gesture.categoryName === "None") {
-                  if (audioContextRef.current)
+                console.log("Detected guitar gesture for string:", stringIndex);
+                // For "None" gesture, only play if the back of the hand is detected.
+                if (gesture.categoryName === "None") {
+                  if (isBackOfHand(handLandmarks) && audioContextRef.current)
                     playGuitarString(stringIndex, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
                 }
               } else {
@@ -836,7 +847,10 @@ export default function Page() {
                 <h2 className="text-lg font-medium text-teal-800">Circle of Fifths</h2>
               </CardHeader>
               <CardContent className="p-4 flex justify-center">
-                <CircleOfFifths selectedKey={selectedKey === "None" ? "C Major" : selectedKey} onSelectKey={(keyName) => setSelectedKey(keyName)} />
+                <CircleOfFifths
+                  selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
+                  onSelectKey={(keyName) => setSelectedKey(keyName)}
+                />
               </CardContent>
             </Card>
           </div>
