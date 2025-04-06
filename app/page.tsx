@@ -17,7 +17,7 @@ import CircleOfFifths from "../components/CircleOfFifths";
 // -------------------- Constants --------------------
 const sampleURLs: Record<string, string> = {
   Closed_Fist: "/samples/fist.wav",   // Sample for closed fist (used for chords/arpeggios)
-  None: "/samples/guitarnew.wav",        // Guitar sample (assumed to be tuned to E4)
+  None: "/samples/guitarnew.wav",       // Guitar sample (assumed to be tuned to E4)
 };
 
 // Tweak this value as needed (in normalized coordinates)
@@ -40,7 +40,6 @@ const guitarStringMapping = [
 ];
 
 // -------------------- Global Debounce Object --------------------
-// Tracks which guitar strings are currently playing.
 let playingStrings: Record<number, boolean> = {};
 
 // -------------------- Conductor Overlay --------------------
@@ -128,7 +127,6 @@ function getChordsForKey(keyName: string) {
 
 // -------------------- Helper: getStringIndexFromY --------------------
 function getStringIndexFromY(yNorm: number): number {
-  // Returns an integer in [0..5]
   const index = Math.floor(yNorm * 6);
   return Math.min(5, Math.max(0, index));
 }
@@ -139,7 +137,6 @@ function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
   const wrist = handLandmarks[0];
   const indexKnuckle = handLandmarks[5];
   const pinkyKnuckle = handLandmarks[17];
-
   const v1 = {
     x: indexKnuckle.x - wrist.x,
     y: indexKnuckle.y - wrist.y,
@@ -150,24 +147,21 @@ function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
     y: pinkyKnuckle.y - wrist.y,
     z: (pinkyKnuckle.z ?? 0) - (wrist.z ?? 0),
   };
-
   const cross = {
     x: v1.y * v2.z - v1.z * v2.y,
     y: v1.z * v2.x - v1.x * v2.z,
     z: v1.x * v2.y - v1.y * v2.x,
   };
-
-  // Back of hand is detected only when cross.z is positive.
   return cross.z > 0;
 }
 
-// We'll store the starting Y position for "None" gesture swipes.
+// -------------------- Global: lastNoneY --------------------
 let lastNoneY: number | null = null;
 
+// -------------------- New State: stringSpacing --------------------
+// Controls how far apart the overlaid strings are.
+  
 // -------------------- Helper: playGuitarString --------------------
-// Plays the guitar note for a given string index using the "None" sample.
-// Uses a linear gain ramp to sustain the note for the duration calculated from BPM and noteLength.
-// Debounces so only one note per string plays at a time.
 function playGuitarString(
   stringIndex: number,
   audioContext: AudioContext,
@@ -193,13 +187,11 @@ function playGuitarString(
   const source = audioContext.createBufferSource();
   source.buffer = sampleBuffer;
   
-  // Get the mapping for the given string index (default to high E if out of range)
   const mapping = guitarStringMapping[stringIndex] || guitarStringMapping[guitarStringMapping.length - 1];
-  // Adjust playback rate based on semitone offset: 2^(semitoneOffset/12)
   source.playbackRate.value = Math.pow(2, mapping.semitoneOffset / 12);
   
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0.5; // Initial volume
+  gainNode.gain.value = 0.5;
   
   source.connect(gainNode);
   if (convolver) {
@@ -209,16 +201,13 @@ function playGuitarString(
     gainNode.connect(audioContext.destination);
   }
   
-  // Calculate duration in seconds from BPM and noteLength.
   const duration = (60 / bpm) * noteLength;
-  // Sustain the note by ramping the gain to 0 over the duration.
   gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
   gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
   
   source.start();
   source.stop(audioContext.currentTime + duration + 0.1);
   
-  // Reset debounce for this string after the note finishes.
   setTimeout(() => {
     playingStrings[stringIndex] = false;
   }, (duration + 0.1) * 1000);
@@ -228,7 +217,6 @@ function playGuitarString(
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // guitarRef remains for visualization if needed.
   const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null);
 
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
@@ -243,6 +231,9 @@ export default function Page() {
   const [currentNote, setCurrentNote] = useState<number | null>(null);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
+
+  // New state for slider controlling string spacing.
+  const [stringSpacing, setStringSpacing] = useState<number>(1);
 
   // Conductor-related state (omitted for brevity)
   const [conductorProgress, setConductorProgress] = useState<number>(0);
@@ -279,7 +270,6 @@ export default function Page() {
     const audioCtx = audioContextRef.current;
     const samples: Record<string, AudioBuffer> = {};
 
-    // Load samples
     for (const [gesture, url] of Object.entries(sampleURLs)) {
       try {
         const response = await fetch(url);
@@ -296,7 +286,6 @@ export default function Page() {
     }
     samplesRef.current = samples;
 
-    // Load impulse response (optional)
     try {
       const irResponse = await fetch("/samples/impulse.wav");
       if (irResponse.ok) {
@@ -312,7 +301,6 @@ export default function Page() {
       console.error("Error loading impulse response:", err);
     }
 
-    // Load backing track (optional)
     try {
       const backingResponse = await fetch("/samples/backing.mp3");
       if (backingResponse.ok) {
@@ -661,7 +649,6 @@ export default function Page() {
   // ---------------------------------------------------------------------
   function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
     console.log("processNoneGesture called!");
-    // Only proceed if the back of the hand is detected.
     const isBack = isBackOfHand(handLandmarks);
     console.log("Is back of hand?", isBack);
     if (!isBack) {
@@ -761,6 +748,11 @@ export default function Page() {
                   if (isBackOfHand(handLandmarks) && audioContextRef.current)
                     playGuitarString(stringIndex, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
                 }
+                // For Closed_Fist gesture, play regardless of hand orientation.
+                else if (gesture.categoryName === "Closed_Fist") {
+                  if (audioContextRef.current)
+                    playGuitarString(stringIndex, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
+                }
               } else {
                 if (gesture.categoryName === "Closed_Fist") {
                   if (mode === "manual") playNoteManual("Closed_Fist", pos);
@@ -855,7 +847,7 @@ export default function Page() {
             </Card>
           </div>
 
-          {/* Central Column: Webcam & Visualizer */}
+          {/* Central Column: Webcam, Visualizer, and Slider */}
           <div className="w-1/2 flex flex-col items-center gap-4 relative">
             <div className="relative w-[640px] h-[480px] border rounded-lg shadow-lg overflow-hidden">
               {!webcamEnabled ? (
@@ -892,7 +884,9 @@ export default function Page() {
                 <div className="absolute inset-0 pointer-events-none">
                   {[0, 1, 2, 3, 4, 5].map((i) => {
                     const offsetPercent = (i + 0.5) / 6;
-                    const topPercent = 25 + offsetPercent * 50;
+                    // Use the stringSpacing state to adjust the span.
+                    const span = 50 * stringSpacing;
+                    const topPercent = 25 + offsetPercent * span;
                     return (
                       <div
                         key={i}
@@ -928,6 +922,19 @@ export default function Page() {
                   Your average timing error: {(gameScore * 100).toFixed(2)}%
                 </div>
               )}
+            </div>
+            {/* Slider for string spacing */}
+            <div className="mt-2 flex items-center">
+              <span className="mr-2">String Spacing</span>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={stringSpacing}
+                onChange={(e) => setStringSpacing(Number(e.target.value))}
+                className="w-40"
+              />
             </div>
             {mode === "manual" && (
               <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
@@ -1026,15 +1033,33 @@ export default function Page() {
                         <label className="block text-sm font-medium text-gray-700">Direction</label>
                         <div className="flex flex-col gap-2">
                           <label className="flex items-center gap-1">
-                            <input type="radio" value="up" checked={arpeggioDirection === "up"} onChange={() => setArpeggioDirection("up")} className="accent-teal-600" />
+                            <input
+                              type="radio"
+                              value="up"
+                              checked={arpeggioDirection === "up"}
+                              onChange={() => setArpeggioDirection("up")}
+                              className="accent-teal-600"
+                            />
                             <span className="text-sm">Up</span>
                           </label>
                           <label className="flex items-center gap-1">
-                            <input type="radio" value="down" checked={arpeggioDirection === "down"} onChange={() => setArpeggioDirection("down")} className="accent-teal-600" />
+                            <input
+                              type="radio"
+                              value="down"
+                              checked={arpeggioDirection === "down"}
+                              onChange={() => setArpeggioDirection("down")}
+                              className="accent-teal-600"
+                            />
                             <span className="text-sm">Down</span>
                           </label>
                           <label className="flex items-center gap-1">
-                            <input type="radio" value="upDown" checked={arpeggioDirection === "upDown"} onChange={() => setArpeggioDirection("upDown")} className="accent-teal-600" />
+                            <input
+                              type="radio"
+                              value="upDown"
+                              checked={arpeggioDirection === "upDown"}
+                              onChange={() => setArpeggioDirection("upDown")}
+                              className="accent-teal-600"
+                            />
                             <span className="text-sm">Up &amp; Down</span>
                           </label>
                         </div>
@@ -1046,7 +1071,6 @@ export default function Page() {
                   onClick={() => {
                     console.log("Test Sample button clicked.");
                     if (mode === "manual") {
-                      // For testing, play a guitar note for a middle string (index 3)
                       if (audioContextRef.current)
                         playGuitarString(3, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
                     } else if (mode === "autoChord") {
