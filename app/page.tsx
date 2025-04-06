@@ -127,11 +127,13 @@ function getChordsForKey(keyName: string) {
 }
 
 // -------------------- Helper: getStringIndexFromY --------------------
-function getStringIndexFromY(yNorm: number): number {
-  // Returns an integer in [0..5]
-  const index = Math.floor(yNorm * 6);
-  return Math.min(5, Math.max(0, index));
-}
+function getStringIndexFromY(yNorm: number, spacing: number): number {
+     const regionTop = 0.25;
+     const regionBottom = regionTop + 0.5 * spacing; // Increase the effective region as spacing increases.
+     const clampedY = Math.min(Math.max(yNorm, regionTop), regionBottom);
+     const effectiveY = (clampedY - regionTop) / (regionBottom - regionTop);
+     return Math.floor(effectiveY * 6);
+   }
 
 // -------------------- Helper: isBackOfHand --------------------
 function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
@@ -243,6 +245,7 @@ export default function Page() {
   const [currentNote, setCurrentNote] = useState<number | null>(null);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
+  const [stringSpacing, setStringSpacing] = useState<number>(1);
 
   // Conductor-related state (omitted for brevity)
   const [conductorProgress, setConductorProgress] = useState<number>(0);
@@ -678,8 +681,8 @@ export default function Page() {
     console.log("deltaY =>", deltaY);
     if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE) {
       console.log("Vertical swipe from", lastNoneY, "to", pos.y);
-      const oldIndex = getStringIndexFromY(lastNoneY);
-      const newIndex = getStringIndexFromY(pos.y);
+      const oldIndex = getStringIndexFromY(lastNoneY, stringSpacing);
+      const newIndex = getStringIndexFromY(pos.y, stringSpacing);
       const start = Math.min(oldIndex, newIndex);
       const end = Math.max(oldIndex, newIndex);
       if (audioContextRef.current) {
@@ -754,7 +757,7 @@ export default function Page() {
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
               if (instrument === "guitar") {
-                const stringIndex = getStringIndexFromY(pos.y);
+                const stringIndex = getStringIndexFromY(pos.y, stringSpacing);
                 console.log("Detected guitar gesture for string:", stringIndex);
                 // For "None" gesture, only play if the back of the hand is detected.
                 if (gesture.categoryName === "None") {
@@ -845,12 +848,20 @@ export default function Page() {
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
               <CardHeader className="bg-teal-50 py-3 px-4 border-b border-teal-100">
                 <h2 className="text-lg font-medium text-teal-800">Circle of Fifths</h2>
+                <Link href="/tutorials/chord-modes">
+                    <Button className="bg-teal-500 hover:bg-teal-600 text-white">Learn more!</Button>
+                </Link>
               </CardHeader>
               <CardContent className="p-4 flex justify-center">
-                <CircleOfFifths
-                  selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
-                  onSelectKey={(keyName) => setSelectedKey(keyName)}
-                />
+                <div className="w-full flex flex-col items-center">
+                  <CircleOfFifths
+                    selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
+                    onSelectKey={(keyName) => setSelectedKey(keyName)}
+                  />
+                </div>
+                <div className="mt-4">
+                  
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -892,7 +903,7 @@ export default function Page() {
                 <div className="absolute inset-0 pointer-events-none">
                   {[0, 1, 2, 3, 4, 5].map((i) => {
                     const offsetPercent = (i + 0.5) / 6;
-                    const topPercent = 25 + offsetPercent * 50;
+                    const topPercent = 25 + offsetPercent * (50 * stringSpacing);
                     return (
                       <div
                         key={i}
@@ -1041,12 +1052,24 @@ export default function Page() {
                       </div>
                     </div>
                   )}
+                   <div className="mt-2 flex items-center">
+                    <span className="mr-2">String Spacing</span>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2"
+                      step="0.1"
+                      value={stringSpacing}
+                      onChange={(e) => setStringSpacing(Number(e.target.value))}
+                      className="w-40"
+                    />
+                  </div>
                 </div>
                 <Button
                   onClick={() => {
                     console.log("Test Sample button clicked.");
                     if (mode === "manual") {
-                      // For testing, play a guitar note for a middle string (index 3)
+
                       if (audioContextRef.current)
                         playGuitarString(3, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
                     } else if (mode === "autoChord") {
