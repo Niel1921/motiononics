@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import Header from "@/components/ui/header";
 import CircleOfFifths from "@/components/CircleOfFifths";
-// IMPORTANT: Import keySignatures from your data file
 import { keySignatures } from "../../data/keySignatures";
 
 // Animation variants
@@ -362,7 +361,7 @@ export default function ChordModesPage() {
       .getUserMedia({
         video: {
           width: { ideal: 640 },
-          height: { ideal: 480 },
+          height: { ideal: 560 },
           facingMode: "user"
         }
       })
@@ -422,7 +421,7 @@ export default function ChordModesPage() {
                 const landmarks = results.landmarks[0];
                 const avgX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
                 const avgY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
-                const position = { x: avgX, y: avgY };
+                const position = { x: 1-avgX, y: avgY };
                 setHandPosition(position);
                 
                 // Play chord based on gesture and position
@@ -1009,7 +1008,7 @@ export default function ChordModesPage() {
                         <canvas
                           ref={canvasRef}
                           width={640}
-                          height={480}
+                          height={560}
                           className="absolute inset-0 w-full h-full"
                         />
                         
@@ -1039,15 +1038,12 @@ export default function ChordModesPage() {
                   
                   {/* Current chord display */}
                   <AnimatePresence>
-                    {currentChordName && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
+                    { (
+                      <div
                         className="bg-teal-500 text-white text-center p-3 rounded-lg"
                       >
-                        <p className="text-2xl font-bold">{currentChordName}</p>
-                      </motion.div>
+                        <p className="text-2xl font-bold">Chord: {currentChordName}</p>
+                      </div>
                     )}
                   </AnimatePresence>
                 </div>
@@ -1198,31 +1194,6 @@ export default function ChordModesPage() {
           </Card>
         </motion.section>
         
-        {/* Next Steps Section */}
-        <motion.div 
-          className="mb-12 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-xl p-8 shadow-lg"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={sectionVariants}
-        >
-          <h2 className="text-3xl font-bold mb-4">Ready to Create Music?</h2>
-          <p className="text-xl mb-6">
-            Now that you understand chord modes and progressions, it's time to experiment and create your own music!
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <Link href="/record">
-              <Button className="bg-white text-teal-700 hover:bg-teal-50 shadow-md">
-                Open Music Studio
-              </Button>
-            </Link>
-            <Link href="/tutorials">
-              <Button variant="outline" className="text-white border-white hover:bg-teal-600">
-                Explore More Tutorials
-              </Button>
-            </Link>
-          </div>
-        </motion.div>
 
         {/* Footer Navigation */}
         <div className="flex justify-between mt-12">

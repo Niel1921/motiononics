@@ -16,17 +16,31 @@ import CircleOfFifths from "../components/CircleOfFifths";
 
 // -------------------- Constants --------------------
 const sampleURLs: Record<string, string> = {
-  Closed_Fist: "/samples/fist.wav",
+  Closed_Fist: "/samples/fist.wav",   // Sample for closed fist (used for chords/arpeggios)
+  None: "/samples/guitar.wav",        // Guitar sample (assumed to be tuned to E4)
 };
 
+// Tweak this value as needed (in normalized coordinates)
+const MIN_SWIPE_DISTANCE = 0.07;
+
+// Mapping for standard guitar tuning relative to E4 (high E string)
+// String index 5: High E (0 semitones)
+// String index 4: B (-5 semitones)
+// String index 3: G (-9 semitones)
+// String index 2: D (-14 semitones)
+// String index 1: A (-19 semitones)
+// String index 0: Low E (-24 semitones)
+const guitarStringMapping = [
+  { semitoneOffset: -24 },
+  { semitoneOffset: -19 },
+  { semitoneOffset: -14 },
+  { semitoneOffset: -9 },
+  { semitoneOffset: -5 },
+  { semitoneOffset: 0 },
+];
+
 // -------------------- Conductor Overlay --------------------
-function ConductorOverlay({
-  progress,
-  expectedProgress,
-}: {
-  progress: number;
-  expectedProgress: number;
-}) {
+function ConductorOverlay({ progress, expectedProgress }: { progress: number; expectedProgress: number; }) {
   return (
     <div className="absolute inset-0 pointer-events-none">
       <div className="absolute inset-0 flex items-center justify-center">
@@ -40,21 +54,13 @@ function ConductorOverlay({
 }
 
 // -------------------- Chord Grid Visualizer --------------------
-function ChordGridVisualizer({
-  chords,
-  currentCell,
-}: {
-  chords: { name: string; roman: string }[];
-  currentCell: number | null;
-}) {
+function ChordGridVisualizer({ chords, currentCell }: { chords: { name: string; roman: string }[]; currentCell: number | null; }) {
   return (
     <div className="absolute top-0 left-0 w-[640px] h-[480px] grid grid-cols-3 grid-rows-3 gap-0 bg-white/40">
       {chords.map((chord, index) => (
         <div
           key={index}
-          className={`border border-teal-500 flex flex-col items-center justify-center ${
-            currentCell === index ? "bg-teal-300" : "bg-transparent"
-          }`}
+          className={`border border-teal-500 flex flex-col items-center justify-center ${currentCell === index ? "bg-teal-300" : "bg-transparent"}`}
         >
           <div className="text-lg text-teal-800">{chord.name}</div>
           <div className="text-sm text-teal-600">{chord.roman}</div>
@@ -104,14 +110,85 @@ function getChordsForKey(keyName: string) {
 
 // -------------------- Helper: getStringIndexFromY --------------------
 function getStringIndexFromY(yNorm: number): number {
+  // Returns an integer in [0..5]
   const index = Math.floor(yNorm * 6);
   return Math.min(5, Math.max(0, index));
 }
 
-// -------------------- Main Page Component --------------------
+// -------------------- Helper: isBackOfHand --------------------
+function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
+  if (handLandmarks.length < 18) return false;
+  const wrist = handLandmarks[0];
+  const indexKnuckle = handLandmarks[5];
+  const pinkyKnuckle = handLandmarks[17];
+
+  const v1 = {
+    x: indexKnuckle.x - wrist.x,
+    y: indexKnuckle.y - wrist.y,
+    z: (indexKnuckle.z ?? 0) - (wrist.z ?? 0),
+  };
+  const v2 = {
+    x: pinkyKnuckle.x - wrist.x,
+    y: pinkyKnuckle.y - wrist.y,
+    z: (pinkyKnuckle.z ?? 0) - (wrist.z ?? 0),
+  };
+
+  const cross = {
+    x: v1.y * v2.z - v1.z * v2.y,
+    y: v1.z * v2.x - v1.x * v2.z,
+    z: v1.x * v2.y - v1.y * v2.x,
+  };
+
+  // If cross.z is positive, then the palm is away and the back of the hand faces the camera.
+  return cross.z > 0;
+}
+
+// We'll store the starting Y position for "None" gesture swipes.
+let lastNoneY: number | null = null;
+
+// -------------------- Helper: playGuitarString --------------------
+// This function plays the guitar note for a given string index using the "None" sample.
+function playGuitarString(
+  stringIndex: number,
+  audioContext: AudioContext,
+  samples: Record<string, AudioBuffer>,
+  convolver: ConvolverNode | null,
+  bpm: number,
+  noteLength: number
+) {
+  if (!samples["None"]) {
+    console.warn("Guitar sample not loaded.");
+    return;
+  }
+  const sampleBuffer = samples["None"];
+  const source = audioContext.createBufferSource();
+  source.buffer = sampleBuffer;
+  // Get the mapping for the given string index (default to high E if out of range)
+  const mapping = guitarStringMapping[stringIndex] || guitarStringMapping[guitarStringMapping.length - 1];
+  // Adjust playback rate based on semitone offset: 2^(semitoneOffset/12)
+  source.playbackRate.value = Math.pow(2, mapping.semitoneOffset / 12);
+  
+  const gainNode = audioContext.createGain();
+  gainNode.gain.value = 0.5; // Adjust volume as needed
+  
+  source.connect(gainNode);
+  if (convolver) {
+    gainNode.connect(convolver);
+    convolver.connect(audioContext.destination);
+  } else {
+    gainNode.connect(audioContext.destination);
+  }
+  // Calculate duration based on BPM and noteLength.
+  const duration = (60 / bpm) * noteLength;
+  source.start();
+  source.stop(audioContext.currentTime + duration);
+}
+
+// -------------------- Page Component --------------------
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // guitarRef remains for visualization if needed but audio is handled here.
   const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null);
 
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
@@ -119,7 +196,6 @@ export default function Page() {
   const [bpm, setBpm] = useState<number>(120);
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
-  // Extend instrument to include theremin
   const [instrument, setInstrument] = useState<"piano" | "guitar" | "theremin">("piano");
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" | "conductor">("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
@@ -127,6 +203,8 @@ export default function Page() {
   const [currentNote, setCurrentNote] = useState<number | null>(null);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Conductor-related state (omitted for brevity)
   const [conductorProgress, setConductorProgress] = useState<number>(0);
   const [conductorStarted, setConductorStarted] = useState<boolean>(false);
   const [countdown, setCountdown] = useState<number | string | null>(null);
@@ -135,35 +213,33 @@ export default function Page() {
   const [expectedProgress, setExpectedProgress] = useState<number>(0);
   const [gameScore, setGameScore] = useState<number | null>(null);
 
-  // New state for theremin parameters
+  // Theremin parameters (omitted for brevity)
   const [thereminFrequency, setThereminFrequency] = useState<number>(440);
   const [thereminVolume, setThereminVolume] = useState<number>(0);
   const [thereminVibrato, setThereminVibrato] = useState<number>(2);
-  // You can let waveform be selectable; for now, we set it constant.
   const [thereminWaveform, setThereminWaveform] = useState<string>("sine");
 
+  // Audio-related refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
   const convolverRef = useRef<ConvolverNode | null>(null);
   const notePlayingRef = useRef<boolean>(false);
+
+  // Backing track (omitted for brevity)
   const [backingBuffer, setBackingBuffer] = useState<AudioBuffer | null>(null);
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const errorSumRef = useRef<number>(0);
-  const errorCountRef = useRef<number>(0);
 
-  // Refs for theremin nodes
-  const thereminOscillatorRef = useRef<OscillatorNode | null>(null);
-  const thereminGainRef = useRef<GainNode | null>(null);
-  const thereminFilterRef = useRef<BiquadFilterNode | null>(null);
-  const thereminVibratoOscRef = useRef<OscillatorNode | null>(null);
-  const thereminVibratoGainRef = useRef<GainNode | null>(null);
-
+  // ---------------------------------------------------------------------
+  // INIT AUDIO
+  // ---------------------------------------------------------------------
   const initAudio = useCallback(async () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const audioCtx = audioContextRef.current;
     const samples: Record<string, AudioBuffer> = {};
+
+    // Load samples
     for (const [gesture, url] of Object.entries(sampleURLs)) {
       try {
         const response = await fetch(url);
@@ -173,11 +249,14 @@ export default function Page() {
         }
         const arrayBuffer = await response.arrayBuffer();
         samples[gesture] = await audioCtx.decodeAudioData(arrayBuffer);
+        console.log(`Loaded sample for gesture: ${gesture}`);
       } catch (error) {
         console.error(`Error loading sample for ${gesture}:`, error);
       }
     }
     samplesRef.current = samples;
+
+    // Load impulse response (optional)
     try {
       const irResponse = await fetch("/samples/impulse.wav");
       if (irResponse.ok) {
@@ -185,40 +264,45 @@ export default function Page() {
         const convolver = audioCtx.createConvolver();
         convolver.buffer = await audioCtx.decodeAudioData(irBuffer);
         convolverRef.current = convolver;
+        console.log("Loaded impulse response for reverb.");
       } else {
-        console.error("Failed to fetch impulse response:", irResponse.statusText);
+        console.warn("Impulse response not found or couldn't be fetched.");
       }
     } catch (err) {
       console.error("Error loading impulse response:", err);
     }
+
+    // Load backing track (optional)
     try {
       const backingResponse = await fetch("/samples/backing.mp3");
       if (backingResponse.ok) {
         const trackBuffer = await backingResponse.arrayBuffer();
         setBackingBuffer(await audioCtx.decodeAudioData(trackBuffer));
+        console.log("Loaded backing track.");
       } else {
-        console.error("Failed to fetch backing track:", backingResponse.statusText);
+        console.warn("Failed to fetch backing track:", backingResponse.statusText);
       }
     } catch (err) {
       console.error("Error loading backing track:", err);
     }
   }, []);
 
+  // ---------------------------------------------------------------------
+  // INIT GESTURE
+  // ---------------------------------------------------------------------
   const initGestureRecognizer = useCallback(async () => {
     try {
+      console.log("Initializing gesture recognizer...");
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.1/wasm"
       );
       const recognizer = await GestureRecognizer.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
-        },
+        baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task" },
         numHands: 2,
         runningMode: "VIDEO",
       });
       setGestureRecognizer(recognizer);
-      console.log("Gesture recognizer initialized.");
+      console.log("Gesture recognizer initialized!");
     } catch (error) {
       console.error("Error initializing gesture recognizer:", error);
     }
@@ -232,10 +316,14 @@ export default function Page() {
     };
   }, []);
 
+  // ---------------------------------------------------------------------
+  // CAMERA
+  // ---------------------------------------------------------------------
   useEffect(() => {
     if (!webcamEnabled) return;
     const videoEl = videoRef.current;
     if (!videoEl) return;
+
     let stream: MediaStream | null = null;
     navigator.mediaDevices
       .getUserMedia({ video: true })
@@ -245,6 +333,7 @@ export default function Page() {
         return videoEl.play();
       })
       .catch((err) => console.error("Error playing video:", err));
+
     return () => {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
@@ -252,12 +341,16 @@ export default function Page() {
     };
   }, [webcamEnabled]);
 
+  // ---------------------------------------------------------------------
+  // If WebGL context is lost
+  // ---------------------------------------------------------------------
   useEffect(() => {
     const canvasEl = canvasRef.current;
     if (!canvasEl) return;
+
     const handleContextLost = (e: Event) => {
       e.preventDefault();
-      console.warn("WebGL context lost; reinitializing gesture recognizer.");
+      console.warn("WebGL context lost; reinit gesture recognizer...");
       gestureRecognizer?.close();
       setGestureRecognizer(null);
       setTimeout(() => {
@@ -270,11 +363,11 @@ export default function Page() {
     };
   }, [gestureRecognizer, initGestureRecognizer]);
 
+  // ---------------------------------------------------------------------
+  // HELPER: average hand position
+  // ---------------------------------------------------------------------
   function getHandPosition(landmarks: { x: number; y: number }[]) {
-    const avg = landmarks.reduce(
-      (acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }),
-      { x: 0, y: 0 }
-    );
+    const avg = landmarks.reduce((acc, lm) => ({ x: acc.x + lm.x, y: acc.y + lm.y }), { x: 0, y: 0 });
     return { x: 1 - avg.x / landmarks.length, y: avg.y / landmarks.length };
   }
 
@@ -287,16 +380,21 @@ export default function Page() {
     }
   }
 
-
+  // ---------------------------------------------------------------------
+  // Audio / chord / note (other helper functions remain unchanged)
+  // ---------------------------------------------------------------------
   function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
-    const sampleBuffer = samplesRef.current[gestureLabel];
-    if (!sampleBuffer) {
-      console.warn("No sample loaded for gesture: ${gestureLabel}");
+    if (notePlayingRef.current) {
+      console.log("Already playing a note. Skip");
       return;
     }
-    if (notePlayingRef.current) return;
+    const sampleBuffer = samplesRef.current[gestureLabel];
+    if (!sampleBuffer) {
+      console.warn(`No sample loaded for gesture: ${gestureLabel}`);
+      return;
+    }
     const noteIndex = Math.min(11, Math.floor(handPosition.x * 12));
     setCurrentNote(noteIndex);
     setTimeout(() => setCurrentNote(null), 500);
@@ -351,6 +449,7 @@ export default function Page() {
   function playChord(chordLabel: string) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
+    if (notePlayingRef.current) return;
     const duration = (60 / bpm) * noteLength;
     const noteToSemitone: Record<string, number> = {
       C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
@@ -363,10 +462,12 @@ export default function Page() {
     if (chordType === "maj") intervals = [0, 4, 7];
     else if (chordType === "min") intervals = [0, 3, 7];
     else if (chordType === "dim") intervals = [0, 3, 6];
+    console.log("Playing chord:", chordLabel);
     intervals.forEach((interval) => {
       const source = audioCtx.createBufferSource();
-      source.buffer = samplesRef.current["Closed_Fist"];
-      const semitoneOffset = noteToSemitone[root] + interval;
+      source.buffer = samplesRef.current["Closed_Fist"] || null;
+      if (!source.buffer) return;
+      const semitoneOffset = (noteToSemitone[root] ?? 0) + interval;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
@@ -386,16 +487,23 @@ export default function Page() {
     }, duration * 1000);
   }
 
-  function playArpeggio(
-    chordLabel: string,
-    duration: number,
-    octaves: number,
-    direction: "up" | "down" | "upDown"
-  ) {
+  function playArpeggio(chordLabel: string, duration: number, octaves: number, direction: "up" | "down" | "upDown") {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
+    if (notePlayingRef.current) return;
     const noteToSemitone: Record<string, number> = {
-      C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
+      C: 0,
+      "C#": 1,
+      D: 2,
+      "D#": 3,
+      E: 4,
+      F: 5,
+      "F#": 6,
+      G: 7,
+      "G#": 8,
+      A: 9,
+      "A#": 10,
+      B: 11,
     };
     const match = chordLabel.match(/^[A-G]#?/);
     if (!match) return;
@@ -419,12 +527,14 @@ export default function Page() {
       let down = up.slice(0, -1).reverse();
       pattern = up.concat(down);
     }
+    console.log("Playing arpeggio of:", chordLabel);
     const totalNotes = pattern.length;
     const noteDuration = duration / totalNotes;
     pattern.forEach((intervalVal, i) => {
       const source = audioCtx.createBufferSource();
-      source.buffer = samplesRef.current["Closed_Fist"];
-      const semitoneOffset = noteToSemitone[root] + intervalVal;
+      source.buffer = samplesRef.current["Closed_Fist"] || null;
+      if (!source.buffer) return;
+      const semitoneOffset = (noteToSemitone[root] ?? 0) + intervalVal;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
@@ -444,29 +554,28 @@ export default function Page() {
     }, duration * 1000);
   }
 
-  // -------------------- Theremin Oscillator Management --------------------
+  // ---------------------------------------------------------------------
+  // THEREMIN
+  // ---------------------------------------------------------------------
+  const thereminOscillatorRef = useRef<OscillatorNode | null>(null);
+  const thereminGainRef = useRef<GainNode | null>(null);
+  const thereminFilterRef = useRef<BiquadFilterNode | null>(null);
+  const thereminVibratoOscRef = useRef<OscillatorNode | null>(null);
+  const thereminVibratoGainRef = useRef<GainNode | null>(null);
+
   useEffect(() => {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
-
     if (instrument === "theremin") {
-      // Create theremin nodes if not already created
       if (!thereminOscillatorRef.current) {
-        // Main oscillator (the sound generator)
+        console.log("Creating theremin oscillator...");
         const mainOsc = audioCtx.createOscillator();
-        // We'll set the waveform based on our state.
         mainOsc.type = thereminWaveform as OscillatorType;
-
-        // Lowpass filter for tone shaping
         const filter = audioCtx.createBiquadFilter();
         filter.type = "lowpass";
-        filter.frequency.value = 1200; // adjust for desired brightness
-
-        // Main gain node (controls overall amplitude)
+        filter.frequency.value = 1200;
         const mainGain = audioCtx.createGain();
-        mainGain.gain.value = 0; // start silent
-
-        // Connect main oscillator -> filter -> gain -> destination (or reverb if available)
+        mainGain.gain.value = 0;
         if (convolverRef.current) {
           mainOsc.connect(filter);
           filter.connect(mainGain);
@@ -477,22 +586,14 @@ export default function Page() {
           filter.connect(mainGain);
           mainGain.connect(audioCtx.destination);
         }
-
         mainOsc.start();
-
-        // Vibrato oscillator (LFO)
         const vibratoOsc = audioCtx.createOscillator();
-        vibratoOsc.frequency.value = 5; // vibrato rate in Hz
+        vibratoOsc.frequency.value = 5;
         const vibratoGain = audioCtx.createGain();
-        // Initial vibrato gain is set from state; it will be updated dynamically.
         vibratoGain.gain.value = thereminVibrato;
-
-        // Connect vibrato oscillator -> vibrato gain -> main oscillator's frequency
         vibratoOsc.connect(vibratoGain);
         vibratoGain.connect(mainOsc.frequency);
         vibratoOsc.start();
-
-        // Save references
         thereminOscillatorRef.current = mainOsc;
         thereminGainRef.current = mainGain;
         thereminFilterRef.current = filter;
@@ -500,8 +601,8 @@ export default function Page() {
         thereminVibratoGainRef.current = vibratoGain;
       }
     } else {
-      // If switching away from theremin, stop and clear nodes
       if (thereminOscillatorRef.current) {
+        console.log("Stopping theremin oscillator...");
         thereminOscillatorRef.current.stop();
         thereminOscillatorRef.current = null;
       }
@@ -515,7 +616,44 @@ export default function Page() {
     }
   }, [instrument, thereminWaveform, thereminVibrato]);
 
-  // -------------------- Main Gesture Loop --------------------
+  // ---------------------------------------------------------------------
+  // PROCESS "NONE" GESTURE => vertical swipe for guitar mode
+  // ---------------------------------------------------------------------
+  function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
+    console.log("processNoneGesture called!");
+    const isBack = isBackOfHand(handLandmarks);
+    console.log("Is back of hand?", isBack);
+    if (!isBack) {
+      lastNoneY = null;
+      return;
+    }
+    const pos = getHandPosition(handLandmarks);
+    console.log("pos.y =>", pos.y);
+    if (lastNoneY === null) {
+      lastNoneY = pos.y;
+      return;
+    }
+    const deltaY = pos.y - lastNoneY;
+    console.log("deltaY =>", deltaY);
+    if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE) {
+      console.log("Vertical swipe from", lastNoneY, "to", pos.y);
+      const oldIndex = getStringIndexFromY(lastNoneY);
+      const newIndex = getStringIndexFromY(pos.y);
+      const start = Math.min(oldIndex, newIndex);
+      const end = Math.max(oldIndex, newIndex);
+      if (audioContextRef.current) {
+        for (let s = start; s <= end; s++) {
+          console.log("Playing guitar string", s);
+          playGuitarString(s, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
+        }
+      }
+      lastNoneY = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // MAIN GESTURE LOOP
+  // ---------------------------------------------------------------------
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
     const videoEl = videoRef.current;
@@ -523,14 +661,12 @@ export default function Page() {
     if (!videoEl || !canvasEl) return;
     let animationFrameId: number;
     const ctx = canvasEl.getContext("2d");
-
     const processFrame = async () => {
       if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA && ctx) {
         ctx.save();
         ctx.translate(canvasEl.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-
         try {
           const results = await gestureRecognizer.recognizeForVideo(videoEl, performance.now());
           
@@ -601,15 +737,21 @@ export default function Page() {
             results.gestures.forEach((gestureArray, index) => {
               if (gestureArray.length === 0) return;
               const gesture = gestureArray[0];
+              console.log("Detected gesture:", gesture.categoryName);
               const handLandmarks = results.landmarks[index];
               if (!handLandmarks) return;
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
-              if (gesture.categoryName === "Closed_Fist") {
-                if (instrument === "guitar") {
-                  const stringIndex = getStringIndexFromY(pos.y);
-                  guitarRef.current?.triggerString(stringIndex);
-                } else {
+              if (instrument === "guitar") {
+                // In manual mode, for both Closed_Fist and "None" gestures, play the corresponding guitar note.
+                const stringIndex = getStringIndexFromY(pos.y);
+                console.log("Playing string based on gesture:", stringIndex);
+                if ( gesture.categoryName === "None") {
+                  if (audioContextRef.current)
+                    playGuitarString(stringIndex, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
+                }
+              } else {
+                if (gesture.categoryName === "Closed_Fist") {
                   if (mode === "manual") playNoteManual("Closed_Fist", pos);
                   else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
                   else if (mode === "arpeggiator") playArpeggioFromHandPosition("Closed_Fist", pos);
@@ -617,8 +759,6 @@ export default function Page() {
               }
             });
           }
-
-          // Draw landmarks
           if (results?.landmarks) {
             results.landmarks.forEach((lmArr) => {
               lmArr.forEach((lm) => {
@@ -638,24 +778,17 @@ export default function Page() {
     };
     processFrame();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [
-    gestureRecognizer,
-    webcamEnabled,
-    instrument,
-    bpm,
-    noteLength,
-    selectedKey,
-    mode,
-    arpeggioOctaves,
-    arpeggioDirection,
-  ]);
+  }, [gestureRecognizer, webcamEnabled, instrument, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection]);
 
+  // ---------------------------------------------------------------------
+  // Current chord cell => highlight
+  // ---------------------------------------------------------------------
   const currentChordName =
-    currentChordCell !== null
-      ? getChordsForKey(selectedKey)[currentChordCell]?.name
-      : null;
+    currentChordCell !== null ? getChordsForKey(selectedKey)[currentChordCell]?.name : null;
 
-  // Visualizer Component: Render the appropriate Three.js visualizer based on instrument.
+  // ---------------------------------------------------------------------
+  // Visualizer Component (rendering remains unchanged)
+  // ---------------------------------------------------------------------
   const visualizerComponent =
     instrument === "theremin" ? (
       <ThreeThereminVisualizer
@@ -671,18 +804,18 @@ export default function Page() {
         <ThreePianoVisualizer currentNote={currentNote} />
       )
     ) : (
-      <ChordGridVisualizer
-        chords={getChordsForKey(selectedKey)}
-        currentCell={currentChordCell}
-      />
+      <ChordGridVisualizer chords={getChordsForKey(selectedKey)} currentCell={currentChordCell} />
     );
 
+  // ---------------------------------------------------------------------
+  // RENDER
+  // ---------------------------------------------------------------------
   return (
     <>
       <Header />
       <div className="container mx-auto p-4">
         <div className="flex flex-row gap-4">
-          {/* Left Column: Tutorials & Circle of Fifths */}
+          {/* Left Column */}
           <div className="w-1/4">
             <Card className="p-6 rounded-2xl bg-teal-100 shadow-lg">
               <CardHeader>
@@ -693,27 +826,22 @@ export default function Page() {
                   Learn how to make the most of Motiononics with our step‑by‑step tutorials.
                 </p>
                 <Link href="/tutorials">
-                  <Button className="bg-teal-500 hover:bg-teal-600 text-white">
-                    View Tutorials
-                  </Button>
+                  <Button className="bg-teal-500 hover:bg-teal-600 text-white">View Tutorials</Button>
                 </Link>
               </CardContent>
             </Card>
-
-            {/* Circle of Fifths Card */}
+            {/* Circle of Fifths */}
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
               <CardHeader className="bg-teal-50 py-3 px-4 border-b border-teal-100">
                 <h2 className="text-lg font-medium text-teal-800">Circle of Fifths</h2>
               </CardHeader>
               <CardContent className="p-4 flex justify-center">
-                <CircleOfFifths
-                  selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
-                  onSelectKey={(keyName) => setSelectedKey(keyName)}
-                />
+                <CircleOfFifths selectedKey={selectedKey === "None" ? "C Major" : selectedKey} onSelectKey={(keyName) => setSelectedKey(keyName)} />
               </CardContent>
             </Card>
           </div>
-          {/* Central Column: Webcam Feed & Visualizer */}
+
+          {/* Central Column: Webcam & Visualizer */}
           <div className="w-1/2 flex flex-col items-center gap-4 relative">
             <div className="relative w-[640px] h-[480px] border rounded-lg shadow-lg overflow-hidden">
               {!webcamEnabled ? (
@@ -722,6 +850,7 @@ export default function Page() {
                     setWebcamEnabled(true);
                     if (audioContextRef.current && audioContextRef.current.state === "suspended") {
                       audioContextRef.current.resume();
+                      console.log("Resumed AudioContext from suspended state.");
                     }
                   }}
                   className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 text-xl z-20 bg-teal-500 hover:bg-teal-600 text-white"
@@ -743,23 +872,13 @@ export default function Page() {
                   Stop Video
                 </Button>
               )}
-              <video
-                ref={videoRef}
-                className="w-[640px] h-[480px] scale-x-[-1]"
-                muted
-                playsInline
-              />
-              <canvas
-                ref={canvasRef}
-                width={640}
-                height={480}
-                className="absolute top-0 left-0"
-              />
-              {/* If instrument is guitar, overlay 6 horizontal string lines */}
+              <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
+              <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
               {instrument === "guitar" && (
                 <div className="absolute inset-0 pointer-events-none">
                   {[0, 1, 2, 3, 4, 5].map((i) => {
-                    const topPercent = ((i + 0.5) / 6) * 100;
+                    const offsetPercent = (i + 0.5) / 6;
+                    const topPercent = 25 + offsetPercent * 50;
                     return (
                       <div
                         key={i}
@@ -776,23 +895,13 @@ export default function Page() {
                   })}
                 </div>
               )}
-              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") &&
-                visualizerComponent}
+              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && visualizerComponent}
               {mode === "conductor" && (
-                <ConductorOverlay
-                  progress={conductorProgress}
-                  expectedProgress={expectedProgress}
-                />
+                <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
               )}
               {mode === "conductor" && !conductorStarted && (
                 <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
-                  {countdown !== null ? (
-                    <div>{countdown}</div>
-                  ) : (
-                    <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white">
-                      Start Conductor Game
-                    </Button>
-                  )}
+                  {countdown !== null ? <div>{countdown}</div> : <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white">Start Conductor Game</Button>}
                 </div>
               )}
               {mode === "conductor" && conductorStarted && (
@@ -812,6 +921,7 @@ export default function Page() {
               </div>
             )}
           </div>
+
           {/* Right Column: Controls Panel */}
           <div className="w-1/4">
             <Card className="max-w-md mx-auto bg-white shadow-lg">
@@ -902,34 +1012,16 @@ export default function Page() {
                         <label className="block text-sm font-medium text-gray-700">Direction</label>
                         <div className="flex flex-col gap-2">
                           <label className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              value="up"
-                              checked={arpeggioDirection === "up"}
-                              onChange={() => setArpeggioDirection("up")}
-                              className="accent-teal-600"
-                            />
+                            <input type="radio" value="up" checked={arpeggioDirection === "up"} onChange={() => setArpeggioDirection("up")} className="accent-teal-600" />
                             <span className="text-sm">Up</span>
                           </label>
                           <label className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              value="down"
-                              checked={arpeggioDirection === "down"}
-                              onChange={() => setArpeggioDirection("down")}
-                              className="accent-teal-600"
-                            />
+                            <input type="radio" value="down" checked={arpeggioDirection === "down"} onChange={() => setArpeggioDirection("down")} className="accent-teal-600" />
                             <span className="text-sm">Down</span>
                           </label>
                           <label className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              value="upDown"
-                              checked={arpeggioDirection === "upDown"}
-                              onChange={() => setArpeggioDirection("upDown")}
-                              className="accent-teal-600"
-                            />
-                            <span className="text-sm">Up & Down</span>
+                            <input type="radio" value="upDown" checked={arpeggioDirection === "upDown"} onChange={() => setArpeggioDirection("upDown")} className="accent-teal-600" />
+                            <span className="text-sm">Up &amp; Down</span>
                           </label>
                         </div>
                       </div>
@@ -938,9 +1030,11 @@ export default function Page() {
                 </div>
                 <Button
                   onClick={() => {
-                    console.log("Test Closed_Fist Sample clicked.");
+                    console.log("Test Sample button clicked.");
                     if (mode === "manual") {
-                      playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 });
+                      // For testing, play a guitar note for a middle string (index 3)
+                      if (audioContextRef.current)
+                        playGuitarString(3, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
                     } else if (mode === "autoChord") {
                       playChord("Cmaj");
                     } else if (mode === "arpeggiator") {
@@ -953,8 +1047,6 @@ export default function Page() {
                 </Button>
               </CardContent>
             </Card>
-
-            {/* Instructions Card */}
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
               <div className="bg-teal-50 py-3 px-4 border-b border-teal-100">
                 <h2 className="text-lg font-medium text-teal-800">How to Use</h2>
@@ -962,25 +1054,12 @@ export default function Page() {
               <CardContent className="p-4">
                 <div className="prose prose-sm max-w-none">
                   <ol className="space-y-2 text-gray-700">
-                    <li>Enable your webcam using the button in the video panel</li>
-                    <li>Position your hand within the camera view</li>
-                    <li>In guitar mode, move your hand vertically to select a string</li>
-                    <li>Make a Closed Fist gesture to trigger that string’s vibration and sound</li>
+                    <li>Enable your webcam using the button in the video panel.</li>
+                    <li>Position your hand so Mediapipe can see it (good lighting!).</li>
+                    <li>In guitar mode, perform a <strong>vertical swipe</strong> (top-to-bottom or bottom-to-top) with the back of your hand to strum across multiple strings.</li>
+                    <li>Or make a Closed Fist to strike just one string at your current y-position.</li>
+                    <li>Use the “Test Sample” button to confirm your audio is working.</li>
                   </ol>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                    <div className="p-3 bg-teal-50 rounded-md text-center">
-                      <div className="text-xs font-semibold text-teal-800 mb-1">Open Palm</div>
-                      <div className="text-xs text-gray-600">Major chord</div>
-                    </div>
-                    <div className="p-3 bg-teal-50 rounded-md text-center">
-                      <div className="text-xs font-semibold text-teal-800 mb-1">Closed Fist</div>
-                      <div className="text-xs text-gray-600">Minor chord / Guitar string</div>
-                    </div>
-                    <div className="p-3 bg-teal-50 rounded-md text-center">
-                      <div className="text-xs font-semibold text-teal-800 mb-1">Victory Sign</div>
-                      <div className="text-xs text-gray-600">Suspended chord</div>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
