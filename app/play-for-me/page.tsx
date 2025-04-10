@@ -32,6 +32,38 @@ const chordPatterns = [
   { id: 4, name: "Blues Pattern", description: "A 12-bar blues inspired pattern", patternBeats: 4 },
 ];
 
+// Add this near the top with your other constants
+const rhythmPatterns = [
+    {
+      id: 1,
+      name: "Basic",
+      pattern: [1, 1, 1, 1], // Equal beats
+      velocities: [0.7, 0.5, 0.6, 0.5], // Simple dynamics
+      description: "Simple even rhythm"
+    },
+    {
+      id: 2,
+      name: "Waltz",
+      pattern: [1.2, 0.4, 0.4, 1], // ONE-two-three-four
+      velocities: [0.8, 0.4, 0.5, 0.6], 
+      description: "Emphasized first beat"
+    },
+    {
+      id: 3,
+      name: "Backbeat", 
+      pattern: [0.8, 1.2, 0.8, 1.2], // Emphasis on beats 2 and 4
+      velocities: [0.6, 0.8, 0.5, 0.7],
+      description: "Emphasis on off-beats"
+    },
+    {
+      id: 4,
+      name: "Syncopated",
+      pattern: [0.7, 1, 0.5, 0.8], // Complex rhythm
+      velocities: [0.6, 0.9, 0.5, 0.8],
+      description: "Complex rhythm pattern"
+    }
+  ];
+
 // -------------------- getChordsForKey --------------------
 function getChordsForKey(keyName: string) {
   if (!keySignatures[keyName] && keyName !== "None") return [];
@@ -118,6 +150,7 @@ function getChordPatternForCell(cellIndex: number, selectedKey: string, patternI
 export default function PlayForMePage() {
   const [selectedKey, setSelectedKey] = useState("C Major");
   const [selectedPattern, setSelectedPattern] = useState(1);
+  const [selectedRhythm, setSelectedRhythm] = useState<number>(1);
 
   // MediaPipe
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
@@ -390,71 +423,80 @@ export default function PlayForMePage() {
       };
       
       // Play through the entire pattern
-      const playPattern = (pattern: string[]) => {
-        if (!pattern || pattern.length === 0) {
+const playPattern = (pattern: string[]) => {
+    if (!pattern || pattern.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+    
+    // Get the rhythm pattern details
+    const rhythmPattern = rhythmPatterns.find(r => r.id === selectedRhythm) || rhythmPatterns[0];
+    const beatDurations = rhythmPattern.pattern.map(p => (60 / bpm * 1000) * p); // Adjust beat durations
+    const velocities = rhythmPattern.velocities;
+    
+    // Play the first chord immediately
+    playChord(pattern[0], beatDurations[0], velocities[0]);
+    setCurrentBeatIndex(0);
+    
+    // Set up the beat counter and chord progression
+    let currentBeat = 0;
+    
+    // Clear any existing timers to prevent overlaps
+    if (beatTimerRef.current) {
+      clearTimeout(beatTimerRef.current);
+      beatTimerRef.current = null;
+    }
+    
+    const progressPattern = () => {
+      currentBeat++;
+      
+      // If we've played all beats, end or repeat based on next position
+      if (currentBeat >= pattern.length) {
+        // If there's a next chord cell queued up, play that next
+        if (nextChordCell !== null && nextChordCell !== currentChordCell) {
+          const nextPattern = getChordPatternForCell(nextChordCell, selectedKey, selectedPattern);
+          
+          // Important: Set current cell to the next cell
+          setCurrentChordCell(nextChordCell);
+          setCurrentPattern(nextPattern);
+          setCurrentBeatIndex(0);
+          
+          // Reset the isPlaying state briefly to allow new input
           setIsPlaying(false);
-          return;
+          
+          // Start the new pattern after a brief pause
+          setTimeout(() => {
+            playPattern(nextPattern);
+          }, 50);
+        } else {
+          // Otherwise finish playing
+          setIsPlaying(false);
+          setCurrentBeatIndex(-1);
+          setCurrentChordCell(null);
+          // Reset nextChordCell to ensure it doesn't get stuck
+          setNextChordCell(null);
         }
-        
-        // Calculate beat duration based on BPM
-        const beatDuration = 60 / bpm * 1000; // in milliseconds
-        
-        // Play the first chord immediately
-        playChord(pattern[0], beatDuration);
-        setCurrentBeatIndex(0);
-        
-        // Set up the beat counter and chord progression
-        let currentBeat = 0;
-        
-        // Clear any existing timers to prevent overlaps
-        if (beatTimerRef.current) {
-          clearTimeout(beatTimerRef.current);
-          beatTimerRef.current = null;
-        }
-        
-        const progressPattern = () => {
-          currentBeat++;
-          
-          // If we've played all beats, end or repeat based on next position
-          if (currentBeat >= pattern.length) {
-            // If there's a next chord cell queued up, play that next
-            if (nextChordCell !== null && nextChordCell !== currentChordCell) {
-              const nextPattern = getChordPatternForCell(nextChordCell, selectedKey, selectedPattern);
-              
-              // Important: Set current cell to the next cell
-              setCurrentChordCell(nextChordCell);
-              setCurrentPattern(nextPattern);
-              setCurrentBeatIndex(0);
-              
-              // Reset the isPlaying state briefly to allow new input
-              setIsPlaying(false);
-              
-              // Start the new pattern after a brief pause
-              setTimeout(() => {
-                playPattern(nextPattern);
-              }, 50);
-            } else {
-              // Otherwise finish playing
-              setIsPlaying(false);
-              setCurrentBeatIndex(-1);
-              setCurrentChordCell(null);
-              // Reset nextChordCell to ensure it doesn't get stuck
-              setNextChordCell(null);
-            }
-            return;
-          }
-          
-          // Otherwise play the next beat in the current pattern
-          setCurrentBeatIndex(currentBeat);
-          playChord(pattern[currentBeat], beatDuration);
-          
-          // Schedule the next beat
-          beatTimerRef.current = setTimeout(progressPattern, beatDuration);
-        };
-        
-        // Schedule the next beat
-        beatTimerRef.current = setTimeout(progressPattern, beatDuration);
-      };
+        return;
+      }
+      
+      // Otherwise play the next beat in the current pattern
+      setCurrentBeatIndex(currentBeat);
+      playChord(
+        pattern[currentBeat], 
+        beatDurations[currentBeat % beatDurations.length],
+        velocities[currentBeat % velocities.length]
+      );
+      
+      // Schedule the next beat with the appropriate duration
+      beatTimerRef.current = setTimeout(
+        progressPattern, 
+        beatDurations[currentBeat % beatDurations.length]
+      );
+    };
+    
+    // Schedule the next beat
+    beatTimerRef.current = setTimeout(progressPattern, beatDurations[0]);
+  };
 
   // -------------------- drawChordGrid --------------------
   function drawChordGrid(ctx: CanvasRenderingContext2D, width: number, height: number) {
@@ -523,33 +565,39 @@ export default function PlayForMePage() {
 
 
   // -------------------- playChord --------------------
-  function playChord(chordName: string, beatDurationMs: number) {
+  function playChord(chordName: string, beatDurationMs: number, velocity: number = 0.7) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx || notePlayingRef.current) return;
-
-    // prevent spamming
+  
+    // Prevent rapid triggering
     notePlayingRef.current = true;
     setTimeout(() => {
       notePlayingRef.current = false;
     }, 300);
-
+  
     if (instrument === "piano") {
       const sampleBuffer = samplesRef.current["Closed_Fist"];
       if (!sampleBuffer) return;
-
+  
       const notes = getNotesForChord(chordName);
-      setVisualizerNotes(notes.map((semi) => semitoneToNoteName(semi)));
-
+      setVisualizerNotes(notes.map(semitone => semitoneToNoteName(semitone)));
+  
       const chordLengthSec = beatDurationMs / 1000;
-      notes.forEach((semi, i) => {
+      
+      // Apply velocity variations to make it sound more natural
+      notes.forEach((semitones, i) => {
         const source = audioCtx.createBufferSource();
         source.buffer = sampleBuffer;
-        source.playbackRate.value = Math.pow(2, semi / 12);
-
+        source.playbackRate.value = Math.pow(2, semitones / 12);
+        
         const gainNode = audioCtx.createGain();
-        gainNode.gain.value = 0.5 / notes.length;
-
-        const startTime = audioCtx.currentTime + i * 0.02; // small spread
+        // Use velocity to adjust volume - more natural dynamics
+        const noteVelocity = velocity * (1 - (i * 0.05)); // Slightly quieter for higher notes
+        gainNode.gain.value = noteVelocity / notes.length;
+        
+        // Add slight delay to notes after the first for arpeggiated feel
+        const startTime = audioCtx.currentTime + (i * 0.02);
+        
         source.connect(gainNode);
         if (convolverRef.current) {
           gainNode.connect(convolverRef.current);
@@ -557,12 +605,14 @@ export default function PlayForMePage() {
         } else {
           gainNode.connect(audioCtx.destination);
         }
+        
         source.start(startTime);
         source.stop(startTime + chordLengthSec);
       });
     } else if (instrument === "guitar") {
       if (guitarRef.current) {
-        // guitarRef.current.playChord(chordName);
+        // If your ThreeGuitarVisualizer implements a playChord method:
+        // guitarRef.current.playChord(chordName, velocity);
       }
     }
   }
@@ -703,7 +753,24 @@ export default function PlayForMePage() {
                           <div className="text-xs opacity-80">{pattern.description}</div>
                         </div>
                       </Button>
+                      
                     ))}
+                    {/* Add this visualization in the Current Pattern section */}
+                    <div className="mt-2">
+                    <div className="text-xs text-purple-600 mb-1">Current Rhythm Pattern:</div>
+                    <div className="flex space-x-1">
+                        {(rhythmPatterns.find(r => r.id === selectedRhythm)?.pattern || []).map((beat, idx) => (
+                        <div 
+                            key={idx}
+                            className="flex-1 bg-purple-100 rounded" 
+                            style={{ 
+                            height: `${beat * 30}px`,
+                            backgroundColor: currentBeatIndex === idx ? 'rgb(192, 132, 252)' : 'rgb(233, 213, 255)'
+                            }}
+                        />
+                        ))}
+                    </div>
+                    </div>
                   </div>
                 </div>
 
@@ -870,6 +937,27 @@ export default function PlayForMePage() {
                     Instrument Visualization
                   </h3>
                   {/* If you have 3D piano/guitar visuals, place them here */}
+                </div>
+
+                {/* Rhythm Selection - add this after the Pattern Selection section in your UI */}
+                <div className="mb-6">
+                <h3 className="text-lg font-semibold text-purple-700 mb-3">Rhythm Pattern</h3>
+                <div className="grid grid-cols-2 gap-2">
+                    {rhythmPatterns.map((rhythm) => (
+                    <Button
+                        key={rhythm.id}
+                        className={`px-4 py-2 text-left justify-start ${
+                        selectedRhythm === rhythm.id ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-800"
+                        }`}
+                        onClick={() => setSelectedRhythm(rhythm.id)}
+                    >
+                        <div className="text-left">
+                        <div className="font-medium">{rhythm.name}</div>
+                        <div className="text-xs opacity-80">{rhythm.description}</div>
+                        </div>
+                    </Button>
+                    ))}
+                </div>
                 </div>
               </CardContent>
             </Card>
