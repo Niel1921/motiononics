@@ -37,7 +37,7 @@ const rhythmPatterns = [
     {
       id: 1,
       name: "Basic",
-      pattern: [1, 1, 1, 1], // Equal beats
+      pattern: [2, 2, 1, 1], // Equal beats
       velocities: [0.7, 0.5, 0.6, 0.5], // Simple dynamics
       description: "Simple even rhythm"
     },
@@ -734,45 +734,7 @@ const playPattern = (pattern: string[]) => {
                   </div>
                 </div>
 
-                {/* Pattern Selection */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Chord Pattern</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {chordPatterns.map((pattern) => (
-                      <Button
-                        key={pattern.id}
-                        className={`px-4 py-2 text-left justify-start ${
-                          selectedPattern === pattern.id
-                            ? "bg-purple-600 text-white"
-                            : "bg-purple-100 text-purple-800"
-                        }`}
-                        onClick={() => setSelectedPattern(pattern.id)}
-                      >
-                        <div className="text-left">
-                          <div className="font-medium">{pattern.name}</div>
-                          <div className="text-xs opacity-80">{pattern.description}</div>
-                        </div>
-                      </Button>
-                      
-                    ))}
-                    {/* Add this visualization in the Current Pattern section */}
-                    <div className="mt-2">
-                    <div className="text-xs text-purple-600 mb-1">Current Rhythm Pattern:</div>
-                    <div className="flex space-x-1">
-                        {(rhythmPatterns.find(r => r.id === selectedRhythm)?.pattern || []).map((beat, idx) => (
-                        <div 
-                            key={idx}
-                            className="flex-1 bg-purple-100 rounded" 
-                            style={{ 
-                            height: `${beat * 30}px`,
-                            backgroundColor: currentBeatIndex === idx ? 'rgb(192, 132, 252)' : 'rgb(233, 213, 255)'
-                            }}
-                        />
-                        ))}
-                    </div>
-                    </div>
-                  </div>
-                </div>
+                
 
                 {/* Key Selection */}
                 <div className="mb-6">
@@ -957,7 +919,49 @@ const playPattern = (pattern: string[]) => {
                         </div>
                     </Button>
                     ))}
+
+                    <div className="mt-2">
+                    <div className="text-xs text-purple-600 mb-1">Current Rhythm Pattern:</div>
+                    <div className="flex space-x-1">
+                        {(rhythmPatterns.find(r => r.id === selectedRhythm)?.pattern || []).map((beat, idx) => (
+                        <div 
+                            key={idx}
+                            className="flex-1 bg-purple-100 rounded" 
+                            style={{ 
+                            height: `${beat * 30}px`,
+                            backgroundColor: currentBeatIndex === idx ? 'rgb(192, 132, 252)' : 'rgb(233, 213, 255)'
+                            }}
+                        />
+                        ))}
+                    </div>
+                    </div>
                 </div>
+                </div>
+
+                {/* Pattern Selection */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Chord Pattern</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {chordPatterns.map((pattern) => (
+                      <Button
+                        key={pattern.id}
+                        className={`px-4 py-2 text-left justify-start ${
+                          selectedPattern === pattern.id
+                            ? "bg-purple-600 text-white"
+                            : "bg-purple-100 text-purple-800"
+                        }`}
+                        onClick={() => setSelectedPattern(pattern.id)}
+                      >
+                        <div className="text-left">
+                          <div className="font-medium">{pattern.name}</div>
+                          <div className="text-xs opacity-80">{pattern.description}</div>
+                        </div>
+                      </Button>
+                      
+                    ))}
+                    {/* Add this visualization in the Current Pattern section */}
+                    
+                  </div>
                 </div>
               </CardContent>
             </Card>
