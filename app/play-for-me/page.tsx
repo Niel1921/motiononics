@@ -37,7 +37,7 @@ const rhythmPatterns = [
     {
       id: 1,
       name: "Basic",
-      pattern: [2, 2, 1, 1], // Equal beats
+      pattern: [2, 2, 1, 1], // Longer beats followed by shorter beats
       velocities: [0.7, 0.5, 0.6, 0.5], // Simple dynamics
       description: "Simple even rhythm"
     },
