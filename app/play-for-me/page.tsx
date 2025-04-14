@@ -543,7 +543,7 @@ const playPattern = (pattern: string[]) => {
           ctx.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
           ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
         }
-
+        
         ctx.fillText(
           chordObj.name,
           col * cellWidth + cellWidth / 2,

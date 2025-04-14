@@ -43,25 +43,7 @@ const guitarStringMapping = [
 // Tracks which guitar strings are currently playing.
 let playingStrings: Record<number, boolean> = {};
 
-// -------------------- Conductor Overlay --------------------
-function ConductorOverlay({
-  progress,
-  expectedProgress,
-}: {
-  progress: number;
-  expectedProgress: number;
-}) {
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-white bg-black/50 p-2 rounded">
-          Conductor progress: {(progress * 100).toFixed(1)}% <br />
-          Expected progress: {(expectedProgress * 100).toFixed(1)}%
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 // -------------------- Chord Grid Visualizer --------------------
 function ChordGridVisualizer({
@@ -239,7 +221,7 @@ export default function Page() {
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
   const [instrument, setInstrument] = useState<"piano" | "guitar" | "theremin">("piano");
-  const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" | "conductor">("manual");
+  const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" >("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
   const [currentNote, setCurrentNote] = useState<number | null>(null);
@@ -247,20 +229,11 @@ export default function Page() {
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
   const [stringSpacing, setStringSpacing] = useState<number>(1);
 
-  // Conductor-related state (omitted for brevity)
-  const [conductorProgress, setConductorProgress] = useState<number>(0);
-  const [conductorStarted, setConductorStarted] = useState<boolean>(false);
-  const [countdown, setCountdown] = useState<number | string | null>(null);
-  const [conductorGameTime, setConductorGameTime] = useState<number>(0);
-  const [conductorStartTime, setConductorStartTime] = useState<number | null>(null);
-  const [expectedProgress, setExpectedProgress] = useState<number>(0);
-  const [gameScore, setGameScore] = useState<number | null>(null);
-
   // Theremin parameters (omitted for brevity)
   const [thereminFrequency, setThereminFrequency] = useState<number>(440);
   const [thereminVolume, setThereminVolume] = useState<number>(0);
   const [thereminVibrato, setThereminVibrato] = useState<number>(2);
-  const [thereminWaveform, setThereminWaveform] = useState<string>("sine");
+  const [thereminWaveform, setThereminWaveform] = useState<string>("square");
 
   // Audio-related refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -417,10 +390,6 @@ export default function Page() {
   function updateHandPos(landmarks: { x: number; y: number }[]) {
     const pos = getHandPosition(landmarks);
     setHandPos(pos);
-    if (mode === "conductor") {
-      const p = Math.max(0, Math.min(1, 1 - pos.y));
-      setConductorProgress(p);
-    }
   }
 
   // ---------------------------------------------------------------------
@@ -609,16 +578,21 @@ export default function Page() {
   useEffect(() => {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
+  
     if (instrument === "theremin") {
       if (!thereminOscillatorRef.current) {
         console.log("Creating theremin oscillator...");
         const mainOsc = audioCtx.createOscillator();
+        // Use the current waveform state:
         mainOsc.type = thereminWaveform as OscillatorType;
+  
         const filter = audioCtx.createBiquadFilter();
         filter.type = "lowpass";
         filter.frequency.value = 1200;
+  
         const mainGain = audioCtx.createGain();
         mainGain.gain.value = 0;
+  
         if (convolverRef.current) {
           mainOsc.connect(filter);
           filter.connect(mainGain);
@@ -629,23 +603,30 @@ export default function Page() {
           filter.connect(mainGain);
           mainGain.connect(audioCtx.destination);
         }
+  
         mainOsc.start();
+  
         const vibratoOsc = audioCtx.createOscillator();
         vibratoOsc.frequency.value = 5;
         const vibratoGain = audioCtx.createGain();
         vibratoGain.gain.value = thereminVibrato;
+  
         vibratoOsc.connect(vibratoGain);
         vibratoGain.connect(mainOsc.frequency);
         vibratoOsc.start();
+  
         thereminOscillatorRef.current = mainOsc;
         thereminGainRef.current = mainGain;
         thereminFilterRef.current = filter;
         thereminVibratoOscRef.current = vibratoOsc;
         thereminVibratoGainRef.current = vibratoGain;
+      } else {
+        // If the oscillator already exists, update its type based on the latest waveform value.
+        thereminOscillatorRef.current.type = thereminWaveform as OscillatorType;
       }
     } else {
+      // Tear down theremin nodes if not in theremin mode.
       if (thereminOscillatorRef.current) {
-        console.log("Stopping theremin oscillator...");
         thereminOscillatorRef.current.stop();
         thereminOscillatorRef.current = null;
       }
@@ -658,6 +639,7 @@ export default function Page() {
       thereminVibratoGainRef.current = null;
     }
   }, [instrument, thereminWaveform, thereminVibrato]);
+  
 
   // ---------------------------------------------------------------------
   // PROCESS "NONE" GESTURE => vertical swipe for guitar mode
@@ -727,23 +709,52 @@ export default function Page() {
               }
             }
             if (leftHandLandmarks && rightHandLandmarks) {
+              // Update main oscillator frequency using left hand position (existing behavior)
               const leftHandPos = getHandPosition(leftHandLandmarks);
-              const rightHandPos = getHandPosition(rightHandLandmarks);
               const minFreq = 200;
               const maxFreq = 600;
               const frequency = minFreq + leftHandPos.x * (maxFreq - minFreq);
-              const volume = 1 - rightHandPos.y;
-              if (thereminOscillatorRef.current && audioContextRef.current) {
-                const now = audioContextRef.current.currentTime;
+            
+              // Update volume using right hand overall y-position with a dead zone and reduced max gain.
+              const rightHandPos = getHandPosition(rightHandLandmarks);
+              const rawVolume = 1 - rightHandPos.y;
+              const deadZone = 0.3;    // Below this raw volume, output is 0.
+              const maxGain = 0.5;     // Maximum gain (not 1).
+              let volume = 0;
+              if (rawVolume > deadZone) {
+                volume = ((rawVolume - deadZone) / (1 - deadZone)) * maxGain;
+              }
+            
+              const now = audioContextRef.current!.currentTime;
+              if (thereminOscillatorRef.current) {
                 thereminOscillatorRef.current.frequency.setTargetAtTime(frequency, now, 0.05);
               }
-              if (thereminGainRef.current && audioContextRef.current) {
-                const now = audioContextRef.current.currentTime;
+              if (thereminGainRef.current) {
                 thereminGainRef.current.gain.setTargetAtTime(volume, now, 0.05);
               }
+            
               setThereminFrequency(frequency);
               setThereminVolume(volume);
+            
+              const thumbTip = rightHandLandmarks[4];
+              const indexTip = rightHandLandmarks[8];
+              const dx = thumbTip.x - indexTip.x;
+              const dy = thumbTip.y - indexTip.y;
+              const pinchDistance = Math.sqrt(dx * dx + dy * dy);
+            
+              const minPinch = 0.02; 
+              const maxPinch = 0.2;   
+            
+              // Map the pinchDistance to a 0–10 Hz range for the vibrato oscillator's rate
+              let lfoRate = ((pinchDistance - minPinch) / (maxPinch - minPinch)) * 5;
+              lfoRate = Math.max(0, Math.min(5, lfoRate)); // Clamp the value between 0 and 10 Hz
+            
+              // Update the vibrato oscillator's frequency smoothly
+              if (thereminVibratoOscRef.current) {
+                thereminVibratoOscRef.current.frequency.setTargetAtTime(lfoRate, now, 0.05);
+              }
             }
+            
           }
 
           // ------------------ Other Instrument Modes ------------------
@@ -801,16 +812,20 @@ export default function Page() {
     currentChordCell !== null ? getChordsForKey(selectedKey)[currentChordCell]?.name : null;
 
   // ---------------------------------------------------------------------
-  // Visualizer Component (rendering remains unchanged)
+  // Visualizer Component 
   // ---------------------------------------------------------------------
   const visualizerComponent =
-    instrument === "theremin" ? (
-      <ThreeThereminVisualizer
-        frequency={thereminFrequency}
-        volume={thereminVolume}
-        vibrato={thereminVibrato}
-        waveform={thereminWaveform}
-      />
+  instrument === "theremin" ? (
+    <ThreeThereminVisualizer
+      frequency={thereminFrequency}
+      volume={thereminVolume}
+      vibrato={thereminVibrato}
+      waveform={thereminWaveform}
+      onFrequencyChange={setThereminFrequency}
+      onVolumeChange={setThereminVolume}
+      onVibratoChange={setThereminVibrato}
+      onWaveformChange={setThereminWaveform}
+    />
     ) : mode === "manual" ? (
       instrument === "guitar" ? (
         <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
@@ -886,11 +901,6 @@ export default function Page() {
                 <Button
                   onClick={() => {
                     setWebcamEnabled(false);
-                    if (backingSourceRef.current) {
-                      backingSourceRef.current.stop();
-                      backingSourceRef.current = null;
-                    }
-                    setConductorStarted(false);
                   }}
                   className="absolute top-4 left-4 px-4 py-2 text-base z-20 bg-teal-500 hover:bg-teal-600 text-white"
                 >
@@ -920,27 +930,11 @@ export default function Page() {
                   })}
                 </div>
               )}
-              {(mode === "autoChord" || mode === "arpeggiator" || mode === "conductor") && visualizerComponent}
-              {mode === "conductor" && (
-                <ConductorOverlay progress={conductorProgress} expectedProgress={expectedProgress} />
-              )}
-              {mode === "conductor" && !conductorStarted && (
-                <div className="absolute top-0 left-0 w-[640px] h-[480px] flex flex-col items-center justify-center bg-black/50 text-white text-4xl z-50">
-                  {countdown !== null ? <div>{countdown}</div> : <Button className="px-6 py-3 text-2xl bg-teal-500 hover:bg-teal-600 text-white">Start Conductor Game</Button>}
-                </div>
-              )}
-              {mode === "conductor" && conductorStarted && (
-                <div className="absolute bottom-0 left-0 w-[640px] h-5 bg-gray-300 z-50">
-                  <div className="h-full bg-green-500" style={{ width: `${(conductorGameTime / 30) * 100}%` }} />
-                </div>
-              )}
-              {mode === "conductor" && gameScore !== null && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-4 text-3xl z-50">
-                  Your average timing error: {(gameScore * 100).toFixed(2)}%
-                </div>
-              )}
+              {(mode === "autoChord" || mode === "arpeggiator" ) && visualizerComponent}
+
+              {instrument === "theremin" && mode === "manual" && visualizerComponent}
             </div>
-            {mode === "manual" && (
+            {mode === "manual" && instrument !== "theremin" && (
               <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
                 {visualizerComponent}
               </div>
@@ -1017,7 +1011,6 @@ export default function Page() {
                       <option value="manual">Manual</option>
                       <option value="autoChord">Auto Chord</option>
                       <option value="arpeggiator">Arpeggiator</option>
-                      <option value="conductor">Conductor</option>
                     </select>
                   </label>
                   {mode === "arpeggiator" && (
