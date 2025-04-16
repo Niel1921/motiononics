@@ -24,47 +24,201 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-// -------------------- Chord Pattern Definitions --------------------
-const chordPatterns = [
-  { id: 1, name: "Basic Progression", description: "A simple 4-chord progression (I-IV-V-I)", patternBeats: 4 },
-  { id: 2, name: "Pop Ballad", description: "A classic pop chord sequence (I-V-vi-IV)", patternBeats: 4 },
-  { id: 3, name: "Jazz Progression", description: "A ii-V-I jazz pattern with extensions", patternBeats: 4 },
-  { id: 4, name: "Blues Pattern", description: "A 12-bar blues inspired pattern", patternBeats: 4 },
-];
+// ------------------------------------------------------------------
+// 1) 8-Chord Patterns by Genre (in roman numerals).
+//    We do NOT create separate minor versions. Instead, we'll do
+//    a fallback to uppercase/lowercase at runtime if needed.
+// ------------------------------------------------------------------
+const chordPatternsByGenre = {
+  pop: [
+    {
+      id: "pop1",
+      name: "Pop 8: I–V–vi–IV (x2)",
+      description: "8-step cycle: I, V, vi, IV repeated twice.",
+      romanArray: ["I", "V", "vi", "IV", "I", "V", "vi", "IV"],
+    },
+    {
+      id: "pop2",
+      name: "Pop Ballad Extended",
+      description: "I–iii–vi–IV–ii–V–I–I, 8 total beats.",
+      romanArray: ["I", "iii", "vi", "IV", "ii", "V", "I", "I"],
+    },
+  ],
+  rock: [
+    {
+      id: "rock1",
+      name: "Rock 8: I–bVII–IV–I (x2)",
+      description: "Driving rock, repeated twice for 8 beats.",
+      romanArray: ["I", "bVII", "IV", "I", "I", "bVII", "IV", "I"],
+    },
+    {
+      id: "rock2",
+      name: "Pop Punk 8",
+      description: "I–V–vi–IV repeated for 8 beats.",
+      romanArray: ["I", "V", "vi", "IV", "I", "V", "vi", "IV"],
+    },
+  ],
+  funk: [
+    {
+      id: "funk1",
+      name: "Funk Vamp (8 beats)",
+      description: "I7–IV7–I7–V7–I7–IV7–V7–I7",
+      romanArray: ["I7", "IV7", "I7", "V7", "I7", "IV7", "V7", "I7"],
+    },
+    {
+      id: "funk2",
+      name: "Funk II-V vamp",
+      description: "ii7–V7 repeated, then I7, for 8 beats",
+      romanArray: ["ii7", "V7", "ii7", "V7", "ii7", "V7", "I7", "I7"],
+    },
+  ],
+  jazz: [
+    {
+      id: "jazz1",
+      name: "Jazz ii–V–I Extended",
+      description: "ii–V–I–vi–ii–V–I–I (8 steps)",
+      romanArray: ["ii", "V", "I", "vi", "ii", "V", "I", "I"],
+    },
+    {
+      id: "jazz2",
+      name: "Rhythm Changes Lite",
+      description: "I–VI–ii–V repeated for 8 steps (2 cycles).",
+      romanArray: ["I", "VI", "ii", "V", "I", "VI", "ii", "V"],
+    },
+  ],
+};
 
-// Add this near the top with your other constants
-const rhythmPatterns = [
+// ------------------------------------------------------------------
+// 2) 8-Step Rhythms by Genre
+// ------------------------------------------------------------------
+const rhythmPatternsByGenre = {
+  pop: [
     {
-      id: 1,
-      name: "Basic",
-      pattern: [2, 2, 1, 1], // Longer beats followed by shorter beats
-      velocities: [0.7, 0.5, 0.6, 0.5], // Simple dynamics
-      description: "Simple even rhythm"
+      id: "pop-basic",
+      name: "Pop Straight Eighths",
+      description: "Simple 8-beat pop pattern, mild accent on 1 & 5.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.8, 0.4, 0.5, 0.4, 0.8, 0.4, 0.5, 0.6],
     },
     {
-      id: 2,
-      name: "Waltz",
-      pattern: [1.2, 0.4, 0.4, 1], // ONE-two-three-four
-      velocities: [0.8, 0.4, 0.5, 0.6], 
-      description: "Emphasized first beat"
+      id: "pop-sync",
+      name: "Pop Syncopation",
+      description: "Accents on off-beats, 8 steps.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.6,0.8,0.5,0.7,0.6,0.8,0.5,0.9],
+    },
+  ],
+  rock: [
+    {
+      id: "rock-straight",
+      name: "Rock Driving",
+      description: "Strong accent on 1 & 5, 8 steps.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.9,0.4,0.8,0.4,0.9,0.4,0.8,0.6],
     },
     {
-      id: 3,
-      name: "Backbeat", 
-      pattern: [0.8, 1.2, 0.8, 1.2], // Emphasis on beats 2 and 4
-      velocities: [0.6, 0.8, 0.5, 0.7],
-      description: "Emphasis on off-beats"
+      id: "rock-half",
+      name: "Rock Half-Time",
+      description: "Heavier accent on second half, 8 steps.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.7,0.3,0.7,0.3,0.9,0.3,0.7,0.6],
+    },
+  ],
+  funk: [
+    {
+      id: "funk1",
+      name: "Funk Off-Beat",
+      description: "Syncopated off-beats, 8 steps.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.4,0.8,0.3,0.9,0.4,0.8,0.3,1.0],
     },
     {
-      id: 4,
-      name: "Syncopated",
-      pattern: [0.7, 1, 0.5, 0.8], // Complex rhythm
-      velocities: [0.6, 0.9, 0.5, 0.8],
-      description: "Complex rhythm pattern"
-    }
-  ];
+      id: "funk2",
+      name: "Funky Shuffle",
+      description: "Shuffle feel, 8 steps.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.7,0.5,0.7,0.8,0.6,0.8,0.7,0.9],
+    },
+  ],
+  jazz: [
+    {
+      id: "jazz-swing1",
+      name: "Light Swing 8",
+      description: "Gentle swing pattern for 8 beats.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.7,0.9,0.5,0.8,0.7,0.9,0.5,0.8],
+    },
+    {
+      id: "jazz-swing2",
+      name: "Accent on 2 & 4",
+      description: "Jazz backbeat accent on 2 & 4, total 8 steps.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.4,0.8,0.4,0.9,0.4,0.8,0.4,0.9],
+    },
+  ],
+};
 
-// -------------------- getChordsForKey --------------------
+// ------------------------------------------------------------------
+// 3) Mapping from roman numerals => offset in the 9-chord array
+//    We'll do a simple approach so "I" => +0, "V" => +4, "vi" => +5, etc.
+//    If we can't find a direct match, we'll do a fallback to upper/lowercase
+//    so that minor keys can still interpret uppercase symbols, or vice versa.
+// ------------------------------------------------------------------
+const romanToOffsetMajor: Record<string, number> = {
+  "I": 0, "ii": 1, "iii": 2, "IV": 3, "V": 4, "vi": 5, "vii°": 6,
+  "I7": 0, "IV7": 3, "V7": 4,
+  "ii7": 1, "vi7": 5,
+  "bVII": 6,
+};
+
+const romanToOffsetMinor: Record<string, number> = {
+  "i": 0, "ii°": 1, "III": 2, "iv": 3, "v": 4, "VI": 5, "VII": 6,
+  "i7": 0, "iv7": 3, "v7": 4,
+  "ii7": 1, "III7": 2, "VI7": 5, "VII7": 6,
+  "bVII": 6,
+};
+
+// A small helper that tries the direct lookup, and if undefined,
+// tries flipping uppercase/lowercase. e.g. "I" => "i", or "i" => "I".
+function getOffsetFromMap(symbol: string, isMajor: boolean) {
+  const offsetMap = isMajor ? romanToOffsetMajor : romanToOffsetMinor;
+  let val = offsetMap[symbol];
+
+  if (val === undefined) {
+    // fallback attempt:
+    const alt = isMajor ? symbol.toLowerCase() : symbol.toUpperCase();
+    val = offsetMap[alt];
+  }
+  return val !== undefined ? val : 0;
+}
+
+// ------------------------------------------------------------------
+// 4) Utility that "spells" 8 roman numerals into actual chord names
+//    based on whichever cell chord was chosen as "I," with fallback
+//    logic for uppercase vs. lowercase mismatches in minor keys.
+// ------------------------------------------------------------------
+function buildEightChordsFromCell(
+  cellIndex: number,
+  keyName: string,
+  romanPattern: string[]
+): string[] {
+  const chordsInKey = getChordsForKey(keyName);
+  if (!chordsInKey || chordsInKey.length < 9) return [];
+
+  const rootChordObj = chordsInKey[cellIndex];
+  if (!rootChordObj) return [];
+
+  const rootIndex = cellIndex;
+  const isMajor = keyName.includes("Major");
+
+  return romanPattern.map((symbol) => {
+    const offset = getOffsetFromMap(symbol, isMajor);
+    const targetIndex = (rootIndex + offset) % 9;
+    return chordsInKey[targetIndex]?.name || rootChordObj.name;
+  });
+}
+
+// getChordsForKey => returns 9 chord objects for the key
 function getChordsForKey(keyName: string) {
   if (!keySignatures[keyName] && keyName !== "None") return [];
   let chords: string[] = [];
@@ -85,7 +239,8 @@ function getChordsForKey(keyName: string) {
       sig.notes[4] + "maj",
     ];
     roman = ["I", "ii", "iii", "IV", "V", "vi", "vii°", "I", "V"];
-  } else if (keyName.includes("Minor")) {
+  } else {
+    // minor
     const sig = keySignatures[keyName];
     chords = [
       sig.notes[0] + "min",
@@ -103,54 +258,68 @@ function getChordsForKey(keyName: string) {
   return chords.map((c, i) => ({ name: c, roman: roman[i] }));
 }
 
-// -------------------- getChordPatternForCell --------------------
-function getChordPatternForCell(cellIndex: number, selectedKey: string, patternId: number) {
-  const chords = getChordsForKey(selectedKey);
-  const rootChord = chords[cellIndex]?.name || "";
-  if (!rootChord) return [];
-
-  const rootIndex = chords.findIndex((ch) => ch.name === rootChord);
-  if (rootIndex === -1) return [];
-
-  switch (patternId) {
-    case 1: // Basic
-      return [
-        rootChord,
-        chords[(rootIndex + 3) % chords.length]?.name || rootChord,
-        chords[(rootIndex + 4) % chords.length]?.name || rootChord,
-        rootChord
-      ];
-    case 2: // Pop Ballad
-      return [
-        rootChord,
-        chords[(rootIndex + 4) % chords.length]?.name || rootChord,
-        chords[(rootIndex + 5) % chords.length]?.name || rootChord,
-        chords[(rootIndex + 3) % chords.length]?.name || rootChord
-      ];
-    case 3: // Jazz
-      return [
-        chords[(rootIndex + 1) % chords.length]?.name || rootChord,
-        chords[(rootIndex + 4) % chords.length]?.name || rootChord,
-        rootChord,
-        rootChord
-      ];
-    case 4: // Blues
-      return [
-        rootChord,
-        rootChord,
-        chords[(rootIndex + 3) % chords.length]?.name || rootChord,
-        chords[(rootIndex + 4) % chords.length]?.name || rootChord
-      ];
-    default:
-      return [rootChord, rootChord, rootChord, rootChord];
+// getNotesForChord & semitoneToNoteName => unchanged
+function getNotesForChord(chordName: string): number[] {
+  const root = chordName.charAt(0);
+  let accidental = "";
+  let i = 1;
+  if (i < chordName.length && (chordName.charAt(i) === "#" || chordName.charAt(i) === "b")) {
+    accidental = chordName.charAt(i);
+    i++;
   }
+
+  const rootWithAcc = root + accidental;
+  const isMinor = chordName.substring(i).startsWith("min");
+  const isDiminished = chordName.substring(i).startsWith("dim");
+
+  const rootOffsets: Record<string, number> = {
+    "C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3,
+    "E": 4, "F": 5, "F#": 6, "Gb": 6, "G": 7, "G#": 8,
+    "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11,
+  };
+  const rootOffset = rootOffsets[rootWithAcc] ?? 0;
+  const intervals: number[] = [0];
+
+  if (isDiminished) {
+    intervals.push(3); // minor third
+    intervals.push(6); // diminished fifth
+  } else if (isMinor) {
+    intervals.push(3); // minor third
+    intervals.push(7); // perfect fifth
+  } else {
+    intervals.push(4); // major third
+    intervals.push(7); // perfect fifth
+  }
+  return intervals.map((n) => n + rootOffset);
 }
 
-// -------------------- Main --------------------
+function semitoneToNoteName(semitone: number): string {
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const octave = Math.floor(semitone / 12) + 4;
+  const noteName = noteNames[semitone % 12];
+  return `${noteName}${octave}`;
+}
+
+// -------------------- Main Page --------------------
 export default function PlayForMePage() {
+  // Basic state
   const [selectedKey, setSelectedKey] = useState("C Major");
-  const [selectedPattern, setSelectedPattern] = useState(1);
-  const [selectedRhythm, setSelectedRhythm] = useState<number>(1);
+
+  const [selectedChordGenre, setSelectedChordGenre] = useState<keyof typeof chordPatternsByGenre>("pop");
+  const [selectedChordPatternId, setSelectedChordPatternId] = useState<string>("pop1");
+
+  const [selectedRhythmGenre, setSelectedRhythmGenre] = useState<keyof typeof rhythmPatternsByGenre>("pop");
+  const [selectedRhythmPatternId, setSelectedRhythmPatternId] = useState<string>("pop-basic");
+
+  const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
+  const [bpm, setBpm] = useState(90);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
+  const [nextChordCell, setNextChordCell] = useState<number | null>(null);
+  const [currentChords, setCurrentChords] = useState<string[]>([]);
+  const [currentBeatIndex, setCurrentBeatIndex] = useState(0);
+  const [visualizerNotes, setVisualizerNotes] = useState<string[]>([]);
 
   // MediaPipe
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
@@ -159,16 +328,6 @@ export default function PlayForMePage() {
   const [recognizedGesture, setRecognizedGesture] = useState("");
   const [handPosition, setHandPosition] = useState<{ x: number; y: number } | null>(null);
   const [handVisible, setHandVisible] = useState(false);
-
-  // Performance
-  const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
-  const [bpm, setBpm] = useState(90);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
-  const [nextChordCell, setNextChordCell] = useState<number | null>(null);
-  const [currentPattern, setCurrentPattern] = useState<string[]>([]);
-  const [currentBeatIndex, setCurrentBeatIndex] = useState(0);
-  const [visualizerNotes, setVisualizerNotes] = useState<string[]>([]);
 
   // Audio
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -186,26 +345,35 @@ export default function PlayForMePage() {
   const initAudio = useCallback(async () => {
     try {
       if (!audioContextRef.current || audioContextRef.current.state === "closed") {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext ||
+          (window as any).webkitAudioContext)();
       }
       const audioCtx = audioContextRef.current;
       const samples: Record<string, AudioBuffer> = {};
 
-      // Load piano sample
+      // In initAudio():
       try {
-        const response = await fetch("/samples/fist.wav");
-        if (!response.ok) {
-          console.error(`Failed to fetch sample: ${response.statusText}`);
-        } else {
-          const arrayBuffer = await response.arrayBuffer();
-          samples["Closed_Fist"] = await audioCtx.decodeAudioData(arrayBuffer);
+        // Already loading the piano sample
+        const pianoResponse = await fetch("/samples/fist.wav");
+        if (pianoResponse.ok) {
+          const arrayBuffer = await pianoResponse.arrayBuffer();
+          samples["Closed_Fist_Piano"] = await audioCtx.decodeAudioData(arrayBuffer);
         }
+
+        // Load a second sample for guitar:
+        const guitarResponse = await fetch("/samples/guitarnew.wav");
+        if (guitarResponse.ok) {
+          const guitarArrayBuffer = await guitarResponse.arrayBuffer();
+          samples["Closed_Fist_Guitar"] = await audioCtx.decodeAudioData(guitarArrayBuffer);
+        }
+
+        samplesRef.current = samples;
       } catch (error) {
         console.error("Error loading sample:", error);
       }
-      samplesRef.current = samples;
 
-      // Load impulse response
+
+      // Optional IR
       try {
         const irResponse = await fetch("/samples/impulse.wav");
         if (irResponse.ok) {
@@ -231,7 +399,8 @@ export default function PlayForMePage() {
       );
       const recognizer = await GestureRecognizer.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/gesture_recognizer.task",
         },
         numHands: 1,
         runningMode: "VIDEO",
@@ -244,7 +413,7 @@ export default function PlayForMePage() {
     }
   }, []);
 
-  // -------------------- On mount --------------------
+  // -------------------- useEffect --------------------
   useEffect(() => {
     initGestureRecognizer();
     initAudio();
@@ -257,16 +426,14 @@ export default function PlayForMePage() {
     };
   }, [initGestureRecognizer, initAudio]);
 
-  // -------------------- Webcam setup --------------------
+  // -------------------- Webcam Setup --------------------
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!webcamEnabled || !videoEl) return;
 
     let stream: MediaStream | null = null;
     navigator.mediaDevices
-      .getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-      })
+      .getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } })
       .then((s) => {
         stream = s;
         videoEl.srcObject = s;
@@ -282,230 +449,249 @@ export default function PlayForMePage() {
   }, [webcamEnabled]);
 
   // -------------------- Gesture logic each frame --------------------
-    // -------------------- Gesture logic each frame --------------------
-    useEffect(() => {
-        if (!gestureRecognizer || !webcamEnabled) return;
-    
-        const videoEl = videoRef.current;
-        const canvasEl = canvasRef.current;
-        if (!videoEl || !canvasEl) return;
-    
-        const ctx = canvasEl.getContext("2d");
-        if (!ctx) return;
-    
-        let animationFrameId: number;
-    
-        async function processFrame() {
-          if (videoEl! && ctx! && canvasEl! && videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
+  useEffect(() => {
+    if (!gestureRecognizer || !webcamEnabled) return;
+
+    const videoEl = videoRef.current;
+    const canvasEl = canvasRef.current;
+    if (!videoEl || !canvasEl) return;
+
+    const ctx = canvasEl.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+
+    async function processFrame() {
+      if (videoEl && ctx && canvasEl && videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA) {
+        ctx.save();
+        ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+        ctx.translate(canvasEl.width, 0);
+        ctx.scale(-1, 1);
+
+        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+
+        const timestamp = performance.now();
+        try {
+          const results = await gestureRecognizer!.recognizeForVideo(videoEl, timestamp);
+
+          const isHand = results?.landmarks && results.landmarks.length > 0;
+          setHandVisible(isHand);
+
+          if (results?.gestures && results.gestures.length > 0) {
+            const [firstHandGestures] = results.gestures;
+            if (firstHandGestures && firstHandGestures.length > 0) {
+              const topGesture = firstHandGestures[0];
+              setRecognizedGesture(topGesture.categoryName);
+
+              if (results.landmarks && results.landmarks.length > 0) {
+                const landmarks = results.landmarks[0];
+                const avgX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
+                const avgY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
+                const position = { x: avgX, y: avgY };
+                setHandPosition(position);
+
+                const cellX = Math.floor(position.x * 3);
+                const cellY = Math.floor(position.y * 3);
+                const cellIndex = cellY * 3 + cellX;
+
+                // update next cell
+                setNextChordCell(cellIndex);
+
+                if (topGesture.categoryName === "Closed_Fist" && !isPlaying && !notePlayingRef.current) {
+                  startPlayingFromCell(cellIndex);
+                }
+              }
+            }
+          } else {
+            setRecognizedGesture("");
+            setHandPosition(null);
+          }
+
+          // Draw hand landmarks
+          if (results?.landmarks) {
             ctx.save();
-            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-            ctx.translate(canvasEl.width, 0);
-            ctx.scale(-1, 1);
-    
-            ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-    
-            const timestamp = performance.now();
-            try {
-              const results = await gestureRecognizer!.recognizeForVideo(videoEl, timestamp);
-    
-              const isHand = results?.landmarks && results.landmarks.length > 0;
-              setHandVisible(isHand);
-    
-              if (results?.gestures && results.gestures.length > 0) {
-                const [firstHandGestures] = results.gestures;
-                if (firstHandGestures && firstHandGestures.length > 0) {
-                  const topGesture = firstHandGestures[0];
-                  setRecognizedGesture(topGesture.categoryName);
-    
-                  if (results.landmarks && results.landmarks.length > 0) {
-                    const landmarks = results.landmarks[0];
-                    const avgX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
-                    const avgY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
-                    const position = { x: avgX, y: avgY };
-                    setHandPosition(position);
-    
-                    const cellX = Math.floor(position.x * 3);
-                    const cellY = Math.floor(position.y * 3);
-                    const cellIndex = cellY * 3 + cellX;
-    
-                    // Always update the next chord cell with the current hand position
-                    setNextChordCell(cellIndex);
-    
-                    // If the Closed_Fist gesture is made and we're not playing,
-                    // start playing the pattern from this cell
-                    if (topGesture.categoryName === "Closed_Fist" && !isPlaying && !notePlayingRef.current) {
-                      startPlayingPatternFromCell(cellIndex);
-                    }
+            const currentColor = "#8b5cf6"; 
+            results.landmarks.forEach((lmArr) => {
+              ctx.strokeStyle = currentColor;
+              ctx.lineWidth = 3;
+              const connections = [
+                [0, 1, 2, 3, 4], // thumb
+                [0, 5, 6, 7, 8], // index
+                [9, 10, 11, 12], // middle
+                [13, 14, 15, 16], // ring
+                [17, 18, 19, 20], // pinky
+                [0, 5, 9, 13, 17], // palm
+              ];
+
+              connections.forEach((conn) => {
+                ctx.beginPath();
+                for (let i = 0; i < conn.length; i++) {
+                  const lm = lmArr[conn[i]];
+                  if (i === 0) {
+                    ctx.moveTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
+                  } else {
+                    ctx.lineTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
                   }
                 }
-              } else {
-                setRecognizedGesture("");
-                setHandPosition(null);
-              }
-    
-              // Draw hand landmarks
-              if (results?.landmarks) {
-                ctx.save();
-                const currentColor = "#8b5cf6"; // Purple
-                results.landmarks.forEach((lmArr) => {
-                  ctx.strokeStyle = currentColor;
-                  ctx.lineWidth = 3;
-                  const connections = [
-                    [0, 1, 2, 3, 4], // thumb
-                    [0, 5, 6, 7, 8], // index
-                    [9, 10, 11, 12], // middle
-                    [13, 14, 15, 16], // ring
-                    [17, 18, 19, 20], // pinky
-                    [0, 5, 9, 13, 17] // palm
-                  ];
-                  
-                  connections.forEach(conn => {
-                    ctx.beginPath();
-                    for (let i = 0; i < conn.length; i++) {
-                      const lm = lmArr[conn[i]];
-                      if (i === 0) {
-                        ctx.moveTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
-                      } else {
-                        ctx.lineTo(lm.x * canvasEl.width, lm.y * canvasEl.height);
-                      }
-                    }
-                    ctx.stroke();
-                  });
-                  
-                  // Draw landmarks
-                  lmArr.forEach((lm) => {
-                    ctx.beginPath();
-                    ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 6, 0, 2 * Math.PI);
-                    ctx.fillStyle = currentColor;
-                    ctx.fill();
-                    ctx.strokeStyle = "white";
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                  });
-                });
-                
-                ctx.restore();
-              }
-            } catch (err) {
-              console.error("Error processing frame:", err);
-            }
-            
+                ctx.stroke();
+              });
+
+              // Circles on each landmark
+              lmArr.forEach((lm) => {
+                ctx.beginPath();
+                ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = currentColor;
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+              });
+            });
             ctx.restore();
-            
-            // Draw chord grid overlay
-            drawChordGrid(ctx, canvasEl.width, canvasEl.height);
           }
-          
-          animationFrameId = requestAnimationFrame(processFrame);
+        } catch (err) {
+          console.error("Error processing frame:", err);
         }
-        
-        processFrame();
-        return () => cancelAnimationFrame(animationFrameId);
-      }, [gestureRecognizer, webcamEnabled, isPlaying, selectedKey]);
-      
-      // Start playing a pattern from a specific cell
-      const startPlayingPatternFromCell = (cellIndex: number) => {
-        if (isPlaying || notePlayingRef.current) return;
-        
-        // Set the current chord cell and start playing
-        setCurrentChordCell(cellIndex);
-        setIsPlaying(true);
-        
-        // Generate the chord pattern based on the selected pattern id
-        const pattern = getChordPatternForCell(cellIndex, selectedKey, selectedPattern);
-        setCurrentPattern(pattern);
-        
-        // Start at the first beat
-        setCurrentBeatIndex(0);
-        
-        // Start the pattern playback
-        playPattern(pattern);
-      };
-      
-      // Play through the entire pattern
-const playPattern = (pattern: string[]) => {
-    if (!pattern || pattern.length === 0) {
+
+        ctx.restore();
+
+        // chord grid
+        drawChordGrid(ctx, canvasEl.width, canvasEl.height);
+      }
+
+      animationFrameId = requestAnimationFrame(processFrame);
+    }
+
+    processFrame();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [gestureRecognizer, webcamEnabled, isPlaying, selectedKey]);
+
+  // -------------------- startPlayingFromCell --------------------
+  function startPlayingFromCell(cellIndex: number) {
+    if (isPlaying || notePlayingRef.current) return;
+
+    setCurrentChordCell(cellIndex);
+    setIsPlaying(true);
+
+    // chord pattern
+    const patternList = chordPatternsByGenre[selectedChordGenre];
+    const chosenChordPattern = patternList.find((p) => p.id === selectedChordPatternId) || patternList[0];
+
+    // build 8 spelled chords
+    const spelledChords = buildEightChordsFromCell(cellIndex, selectedKey, chosenChordPattern.romanArray);
+    setCurrentChords(spelledChords);
+    setCurrentBeatIndex(0);
+
+    playPattern(spelledChords);
+  }
+
+  // -------------------- playPattern --------------------
+  function playPattern(chords: string[]) {
+    if (!chords || chords.length === 0) {
       setIsPlaying(false);
       return;
     }
-    
-    // Get the rhythm pattern details
-    const rhythmPattern = rhythmPatterns.find(r => r.id === selectedRhythm) || rhythmPatterns[0];
-    const beatDurations = rhythmPattern.pattern.map(p => (60 / bpm * 1000) * p); // Adjust beat durations
-    const velocities = rhythmPattern.velocities;
-    
-    // Play the first chord immediately
-    playChord(pattern[0], beatDurations[0], velocities[0]);
+    // chosen rhythm
+    const rList = rhythmPatternsByGenre[selectedRhythmGenre];
+    const chosenRhythm = rList.find((r) => r.id === selectedRhythmPatternId) || rList[0];
+
+    const beatDurations = chosenRhythm.pattern.map((p) => (60 / bpm) * 1000 * p);
+    const velocities = chosenRhythm.velocities;
+
+    // immediate chord
+    playChord(chords[0], beatDurations[0], velocities[0]);
     setCurrentBeatIndex(0);
-    
-    // Set up the beat counter and chord progression
+
     let currentBeat = 0;
-    
-    // Clear any existing timers to prevent overlaps
+
     if (beatTimerRef.current) {
       clearTimeout(beatTimerRef.current);
       beatTimerRef.current = null;
     }
-    
-    const progressPattern = () => {
+
+    const doNext = () => {
       currentBeat++;
-      
-      // If we've played all beats, end or repeat based on next position
-      if (currentBeat >= pattern.length) {
-        // If there's a next chord cell queued up, play that next
-        if (nextChordCell !== null && nextChordCell !== currentChordCell) {
-          const nextPattern = getChordPatternForCell(nextChordCell, selectedKey, selectedPattern);
-          
-          // Important: Set current cell to the next cell
-          setCurrentChordCell(nextChordCell);
-          setCurrentPattern(nextPattern);
-          setCurrentBeatIndex(0);
-          
-          // Reset the isPlaying state briefly to allow new input
-          setIsPlaying(false);
-          
-          // Start the new pattern after a brief pause
-          setTimeout(() => {
-            playPattern(nextPattern);
-          }, 50);
-        } else {
-          // Otherwise finish playing
-          setIsPlaying(false);
-          setCurrentBeatIndex(-1);
-          setCurrentChordCell(null);
-          // Reset nextChordCell to ensure it doesn't get stuck
-          setNextChordCell(null);
-        }
+      if (currentBeat >= 8) {
+        setIsPlaying(false);
+        setCurrentChordCell(null);
+        setNextChordCell(null);
+        setCurrentBeatIndex(-1);
         return;
       }
-      
-      // Otherwise play the next beat in the current pattern
       setCurrentBeatIndex(currentBeat);
-      playChord(
-        pattern[currentBeat], 
-        beatDurations[currentBeat % beatDurations.length],
-        velocities[currentBeat % velocities.length]
-      );
-      
-      // Schedule the next beat with the appropriate duration
-      beatTimerRef.current = setTimeout(
-        progressPattern, 
-        beatDurations[currentBeat % beatDurations.length]
-      );
+
+      const chordToPlay = chords[currentBeat];
+      const thisDur = beatDurations[currentBeat];
+      const thisVel = velocities[currentBeat];
+      playChord(chordToPlay, thisDur, thisVel);
+
+      beatTimerRef.current = setTimeout(doNext, thisDur);
     };
+
+    beatTimerRef.current = setTimeout(doNext, beatDurations[0]);
+  }
+
+  // -------------------- playChord --------------------
+  function playChord(chordName: string, beatDurationMs: number, velocity: number = 0.7) {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx || notePlayingRef.current) return;
+
+    // guard
+    notePlayingRef.current = true;
+    setTimeout(() => {
+      notePlayingRef.current = false;
+    }, 300);
+
+    const sampleBuffer = (instrument === "guitar")
+    ? samplesRef.current["Closed_Fist_Guitar"]
+    : samplesRef.current["Closed_Fist_Piano"];    
     
-    // Schedule the next beat
-    beatTimerRef.current = setTimeout(progressPattern, beatDurations[0]);
-  };
+    if (!sampleBuffer) return;
+
+    let notes = getNotesForChord(chordName);
+
+    if (instrument === "guitar") {
+      notes = notes.map((n) => n - 12);
+    }
+
+    setVisualizerNotes(notes.map(semitoneToNoteName));
+
+    const chordLengthSec = beatDurationMs / 1000;
+
+    notes.forEach((semi, i) => {
+      const source = audioCtx.createBufferSource();
+      source.buffer = sampleBuffer;
+      source.playbackRate.value = Math.pow(2, semi / 12);
+
+      const gainNode = audioCtx.createGain();
+      const noteVelocity = velocity * (1 - i*0.05);
+      gainNode.gain.value = noteVelocity / notes.length;
+
+      let startTime = audioCtx.currentTime + i*0.02;
+      if (instrument === "guitar") {
+        startTime = audioCtx.currentTime + (i * 0.03);
+      }
+
+      source.connect(gainNode);
+      if (convolverRef.current) {
+        gainNode.connect(convolverRef.current);
+        convolverRef.current.connect(audioCtx.destination);
+      } else {
+        gainNode.connect(audioCtx.destination);
+      }
+      source.start(startTime);
+      source.stop(startTime + chordLengthSec);
+    });
+  }
 
   // -------------------- drawChordGrid --------------------
   function drawChordGrid(ctx: CanvasRenderingContext2D, width: number, height: number) {
     const cellWidth = width / 3;
     const cellHeight = height / 3;
-    const chords = getChordsForKey(selectedKey);
+
+    const chordObjs = getChordsForKey(selectedKey);
 
     ctx.save();
-    // Grid lines
     ctx.strokeStyle = "rgba(139, 92, 246, 0.5)";
     ctx.lineWidth = 2;
     for (let i = 1; i < 3; i++) {
@@ -520,150 +706,44 @@ const playPattern = (pattern: string[]) => {
       ctx.stroke();
     }
 
-    // Chord names
     ctx.font = "bold 24px Arial";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 3; col++) {
         const index = row * 3 + col;
-        const chordObj = chords[index];
+        const chordObj = chordObjs[index];
         if (!chordObj) continue;
 
         if (currentChordCell === index) {
-          // highlight current
           ctx.fillStyle = "rgba(139, 92, 246, 0.5)";
           ctx.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
           ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
         } else if (nextChordCell === index) {
-          // highlight next
           ctx.fillStyle = "rgba(139, 92, 246, 0.2)";
           ctx.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
           ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        } else {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
         }
-        
+
         ctx.fillText(
           chordObj.name,
-          col * cellWidth + cellWidth / 2,
-          row * cellHeight + cellHeight / 2 - 12
+          col * cellWidth + cellWidth/2,
+          row * cellHeight + cellHeight/2 - 12
         );
-
         ctx.font = "16px Arial";
         ctx.fillText(
           chordObj.roman,
-          col * cellWidth + cellWidth / 2,
-          row * cellHeight + cellHeight / 2 + 12
+          col * cellWidth + cellWidth/2,
+          row * cellHeight + cellHeight/2 + 12
         );
         ctx.font = "bold 24px Arial";
       }
     }
     ctx.restore();
   }
-
-
-
-  // -------------------- playChord --------------------
-  function playChord(chordName: string, beatDurationMs: number, velocity: number = 0.7) {
-    const audioCtx = audioContextRef.current;
-    if (!audioCtx || notePlayingRef.current) return;
-  
-    // Prevent rapid triggering
-    notePlayingRef.current = true;
-    setTimeout(() => {
-      notePlayingRef.current = false;
-    }, 300);
-  
-    if (instrument === "piano") {
-      const sampleBuffer = samplesRef.current["Closed_Fist"];
-      if (!sampleBuffer) return;
-  
-      const notes = getNotesForChord(chordName);
-      setVisualizerNotes(notes.map(semitone => semitoneToNoteName(semitone)));
-  
-      const chordLengthSec = beatDurationMs / 1000;
-      
-      // Apply velocity variations to make it sound more natural
-      notes.forEach((semitones, i) => {
-        const source = audioCtx.createBufferSource();
-        source.buffer = sampleBuffer;
-        source.playbackRate.value = Math.pow(2, semitones / 12);
-        
-        const gainNode = audioCtx.createGain();
-        // Use velocity to adjust volume - more natural dynamics
-        const noteVelocity = velocity * (1 - (i * 0.05)); // Slightly quieter for higher notes
-        gainNode.gain.value = noteVelocity / notes.length;
-        
-        // Add slight delay to notes after the first for arpeggiated feel
-        const startTime = audioCtx.currentTime + (i * 0.02);
-        
-        source.connect(gainNode);
-        if (convolverRef.current) {
-          gainNode.connect(convolverRef.current);
-          convolverRef.current.connect(audioCtx.destination);
-        } else {
-          gainNode.connect(audioCtx.destination);
-        }
-        
-        source.start(startTime);
-        source.stop(startTime + chordLengthSec);
-      });
-    } else if (instrument === "guitar") {
-      if (guitarRef.current) {
-        // If your ThreeGuitarVisualizer implements a playChord method:
-        // guitarRef.current.playChord(chordName, velocity);
-      }
-    }
-  }
-
-  // -------------------- getNotesForChord --------------------
-  function getNotesForChord(chordName: string): number[] {
-    const root = chordName.charAt(0);
-    let accidental = "";
-    let i = 1;
-    if (i < chordName.length && (chordName.charAt(i) === "#" || chordName.charAt(i) === "b")) {
-      accidental = chordName.charAt(i);
-      i++;
-    }
-
-    const rootWithAcc = root + accidental;
-    const isMinor = chordName.substring(i).startsWith("min");
-    const isDiminished = chordName.substring(i).startsWith("dim");
-
-    const rootOffsets: Record<string, number> = {
-      "C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3,
-      "E": 4, "F": 5, "F#": 6, "Gb": 6, "G": 7, "G#": 8,
-      "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11,
-    };
-    const rootOffset = rootOffsets[rootWithAcc] ?? 0;
-    const intervals: number[] = [0]; // root
-
-    if (isDiminished) {
-      intervals.push(3); // minor third
-      intervals.push(6); // diminished fifth
-    } else if (isMinor) {
-      intervals.push(3); // minor third
-      intervals.push(7); // perfect fifth
-    } else {
-      intervals.push(4); // major third
-      intervals.push(7); // perfect fifth
-    }
-    return intervals.map((n) => n + rootOffset);
-  }
-
-  // -------------------- semitoneToNoteName --------------------
-  function semitoneToNoteName(semitone: number): string {
-    const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const octave = Math.floor(semitone / 12) + 4;
-    const noteName = noteNames[semitone % 12];
-    return `${noteName}${octave}`;
-  }
-
-  // -------------------- handleKeyChange --------------------
-  const handleKeyChange = (key: string) => {
-    setSelectedKey(key);
-  };
 
   // -------------------- Render --------------------
   return (
@@ -677,55 +757,58 @@ const playPattern = (pattern: string[]) => {
         variants={pageVariants}
       >
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-purple-800 mb-3">Play For Me</h1>
+          <h1 className="text-4xl font-bold text-purple-800 mb-3">
+            Play For Me (8-Beats + Minor Fix)
+          </h1>
           <p className="text-xl text-purple-600 max-w-3xl mx-auto">
-            Let the app play chord progressions for you based on your gestures.
-            Select a starting chord with a closed fist, and watch the magic happen!
+            Now with runtime fallback for uppercase vs. lowercase numerals in minor keys.
+            Choose your chord cell to transpose the 8-chord pattern to that chord as “I!”
           </p>
         </div>
 
-        {/* Main grid layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left panel: Controls */}
+          {/* Left panel */}
           <motion.div className="lg:col-span-2" variants={cardVariants}>
             <Card className="bg-white shadow-md mb-6">
               <CardHeader className="bg-purple-50 border-b border-purple-100">
                 <h2 className="text-2xl font-bold text-purple-800">Controls</h2>
               </CardHeader>
               <CardContent className="p-6">
-                {/* Instrument Selection */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Choose Instrument</h3>
+                {/* Instrument */}
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Instrument</h3>
                   <div className="flex space-x-2">
                     <Button
-                      className={`px-6 py-2 ${instrument === "piano"
-                        ? "bg-purple-600 text-white"
-                        : "bg-purple-100 text-purple-800"
-                      }`}
                       onClick={() => setInstrument("piano")}
+                      className={
+                        instrument === "piano"
+                          ? "bg-purple-600 text-white"
+                          : "bg-purple-100 text-purple-800"
+                      }
                     >
                       Piano
                     </Button>
                     <Button
-                      className={`px-6 py-2 ${instrument === "guitar"
-                        ? "bg-purple-600 text-white"
-                        : "bg-purple-100 text-purple-800"
-                      }`}
                       onClick={() => setInstrument("guitar")}
+                      className={
+                        instrument === "guitar"
+                          ? "bg-purple-600 text-white"
+                          : "bg-purple-100 text-purple-800"
+                      }
                     >
                       Guitar
                     </Button>
                   </div>
                 </div>
 
-                {/* Tempo Control */}
-                <div className="mb-6">
+                {/* BPM */}
+                <div className="mb-4">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Tempo (BPM)</h3>
                   <div className="flex items-center space-x-4">
                     <input
                       type="range"
-                      min="60"
-                      max="180"
+                      min={60}
+                      max={180}
                       value={bpm}
                       onChange={(e) => setBpm(Number(e.target.value))}
                       className="w-full accent-purple-600"
@@ -734,62 +817,52 @@ const playPattern = (pattern: string[]) => {
                   </div>
                 </div>
 
-                
-
-                {/* Key Selection */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Select Key</h3>
-                  <CircleOfFifths selectedKey={selectedKey} onSelectKey={handleKeyChange} />
+                {/* Key */}
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Key</h3>
+                  <CircleOfFifths selectedKey={selectedKey} onSelectKey={setSelectedKey} />
                 </div>
 
                 {/* Camera Toggle */}
-                <div className="mt-8">
-                  <Button
-                    onClick={() => setWebcamEnabled(!webcamEnabled)}
-                    className={`w-full ${
-                      webcamEnabled
-                        ? "bg-red-500 hover:bg-red-600"
-                        : "bg-purple-600 hover:bg-purple-700"
-                    } text-white`}
-                  >
-                    {webcamEnabled ? "Disable Camera" : "Enable Camera"}
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => setWebcamEnabled(!webcamEnabled)}
+                  className={`w-full mt-4 ${
+                    webcamEnabled ? "bg-red-500 hover:bg-red-600" : "bg-purple-600 hover:bg-purple-700"
+                  } text-white`}
+                >
+                  {webcamEnabled ? "Disable Camera" : "Enable Camera"}
+                </Button>
               </CardContent>
             </Card>
 
-            {/* Instructions Card */}
+            {/* How to Use */}
             <Card className="bg-white shadow-md">
               <CardHeader className="bg-purple-50 border-b border-purple-100">
                 <h2 className="text-2xl font-bold text-purple-800">How to Use</h2>
               </CardHeader>
               <CardContent className="p-6">
-                <ol className="list-decimal list-inside space-y-3 text-purple-700">
-                  <li>Click "Enable Camera" to start your webcam</li>
-                  <li>Position your hand in front of the camera</li>
-                  <li>Make a <span className="font-bold">closed fist</span> gesture over a chord cell to start a pattern</li>
-                  <li>Move your hand to hover over another chord cell to queue the next pattern</li>
-                  <li>The app will automatically play through the pattern and transition to the next one</li>
+                <ol className="list-decimal list-inside space-y-2 text-purple-700">
+                  <li>Enable Camera</li>
+                  <li>Pick Key, Chord Pattern, & Rhythm</li>
+                  <li>Closed fist over a chord cell = base chord for the 8-chord pattern</li>
+                  <li>Minor keys are automatically handled with case fallback!</li>
                 </ol>
 
-                <div className="mt-6 bg-purple-50 p-4 rounded-lg border border-purple-200">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Current Pattern</h3>
-
-                  <div className="grid grid-cols-4 gap-1">
-                    {[0, 1, 2, 3].map((beatIndex) => (
+                <div className="mt-4 bg-purple-50 p-3 border border-purple-200 rounded">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Current Pattern (8 Beats)</h3>
+                  <div className="grid grid-cols-8 gap-1">
+                    {[0,1,2,3,4,5,6,7].map((i) => (
                       <div
-                        key={beatIndex}
-                        className={`p-2 border rounded text-center ${
-                          currentBeatIndex === beatIndex
+                        key={i}
+                        className={`p-2 text-center border rounded ${
+                          currentBeatIndex === i
                             ? "bg-purple-200 border-purple-400"
                             : "bg-white border-purple-100"
                         }`}
                       >
-                        <div className="text-sm font-mono text-purple-800">
-                          Beat {beatIndex + 1}
-                        </div>
+                        <div className="text-sm font-mono text-purple-800">Beat {i+1}</div>
                         <div className="font-semibold text-purple-600 mt-1">
-                          {currentPattern[beatIndex] || "-"}
+                          {currentChords[i] || "-"}
                         </div>
                       </div>
                     ))}
@@ -799,168 +872,169 @@ const playPattern = (pattern: string[]) => {
             </Card>
           </motion.div>
 
-          {/* Right panel: Camera View & Visualization */}
+          {/* Right panel */}
           <motion.div className="lg:col-span-3" variants={cardVariants}>
             <Card className="bg-white shadow-md">
               <CardHeader className="bg-purple-50 border-b border-purple-100">
                 <h2 className="text-2xl font-bold text-purple-800">Gesture Control</h2>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="mb-6">
-                  <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                    {!webcamEnabled ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-gray-800">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-16 w-16 text-gray-400 mb-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M12 18.75H4.5a2.25 2.25 0 01-2.25-2.25V9a2.25 2.25 0 012.25-2.25H12"
-                          />
-                        </svg>
-                        <h3 className="text-xl font-medium text-gray-300 mb-2">
-                          Enable Camera to Start
-                        </h3>
-                        <p className="text-gray-400">
-                          Use a closed fist gesture at different positions on the grid to
-                          control chord progressions. Your camera feed is processed locally
-                          and never uploaded.
-                        </p>
-                      </div>
-                    ) : loading ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div>
-                      </div>
-                    ) : (
-                      <>
-                        <video
-                          ref={videoRef}
-                          className="absolute inset-0 w-full h-full"
-                          muted
-                          playsInline
+                <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden mb-6">
+                  {!webcamEnabled ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 text-center p-6">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-16 w-16 text-gray-400 mb-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M12 18.75H4.5a2.25 2.25 0 01-2.25-2.25V9a2.25 2.25 0 012.25-2.25H12"
                         />
-                        <canvas
-                          ref={canvasRef}
-                          width={640}
-                          height={480}
-                          className="absolute inset-0 w-full h-full"
-                        />
+                      </svg>
+                      <h3 className="text-xl font-medium text-gray-300 mb-2">
+                        Enable Camera
+                      </h3>
+                      <p className="text-gray-400">
+                        Closed fist on a chord cell to pick it as “I”
+                      </p>
+                    </div>
+                  ) : loading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <video
+                        ref={videoRef}
+                        className="absolute inset-0 w-full h-full"
+                        muted
+                        playsInline
+                      />
+                      <canvas
+                        ref={canvasRef}
+                        width={640}
+                        height={480}
+                        className="absolute inset-0 w-full h-full"
+                      />
 
-                        {/* Hand not visible alert */}
-                        <AnimatePresence>
-                          {webcamEnabled && !handVisible && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0 }}
-                              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-lg"
-                            >
-                              Please show your hand in the camera
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Current gesture label */}
-                        {webcamEnabled && recognizedGesture && (
-                          <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded text-sm">
-                            {recognizedGesture}
-                          </div>
+                      <AnimatePresence>
+                        {webcamEnabled && !handVisible && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-black/70 text-white rounded-lg"
+                          >
+                            Please show your hand in the camera
+                          </motion.div>
                         )}
+                      </AnimatePresence>
 
-                        {/* Current chord display */}
-                        <AnimatePresence>
-                          {currentChordCell !== null && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.9 }}
-                              className="absolute left-4 top-4 bg-purple-600/80 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg"
-                            >
-                              <p className="font-semibold">
-                                Now Playing: {currentPattern[currentBeatIndex]}
-                              </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </>
-                    )}
+                      {webcamEnabled && recognizedGesture && (
+                        <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded text-sm">
+                          {recognizedGesture}
+                        </div>
+                      )}
+
+                      <AnimatePresence>
+                        {currentChordCell !== null && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="absolute left-4 top-4 bg-purple-600/80 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg"
+                          >
+                            <p className="font-semibold">
+                              Now Playing: {currentChords[currentBeatIndex]}
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
+                  )}
+                </div>
+
+                {/* Pattern & Rhythm Selections */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Rhythm Genre</h3>
+                  <div className="flex gap-2 mb-4">
+                    {Object.keys(rhythmPatternsByGenre).map((genre) => (
+                      <Button
+                        key={genre}
+                        onClick={() => setSelectedRhythmGenre(genre as keyof typeof rhythmPatternsByGenre)}
+                        className={
+                          selectedRhythmGenre === genre
+                            ? "bg-purple-600 text-white"
+                            : "bg-purple-100 text-purple-800"
+                        }
+                      >
+                        {genre.toUpperCase()}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Rhythm Pattern (8 steps)</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {rhythmPatternsByGenre[selectedRhythmGenre].map((rp) => (
+                      <Button
+                        key={rp.id}
+                        onClick={() => setSelectedRhythmPatternId(rp.id)}
+                        className={
+                          selectedRhythmPatternId === rp.id
+                            ? "bg-purple-600 text-white px-4 py-6 text-left justify-start"
+                            : "bg-purple-100 text-purple-800 px-4 py-6 text-left justify-start"
+                        }
+                      >
+                        <div>
+                          <div className="font-medium">{rp.name}</div>
+                          <div className="text-xs">{rp.description}</div>
+                        </div>
+                      </Button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Visualization area */}
-                <div className="mt-8">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">
-                    Instrument Visualization
-                  </h3>
-                  {/* If you have 3D piano/guitar visuals, place them here */}
-                </div>
-
-                {/* Rhythm Selection - add this after the Pattern Selection section in your UI */}
                 <div className="mb-6">
-                <h3 className="text-lg font-semibold text-purple-700 mb-3">Rhythm Pattern</h3>
-                <div className="grid grid-cols-2 gap-2">
-                    {rhythmPatterns.map((rhythm) => (
-                    <Button
-                        key={rhythm.id}
-                        className={`px-4 py-2 text-left justify-start ${
-                        selectedRhythm === rhythm.id ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-800"
-                        }`}
-                        onClick={() => setSelectedRhythm(rhythm.id)}
-                    >
-                        <div className="text-left">
-                        <div className="font-medium">{rhythm.name}</div>
-                        <div className="text-xs opacity-80">{rhythm.description}</div>
-                        </div>
-                    </Button>
-                    ))}
-
-                    <div className="mt-2">
-                    <div className="text-xs text-purple-600 mb-1">Current Rhythm Pattern:</div>
-                    <div className="flex space-x-1">
-                        {(rhythmPatterns.find(r => r.id === selectedRhythm)?.pattern || []).map((beat, idx) => (
-                        <div 
-                            key={idx}
-                            className="flex-1 bg-purple-100 rounded" 
-                            style={{ 
-                            height: `${beat * 30}px`,
-                            backgroundColor: currentBeatIndex === idx ? 'rgb(192, 132, 252)' : 'rgb(233, 213, 255)'
-                            }}
-                        />
-                        ))}
-                    </div>
-                    </div>
-                </div>
-                </div>
-
-                {/* Pattern Selection */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Chord Pattern</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {chordPatterns.map((pattern) => (
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Chord Genre</h3>
+                  <div className="flex gap-2 mb-4">
+                    {Object.keys(chordPatternsByGenre).map((genre) => (
                       <Button
-                        key={pattern.id}
-                        className={`px-4 py-2 text-left justify-start ${
-                          selectedPattern === pattern.id
+                        key={genre}
+                        onClick={() => setSelectedChordGenre(genre as keyof typeof chordPatternsByGenre)}
+                        className={
+                          selectedChordGenre === genre
                             ? "bg-purple-600 text-white"
                             : "bg-purple-100 text-purple-800"
-                        }`}
-                        onClick={() => setSelectedPattern(pattern.id)}
+                        }
                       >
-                        <div className="text-left">
-                          <div className="font-medium">{pattern.name}</div>
-                          <div className="text-xs opacity-80">{pattern.description}</div>
+                        {genre.toUpperCase()}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Chord Pattern (8 chords)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {chordPatternsByGenre[selectedChordGenre].map((cp) => (
+                      <Button
+                        key={cp.id}
+                        onClick={() => setSelectedChordPatternId(cp.id)}
+                        className={
+                          selectedChordPatternId === cp.id
+                            ? "bg-purple-600 text-white px-4 py-6 text-left justify-start"
+                            : "bg-purple-100 text-purple-800 px-4 py-6 text-left justify-start"
+                        }
+                      >
+                        <div>
+                          <div className="font-medium">{cp.name}</div>
+                          <div className="text-xs">{cp.description}</div>
                         </div>
                       </Button>
-                      
                     ))}
-                    {/* Add this visualization in the Current Pattern section */}
-                    
                   </div>
                 </div>
               </CardContent>
@@ -968,7 +1042,7 @@ const playPattern = (pattern: string[]) => {
           </motion.div>
         </div>
 
-        {/* Feature Highlights */}
+        {/* Feature highlights */}
         <motion.div
           className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6"
           initial="hidden"
@@ -979,44 +1053,47 @@ const playPattern = (pattern: string[]) => {
             <CardContent className="p-6">
               <h3 className="text-xl font-bold mb-2">Hands-Free Playing</h3>
               <p>
-                Focus on musical expression without needing to manually play each chord.
-                Perfect for practicing chord progressions or improvising melodies
-                over automated backing.
+                Focus on musical expression without manually fretting chords.
+                Great for practicing progressions or improvising solos on top.
               </p>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-b from-purple-600 to-purple-700 text-white shadow-lg">
             <CardContent className="p-6">
               <h3 className="text-xl font-bold mb-2">Dynamic Patterns</h3>
               <p>
-                Explore different musical styles with our chord pattern options.
-                From simple progressions to complex jazz patterns,
-                find the right foundation for your creativity.
+                Choose from multiple 8-chord progressions and 8-step rhythms,
+                ensuring fresh musical ideas across different genres.
               </p>
             </CardContent>
           </Card>
-
           <Card className="bg-gradient-to-b from-purple-700 to-purple-800 text-white shadow-lg">
             <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-2">Seamless Transitions</h3>
+              <h3 className="text-xl font-bold mb-2">Harmonic Exploration</h3>
               <p>
-                Move between different chord progressions naturally with our queuing system.
-                The music continues flowing as you explore different harmonic territories.
+                Try out new chords by picking different cells.
+                Each cell chord redefines “I” for the entire 8-chord sequence,
+                now fixed for minor keys too!
               </p>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Footer Navigation */}
+        {/* Footer */}
         <div className="flex justify-between mt-12">
           <Link href="/">
-            <Button variant="outline" className="border-purple-500 text-purple-500 hover:bg-purple-50">
+            <Button
+              variant="outline"
+              className="border-purple-500 text-purple-500 hover:bg-purple-50"
+            >
               ← Back to Home
             </Button>
           </Link>
           <Link href="/tutorials">
-            <Button variant="outline" className="border-purple-500 text-purple-500 hover:bg-purple-50">
+            <Button
+              variant="outline"
+              className="border-purple-500 text-purple-500 hover:bg-purple-50"
+            >
               Tutorials
             </Button>
           </Link>
