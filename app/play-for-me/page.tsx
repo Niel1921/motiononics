@@ -1011,26 +1011,7 @@ export default function PlayForMePage() {
                   <li>Minor keys are automatically handled with case fallback!</li>
                 </ol>
 
-                <div className="mt-4 bg-purple-50 p-3 border border-purple-200 rounded">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Current Pattern (8 Beats)</h3>
-                  <div className="grid grid-cols-8 gap-1">
-                    {[0,1,2,3,4,5,6,7].map((i) => (
-                      <div
-                        key={i}
-                        className={`p-2 text-center border rounded ${
-                          currentBeatIndex === i
-                            ? "bg-purple-200 border-purple-400"
-                            : "bg-white border-purple-100"
-                        }`}
-                      >
-                        <div className="text-sm font-mono text-purple-800">Beat {i+1}</div>
-                        <div className="font-semibold text-purple-600 mt-1">
-                          {currentChords[i] || "-"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                
               </CardContent>
             </Card>
           </motion.div>
@@ -1123,6 +1104,27 @@ export default function PlayForMePage() {
                 </div>
 
                 {/* Pattern & Rhythm Selections */}
+
+                <div className="mt-4 bg-purple-50 p-3 border border-purple-200 rounded">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Current Pattern (8 Beats)</h3>
+                  <div className="grid grid-cols-8 gap-1">
+                    {[0,1,2,3,4,5,6,7].map((i) => (
+                      <div
+                        key={i}
+                        className={`p-2 text-center border rounded ${
+                          currentBeatIndex === i
+                            ? "bg-purple-200 border-purple-400"
+                            : "bg-white border-purple-100"
+                        }`}
+                      >
+                        <div className="text-sm font-mono text-purple-800">Beat {i+1}</div>
+                        <div className="font-semibold text-purple-600 mt-1">
+                          {currentChords[i] || "-"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Rhythm Genre</h3>
                   <div className="flex gap-2 mb-4">
