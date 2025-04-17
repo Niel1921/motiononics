@@ -329,6 +329,20 @@ export default function PlayForMePage() {
   const [handPosition, setHandPosition] = useState<{ x: number; y: number } | null>(null);
   const [handVisible, setHandVisible] = useState(false);
 
+
+  const [recording, setRecording] = useState(false);
+  const [barsToRecord, setBarsToRecord] = useState(2);
+  const [recordedChords, setRecordedChords] = useState<string[]>([]);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+
+  const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const mediaDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const pcmLeftRef = useRef<Float32Array[]>([]);
+  const pcmRightRef = useRef<Float32Array[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  
+
   // Audio
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
@@ -447,6 +461,109 @@ export default function PlayForMePage() {
       }
     };
   }, [webcamEnabled]);
+
+  function startRecording() {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx) return;
+  
+    // reset buffers
+    pcmLeftRef.current  = [];
+    pcmRightRef.current = [];
+  
+    // 4096‑sample buffer, 2 inputs (L+R), 2 outputs (unused)
+    const proc = audioCtx.createScriptProcessor(4096, 2, 2);
+    proc.onaudioprocess = (e) => {
+      // copy the data so it doesn't get overwritten
+      pcmLeftRef.current.push ( new Float32Array(e.inputBuffer.getChannelData(0)) );
+      pcmRightRef.current.push( new Float32Array(e.inputBuffer.getChannelData(1)) );
+    };
+    proc.connect(audioCtx.destination);
+    recorderNodeRef.current = proc;
+  
+    setRecording(true);
+    setRecordedChords([]);
+  }
+  
+  
+  function stopRecording() {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx) return;
+  
+    if (recorderNodeRef.current) {
+      recorderNodeRef.current.disconnect();
+      recorderNodeRef.current = null;
+    }
+  
+    setRecording(false);
+  
+    // flatten the buffers
+    const leftArrs  = pcmLeftRef.current;
+    const rightArrs = pcmRightRef.current;
+    const total     = leftArrs.reduce((acc, c) => acc + c.length, 0);
+  
+    const flatL = new Float32Array(total),
+          flatR = new Float32Array(total);
+  
+    let offset = 0;
+    for (let i = 0; i < leftArrs.length; i++) {
+      flatL.set(leftArrs[i], offset);
+      flatR.set(rightArrs[i], offset);
+      offset += leftArrs[i].length;
+    }
+  
+    // interleave L + R
+    const interleaved = new Float32Array(total * 2);
+    for (let i = 0, j = 0; i < total; i++) {
+      interleaved[j++] = flatL[i];
+      interleaved[j++] = flatR[i];
+    }
+  
+    // encode to WAV
+    const wavBuffer = encodeWAV(interleaved, audioCtx.sampleRate);
+    const blob      = new Blob([wavBuffer], { type: "audio/wav" });
+    setRecordedBlob(blob);
+  }
+  
+  // Helper: Interleave and encode WAV (simple PCM 16-bit)
+  function interleaveAndConvert(left: Float32Array, right: Float32Array) {
+    const len = left.length + right.length;
+    const result = new Float32Array(len);
+    let idx = 0;
+    for (let i = 0; i < left.length; i++) {
+      result[idx++] = left[i];
+      result[idx++] = right[i];
+    }
+    return result;
+  }
+  function encodeWAV(samples: Float32Array, sampleRate: number) {
+    // Minimal WAV header for PCM 16-bit stereo
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    function writeString(offset: number, str: string) {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    }
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 2, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 4, true);
+    view.setUint16(32, 4, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, samples.length * 2, true);
+    // PCM samples
+    let offset = 44;
+    for (let i = 0; i < samples.length; i++) {
+      let s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+    return buffer;
+  }
 
   // -------------------- Gesture logic each frame --------------------
   useEffect(() => {
@@ -608,6 +725,7 @@ export default function PlayForMePage() {
       clearTimeout(beatTimerRef.current);
       beatTimerRef.current = null;
     }
+    
 
     const doNext = () => {
       currentBeat++;
@@ -624,7 +742,9 @@ export default function PlayForMePage() {
       const thisDur = beatDurations[currentBeat];
       const thisVel = velocities[currentBeat];
       playChord(chordToPlay, thisDur, thisVel);
-
+      if (recording) {
+        setRecordedChords((prev) => [...prev, chordToPlay]);
+      }
       beatTimerRef.current = setTimeout(doNext, thisDur);
     };
 
@@ -635,54 +755,50 @@ export default function PlayForMePage() {
   function playChord(chordName: string, beatDurationMs: number, velocity: number = 0.7) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx || notePlayingRef.current) return;
-
+  
     // guard
     notePlayingRef.current = true;
-    setTimeout(() => {
-      notePlayingRef.current = false;
-    }, 300);
-
-    const sampleBuffer = (instrument === "guitar")
-    ? samplesRef.current["Closed_Fist_Guitar"]
-    : samplesRef.current["Closed_Fist_Piano"];    
-    
+    setTimeout(() => { notePlayingRef.current = false; }, 300);
+  
+    const sampleBuffer = instrument === "guitar"
+      ? samplesRef.current["Closed_Fist_Guitar"]
+      : samplesRef.current["Closed_Fist_Piano"];
     if (!sampleBuffer) return;
-
+  
     let notes = getNotesForChord(chordName);
-
-    if (instrument === "guitar") {
-      notes = notes.map((n) => n - 12);
-    }
-
+    if (instrument === "guitar") notes = notes.map(n => n - 12);
+  
     setVisualizerNotes(notes.map(semitoneToNoteName));
-
     const chordLengthSec = beatDurationMs / 1000;
-
+  
     notes.forEach((semi, i) => {
       const source = audioCtx.createBufferSource();
       source.buffer = sampleBuffer;
       source.playbackRate.value = Math.pow(2, semi / 12);
-
+  
       const gainNode = audioCtx.createGain();
-      const noteVelocity = velocity * (1 - i*0.05);
-      gainNode.gain.value = noteVelocity / notes.length;
-
-      let startTime = audioCtx.currentTime + i*0.02;
-      if (instrument === "guitar") {
-        startTime = audioCtx.currentTime + (i * 0.03);
-      }
-
+      gainNode.gain.value = (velocity * (1 - i * 0.05)) / notes.length;
+  
+      // connect the source into your gain
       source.connect(gainNode);
+  
+      // then go to your reverb or straight to output
       if (convolverRef.current) {
         gainNode.connect(convolverRef.current);
         convolverRef.current.connect(audioCtx.destination);
+        if (recorderNodeRef.current) {
+          convolverRef.current.connect(recorderNodeRef.current);
+        }
       } else {
         gainNode.connect(audioCtx.destination);
       }
+  
+      const startTime = audioCtx.currentTime + (i * (instrument === "guitar" ? 0.03 : 0.02));
       source.start(startTime);
       source.stop(startTime + chordLengthSec);
     });
   }
+  
 
   // -------------------- drawChordGrid --------------------
   function drawChordGrid(ctx: CanvasRenderingContext2D, width: number, height: number) {
@@ -832,6 +948,53 @@ export default function PlayForMePage() {
                 >
                   {webcamEnabled ? "Disable Camera" : "Enable Camera"}
                 </Button>
+
+                <div className="mb-4">
+                  <label>
+                    Bars to record: 
+                    <input
+                      type="number"
+                      min={1}
+                      max={16}
+                      value={barsToRecord}
+                      onChange={e => setBarsToRecord(Number(e.target.value))}
+                      className="ml-2 w-16"
+                      disabled={recording}
+                    />
+                  </label>
+                  <button onClick={recording ? stopRecording : startRecording} className="ml-4 px-4 py-2 bg-purple-600 text-white rounded">
+                    {recording ? "Stop Recording" : "Record For Me"}
+                  </button>
+                  <button onClick={() => { setRecordedChords([]); setRecordedBlob(null); }} className="ml-2 px-4 py-2 bg-gray-300 rounded">
+                    Retry
+                  </button>
+                  {recordedBlob && (
+                    <>
+                      <a
+                        href={URL.createObjectURL(recordedBlob)}
+                        download="play-for-me.wav"
+                        className="ml-2 px-4 py-2 bg-green-600 text-white rounded"
+                      >
+                        Download WAV
+                      </a>
+                      <button
+                        className="ml-2 px-4 py-2 bg-blue-600 text-white rounded"
+                        onClick={() => {
+                          const txt = recordedChords.join(" ");
+                          const blob = new Blob([txt], { type: "text/plain" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "chords.txt";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        Download Chord TXT
+                      </button>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
