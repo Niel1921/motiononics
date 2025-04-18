@@ -1104,7 +1104,6 @@ export default function PlayForMePage() {
                 </div>
 
                 {/* Pattern & Rhythm Selections */}
-
                 <div className="mt-4 bg-purple-50 p-3 border border-purple-200 rounded">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Current Pattern (8 Beats)</h3>
                   <div className="grid grid-cols-8 gap-1">

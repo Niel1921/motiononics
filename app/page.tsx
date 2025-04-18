@@ -224,7 +224,7 @@ export default function Page() {
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" >("manual");
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
-  const [currentNote, setCurrentNote] = useState<number | null>(null);
+  const [currentNotes, setCurrentNotes] = useState<number[]>([]);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
   const [stringSpacing, setStringSpacing] = useState<number>(1);
@@ -408,8 +408,10 @@ export default function Page() {
       return;
     }
     const noteIndex = Math.min(11, Math.floor(handPosition.x * 12));
-    setCurrentNote(noteIndex);
-    setTimeout(() => setCurrentNote(null), 500);
+    setCurrentNotes([noteIndex]);
+    setTimeout(() => setCurrentNotes([]), 500);
+
+
     const duration = (60 / bpm) * noteLength;
     const source = audioCtx.createBufferSource();
     source.buffer = sampleBuffer;
@@ -462,10 +464,13 @@ export default function Page() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
     if (notePlayingRef.current) return;
+  
     const duration = (60 / bpm) * noteLength;
     const noteToSemitone: Record<string, number> = {
-      C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
+      C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6,
+      G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
     };
+    
     const match = chordLabel.match(/^[A-G]#?/);
     if (!match) return;
     const root = match[0];
@@ -474,15 +479,21 @@ export default function Page() {
     if (chordType === "maj") intervals = [0, 4, 7];
     else if (chordType === "min") intervals = [0, 3, 7];
     else if (chordType === "dim") intervals = [0, 3, 6];
-    console.log("Playing chord:", chordLabel);
+  
+    // Set visualized notes
+    setCurrentNotes(intervals.map(i => (noteToSemitone[root] + i) % 12));
+    setTimeout(() => setCurrentNotes([]), 500);
+  
     intervals.forEach((interval) => {
       const source = audioCtx.createBufferSource();
-      source.buffer = samplesRef.current["Closed_Fist"] || null;
+      source.buffer = samplesRef.current["Closed_Fist"];
       if (!source.buffer) return;
+  
       const semitoneOffset = (noteToSemitone[root] ?? 0) + interval;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
+  
       source.connect(gainNode);
       if (convolverRef.current) {
         gainNode.connect(convolverRef.current);
@@ -490,14 +501,17 @@ export default function Page() {
       } else {
         gainNode.connect(audioCtx.destination);
       }
+  
       source.start();
       source.stop(audioCtx.currentTime + duration);
     });
+  
     notePlayingRef.current = true;
     setTimeout(() => {
       notePlayingRef.current = false;
     }, duration * 1000);
   }
+  
 
   function playArpeggio(chordLabel: string, duration: number, octaves: number, direction: "up" | "down" | "upDown") {
     const audioCtx = audioContextRef.current;
@@ -551,6 +565,9 @@ export default function Page() {
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
       source.connect(gainNode);
+      setTimeout(() => {
+        setCurrentNotes([(noteToSemitone[root] + intervalVal) % 12]);
+      }, i * noteDuration * 1000);
       if (convolverRef.current) {
         gainNode.connect(convolverRef.current);
         convolverRef.current.connect(audioCtx.destination);
@@ -562,6 +579,7 @@ export default function Page() {
     });
     notePlayingRef.current = true;
     setTimeout(() => {
+      setCurrentNotes([]);
       notePlayingRef.current = false;
     }, duration * 1000);
   }
@@ -826,11 +844,11 @@ export default function Page() {
       onVibratoChange={setThereminVibrato}
       onWaveformChange={setThereminWaveform}
     />
-    ) : mode === "manual" ? (
+    ) : mode === "manual" || mode ==="autoChord" || mode ==="arpeggiator" ? (
       instrument === "guitar" ? (
         <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
       ) : (
-        <ThreePianoVisualizer currentNote={currentNote} />
+        <ThreePianoVisualizer currentNotes={currentNotes} />
       )
     ) : (
       <ChordGridVisualizer chords={getChordsForKey(selectedKey)} currentCell={currentChordCell} />
@@ -899,9 +917,7 @@ export default function Page() {
                 </Button>
               ) : (
                 <Button
-                  onClick={() => {
-                    setWebcamEnabled(false);
-                  }}
+                  onClick={() => setWebcamEnabled(false)}
                   className="absolute top-4 left-4 px-4 py-2 text-base z-20 bg-teal-500 hover:bg-teal-600 text-white"
                 >
                   Stop Video
@@ -930,16 +946,48 @@ export default function Page() {
                   })}
                 </div>
               )}
-              {(mode === "autoChord" || mode === "arpeggiator" ) && visualizerComponent}
 
-              {instrument === "theremin" && mode === "manual" && visualizerComponent}
+              {/* Explicitly handle Theremin manual visualization */}
+              {instrument === "theremin" && mode === "manual" && (
+                <ThreeThereminVisualizer
+                  frequency={thereminFrequency}
+                  volume={thereminVolume}
+                  vibrato={thereminVibrato}
+                  waveform={thereminWaveform}
+                  onFrequencyChange={setThereminFrequency}
+                  onVolumeChange={setThereminVolume}
+                  onVibratoChange={setThereminVibrato}
+                  onWaveformChange={setThereminWaveform}
+                />
+              )}
+
+              {/* Handle ChordGrid for autoChord/arpeggiator */}
+              {(mode === "autoChord" || mode === "arpeggiator") && (
+                <ChordGridVisualizer chords={getChordsForKey(selectedKey)} currentCell={currentChordCell} />
+              )}
             </div>
-            {mode === "manual" && instrument !== "theremin" && (
+
+            {/* Additional visualizer for Piano/Guitar in all relevant modes */}
+            {instrument !== "theremin" && mode !== "manual" && (
               <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
-                {visualizerComponent}
+                {instrument === "guitar" ? (
+                  <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
+                ) : (
+                  <ThreePianoVisualizer currentNotes={currentNotes} />
+                )}
               </div>
             )}
-          </div>
+
+            {instrument !== "theremin" && mode === "manual" && (
+              <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
+                {instrument === "guitar" ? (
+                  <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
+                ) : (
+                  <ThreePianoVisualizer currentNotes={currentNotes} />
+                )}
+              </div>
+            )}
+            </div>
 
           {/* Right Column: Controls Panel */}
           <div className="w-1/4">
