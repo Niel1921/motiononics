@@ -708,7 +708,11 @@ export default function PlayForMePage() {
     if (!audioCtx) return;
   
     if (recorderNodeRef.current) {
-      recorderNodeRef.current.disconnect();
+      recorderNodeRef.current.disconnect(audioCtx.destination);
+      // 2) …and also disconnect the convolver from *that* processor
+      if (convolverRef.current) {
+        convolverRef.current.disconnect(recorderNodeRef.current);
+      }
       recorderNodeRef.current = null;
     }
   
@@ -1165,37 +1169,54 @@ export default function PlayForMePage() {
                 </div>
 
                 
+              </CardContent>
+            </Card>
 
-                <div className="mb-4">
-                  <label>
-                    Bars to record: 
-                    <input
-                      type="number"
-                      min={1}
-                      max={16}
-                      value={barsToRecord}
-                      onChange={e => setBarsToRecord(Number(e.target.value))}
-                      className="ml-2 w-16"
-                      disabled={recording}
-                    />
-                  </label>
-                  <button onClick={recording ? stopRecording : startRecording} className="ml-4 px-4 py-2 bg-purple-600 text-white rounded">
-                    {recording ? "Stop Recording" : "Record For Me"}
-                  </button>
-                  <button onClick={() => { setRecordedChords([]); setRecordedBlob(null); }} className="ml-2 px-4 py-2 bg-gray-300 rounded">
-                    Retry
-                  </button>
+            <Card className="bg-white shadow-md mb-6">
+              <CardHeader className="bg-purple-50 border-b border-purple-100">
+                <h2 className="text-2xl font-bold text-purple-800">Record-For-Me</h2>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-purple-700">Record Chords</h3>
+                  <Button
+                    onClick={recording ? stopRecording : startRecording}
+                    className={`ml-4 px-6 py-2 rounded transition-colors duration-150 font-semibold ${
+                      recording ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"
+                    } text-white`}
+                  >
+                    {recording ? "Stop Recording" : "Start Recording"}
+                  </Button>
+                </div>
+
+                {recordedBlob && (
+                  <audio controls src={URL.createObjectURL(recordedBlob)} className="w-full my-4" />
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(recording || recordedBlob) && (
+                    <Button
+                      variant="outline"
+                      className="border-gray-400 text-gray-700 hover:bg-gray-100"
+                      onClick={() => {
+                        setRecordedChords([]);
+                        setRecordedBlob(null);
+                      }}
+                    >
+                      Retry
+                    </Button>
+                  )}
                   {recordedBlob && (
                     <>
                       <a
                         href={URL.createObjectURL(recordedBlob)}
                         download="play-for-me.wav"
-                        className="ml-2 px-4 py-2 bg-green-600 text-white rounded"
+                        className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors"
                       >
                         Download WAV
                       </a>
-                      <button
-                        className="ml-2 px-4 py-2 bg-blue-600 text-white rounded"
+                      <Button
+                        className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
                         onClick={() => {
                           const txt = recordedChords.join(" ");
                           const blob = new Blob([txt], { type: "text/plain" });
@@ -1208,13 +1229,15 @@ export default function PlayForMePage() {
                         }}
                       >
                         Download Chord TXT
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
+
+
 
           {/* Right panel */}
           <motion.div className="lg:col-span-3" variants={cardVariants}>
