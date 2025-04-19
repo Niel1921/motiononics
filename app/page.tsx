@@ -16,20 +16,13 @@ import CircleOfFifths from "../components/CircleOfFifths";
 
 // -------------------- Constants --------------------
 const sampleURLs: Record<string, string> = {
-  Closed_Fist: "/samples/fist.wav",   // Sample for closed fist (used for chords/arpeggios)
-  None: "/samples/guitarnew.wav",        // Guitar sample (assumed to be tuned to E4)
+  Closed_Fist: "/samples/fist.wav",  
+  None: "/samples/guitarnew.wav",       
 };
 
 // Tweak this value as needed (in normalized coordinates)
 const MIN_SWIPE_DISTANCE = 0.07;
 
-// Mapping for standard guitar tuning relative to E4 (high E string)
-// String index 5: High E (0 semitones)
-// String index 4: B (-5 semitones)
-// String index 3: G (-9 semitones)
-// String index 2: D (-14 semitones)
-// String index 1: A (-19 semitones)
-// String index 0: Low E (-24 semitones)
 const guitarStringMapping = [
   { semitoneOffset: -24 },
   { semitoneOffset: -19 },
@@ -201,6 +194,7 @@ function playGuitarString(
   
   source.start();
   source.stop(audioContext.currentTime + duration + 0.1);
+
   
   // Reset debounce for this string after the note finishes.
   setTimeout(() => {
@@ -486,10 +480,13 @@ export default function Page() {
   
     intervals.forEach((interval) => {
       const source = audioCtx.createBufferSource();
-      source.buffer = samplesRef.current["Closed_Fist"];
+      const key = instrument === "guitar" ? "None" : "Closed_Fist";
+      source.buffer = samplesRef.current[key];
       if (!source.buffer) return;
   
-      const semitoneOffset = (noteToSemitone[root] ?? 0) + interval;
+      let semitoneOffset = (noteToSemitone[root] ?? 0) + interval;
+     // if guitar, shift sample down into C3
+      if (instrument === "guitar") semitoneOffset += -16;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = 0.2;
@@ -558,7 +555,8 @@ export default function Page() {
     const noteDuration = duration / totalNotes;
     pattern.forEach((intervalVal, i) => {
       const source = audioCtx.createBufferSource();
-      source.buffer = samplesRef.current["Closed_Fist"] || null;
+      const sampleKey = instrument === "guitar" ? "None" : "Closed_Fist";
+      source.buffer = samplesRef.current[sampleKey];
       if (!source.buffer) return;
       const semitoneOffset = (noteToSemitone[root] ?? 0) + intervalVal;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
@@ -663,10 +661,8 @@ export default function Page() {
   // PROCESS "NONE" GESTURE => vertical swipe for guitar mode
   // ---------------------------------------------------------------------
   function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
-    console.log("processNoneGesture called!");
     // Only proceed if the back of the hand is detected.
     const isBack = isBackOfHand(handLandmarks);
-    console.log("Is back of hand?", isBack);
     if (!isBack) {
       lastNoneY = null;
       return;
@@ -687,9 +683,19 @@ export default function Page() {
       const end = Math.max(oldIndex, newIndex);
       if (audioContextRef.current) {
         for (let s = start; s <= end; s++) {
-          console.log("Playing guitar string", s);
-          playGuitarString(s, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
-        }
+                 const delay = (s - start) * 50;
+                 setTimeout(() => {
+                   playGuitarString(
+                     s,
+                     audioContextRef.current!,
+                     samplesRef.current,
+                     convolverRef.current,
+                     bpm,
+                     noteLength
+                   );
+                   guitarRef.current?.triggerString(s);
+                 }, delay);
+               }
       }
       lastNoneY = null;
     }
@@ -785,15 +791,29 @@ export default function Page() {
               if (!handLandmarks) return;
               const pos = getHandPosition(handLandmarks);
               updateHandPos(handLandmarks);
-              if (instrument === "guitar") {
+              if (mode === "manual" && instrument === "guitar") {
                 const stringIndex = getStringIndexFromY(pos.y, stringSpacing);
-                console.log("Detected guitar gesture for string:", stringIndex);
-                // For "None" gesture, only play if the back of the hand is detected.
+
                 if (gesture.categoryName === "None") {
-                  if (isBackOfHand(handLandmarks) && audioContextRef.current)
+                  if (isBackOfHand(handLandmarks) && audioContextRef.current){
                     playGuitarString(stringIndex, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
+                    guitarRef.current?.triggerString(stringIndex);
+                  }
                 }
-              } else {
+              }
+              else if (mode === "autoChord" && instrument === "guitar" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
+                    // exactly what piano does:
+                    const cellX = Math.floor(pos.x * 3);
+                    const cellY = Math.floor(pos.y * 3);
+                    const cellIndex = cellX + cellY * 3;
+                    setCurrentChordCell(cellIndex);
+                    setTimeout(() => setCurrentChordCell(null), 500);
+                    playChordFromHandPosition("Closed_Fist", pos);
+                  }
+              else if (mode === "arpeggiator" && instrument === "guitar" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
+                playArpeggioFromHandPosition("Closed_Fist", pos);
+              }
+              else {
                 if (gesture.categoryName === "Closed_Fist") {
                   if (mode === "manual") playNoteManual("Closed_Fist", pos);
                   else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
@@ -925,7 +945,7 @@ export default function Page() {
               )}
               <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
               <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
-              {instrument === "guitar" && (
+              {instrument === "guitar" && mode === "manual" &&(
                 <div className="absolute inset-0 pointer-events-none">
                   {[0, 1, 2, 3, 4, 5].map((i) => {
                     const offsetPercent = (i + 0.5) / 6;
