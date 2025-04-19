@@ -906,7 +906,7 @@ export default function Page() {
                 {instrument === "guitar" ? (
                   <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
                 ) : (
-                  <ThreePianoVisualizer currentNote={currentNote} />
+                  <div />
                 )}
               </div>
             )}
