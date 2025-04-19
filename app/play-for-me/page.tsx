@@ -546,6 +546,10 @@ export default function PlayForMePage() {
   const [recognizedGesture, setRecognizedGesture] = useState("");
   const [handPosition, setHandPosition] = useState<{ x: number; y: number } | null>(null);
   const [handVisible, setHandVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const toggleCamera = () => setWebcamEnabled(prev => !prev);
+  const audioPreviewRef = useRef<HTMLAudioElement>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
 
   const [recording, setRecording] = useState(false);
@@ -658,6 +662,14 @@ export default function PlayForMePage() {
     };
   }, [initGestureRecognizer, initAudio]);
 
+    // whenever blobUrl changes, force the audio to reload
+    useEffect(() => {
+      if (blobUrl && audioPreviewRef.current) {
+        audioPreviewRef.current.load();
+      }
+    }, [blobUrl]);
+  
+
   // -------------------- Webcam Setup --------------------
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -684,6 +696,12 @@ export default function PlayForMePage() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
   
+    if (!webcamEnabled) {
+      setErrorMessage("Please enable the camera before recording.");
+      return;
+    }
+
+    setErrorMessage("");
     // reset buffers
     pcmLeftRef.current  = [];
     pcmRightRef.current = [];
@@ -744,19 +762,11 @@ export default function PlayForMePage() {
     const wavBuffer = encodeWAV(interleaved, audioCtx.sampleRate);
     const blob      = new Blob([wavBuffer], { type: "audio/wav" });
     setRecordedBlob(blob);
+
+    const url = URL.createObjectURL(blob);
+    setBlobUrl(url);
   }
   
-  // Helper: Interleave and encode WAV (simple PCM 16-bit)
-  function interleaveAndConvert(left: Float32Array, right: Float32Array) {
-    const len = left.length + right.length;
-    const result = new Float32Array(len);
-    let idx = 0;
-    for (let i = 0; i < left.length; i++) {
-      result[idx++] = left[i];
-      result[idx++] = right[i];
-    }
-    return result;
-  }
   function encodeWAV(samples: Float32Array, sampleRate: number) {
     // Minimal WAV header for PCM 16-bit stereo
     const buffer = new ArrayBuffer(44 + samples.length * 2);
@@ -1087,7 +1097,7 @@ export default function PlayForMePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white relative">
       <Header />
-
+  
       <motion.div
         className="container mx-auto px-4 py-8 max-w-6xl"
         initial="hidden"
@@ -1103,7 +1113,7 @@ export default function PlayForMePage() {
             Choose your chord cell to transpose the 8-chord pattern to that chord as “I!”
           </p>
         </div>
-
+  
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left panel */}
           <motion.div className="lg:col-span-2" variants={cardVariants}>
@@ -1171,41 +1181,93 @@ export default function PlayForMePage() {
                 
               </CardContent>
             </Card>
-
-            <Card className="bg-white shadow-md mb-6">
+  
+            <motion.div
+              className="bg-white shadow-md mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
+            >
               <CardHeader className="bg-purple-50 border-b border-purple-100">
-                <h2 className="text-2xl font-bold text-purple-800">Record-For-Me</h2>
+                <h2 className="text-2xl font-bold text-purple-800">Record‑For‑Me</h2>
               </CardHeader>
               <CardContent className="p-6">
+                {/* Error banner */}
+                <AnimatePresence>
+                  {errorMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-4 p-3 bg-red-100 text-red-800 rounded"
+                    >
+                      {errorMessage}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+  
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-purple-700">Record Chords</h3>
                   <Button
-                    onClick={recording ? stopRecording : startRecording}
+                    onClick={() => {
+                      if (!webcamEnabled) {
+                        setErrorMessage('Please enable your camera before recording.');
+                        return;
+                      }
+                      setErrorMessage('');
+                      recording ? stopRecording() : startRecording();
+                    }}
                     className={`ml-4 px-6 py-2 rounded transition-colors duration-150 font-semibold ${
-                      recording ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"
+                      recording
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-green-600 hover:bg-green-700'
                     } text-white`}
                   >
-                    {recording ? "Stop Recording" : "Start Recording"}
+                    {recording ? 'Stop Recording' : 'Start Recording'}
                   </Button>
                 </div>
-
-                {recordedBlob && (
-                  <audio controls src={URL.createObjectURL(recordedBlob)} className="w-full my-4" />
+  
+                {blobUrl && (
+                  <audio
+                    key={blobUrl}           
+                    ref={audioPreviewRef}
+                    controls
+                    src={blobUrl}
+                    className="w-full my-4"
+                  />
                 )}
-
+  
                 <div className="flex flex-wrap gap-2 mt-2">
+                <AnimatePresence>
                   {(recording || recordedBlob) && (
                     <Button
                       variant="outline"
                       className="border-gray-400 text-gray-700 hover:bg-gray-100"
                       onClick={() => {
+                        if (recorderNodeRef.current) {
+                          if (convolverRef.current) {
+                            convolverRef.current.disconnect(recorderNodeRef.current);
+                          }
+                          recorderNodeRef.current.disconnect(audioContextRef.current!.destination);
+                          recorderNodeRef.current = null;
+                        }
+                        pcmLeftRef.current = [];
+                        pcmRightRef.current = [];
+                        if (blobUrl) {
+                          URL.revokeObjectURL(blobUrl);
+                          setBlobUrl(null);
+                        }
+                        setRecording(false);
                         setRecordedChords([]);
                         setRecordedBlob(null);
+                        setErrorMessage("");
                       }}
                     >
                       Retry
                     </Button>
+                  
                   )}
+                  </AnimatePresence>
+                  <AnimatePresence>
                   {recordedBlob && (
                     <>
                       <a
@@ -1218,12 +1280,12 @@ export default function PlayForMePage() {
                       <Button
                         className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
                         onClick={() => {
-                          const txt = recordedChords.join(" ");
-                          const blob = new Blob([txt], { type: "text/plain" });
+                          const txt = recordedChords.join(' ');
+                          const blob = new Blob([txt], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
+                          const a = document.createElement('a');
                           a.href = url;
-                          a.download = "chords.txt";
+                          a.download = 'chords.txt';
                           a.click();
                           URL.revokeObjectURL(url);
                         }}
@@ -1232,9 +1294,10 @@ export default function PlayForMePage() {
                       </Button>
                     </>
                   )}
+                  </AnimatePresence>
                 </div>
               </CardContent>
-            </Card>
+            </motion.div>
           </motion.div>
 
 
@@ -1293,7 +1356,7 @@ export default function PlayForMePage() {
                       />
                       <canvas
                         ref={canvasRef}
-                        width={640}
+                        width={854}
                         height={480}
                         className="absolute inset-0 w-full h-full"
                       />
