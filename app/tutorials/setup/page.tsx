@@ -712,7 +712,8 @@ export default function InstrumentTutorialPage() {
               </CardContent>
               <div className="bg-gray-900 h-64 relative">
                 {selectedInstrument === "piano" && (
-                  <ThreePianoVisualizer currentNote={currentNote} />
+                  //<ThreePianoVisualizer currentNote={currentNote} />
+                  <div></div>
                 )}
                 {selectedInstrument === "guitar" && (
                   <ThreeGuitarVisualizer currentChord={currentChordName} />
