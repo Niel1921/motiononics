@@ -1058,13 +1058,13 @@ export default function Page() {
                   </label>
                   <div className="mb-4">
                    <h3 className="text-lg font-semibold text-teal-700 mb-2">Instrument</h3>
-                   <div className="flex gap-2">
+                   <div className="flex gap-4">
                      {(["piano", "guitar", "theremin"] as const).map((inst) => (
                        <button
                          key={inst}
                          onClick={() => setInstrument(inst)}
                          className={`
-                           flex‑1 flex flex-col items-center p-2
+                           w-1/3 flex flex-col items-center p-2
                            bg-white rounded-lg shadow
                            transition
                            ${instrument === inst
@@ -1075,8 +1075,8 @@ export default function Page() {
                          <Image
                            src={`/instrumentimg/${inst}icon.png`}
                            alt={inst}
-                           width={40}
-                           height={40}
+                           width={120}
+                           height={120}
                            className="object-contain"
                          />
                          <span className="mt-1 text-sm font-medium text-teal-800">

@@ -896,33 +896,31 @@ export default function PlayForMePage() {
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">
                     Instrument
                   </h3>
-                  <div className="flex w-full">
+                  <div className="flex gap-4">
                     {(["piano", "guitar"] as const).map((inst) => (
-                      <Button
+                      <button
                         key={inst}
                         onClick={() => setInstrument(inst)}
                         className={`
-                          w-1/2               /* half the container width */
-                          p-2                 /* some padding */
-                          bg-white            /* white background */
-                          rounded-lg          /* rounded corners */
-                          shadow              /* subtle elevation */
-                          flex items-center justify-center
+                          w-1/2 flex flex-col items-center p-2
+                          bg-white rounded-lg shadow
                           transition
                           ${instrument === inst
                             ? "ring-2 ring-purple-600"
                             : "hover:ring-1 hover:ring-purple-300"}
                         `}
                       >
-                        <img
-                          src={`./instrumentimg/${inst}icon.png`}
+                        <Image
+                          src={`/instrumentimg/${inst}icon.png`}
                           alt={inst}
-                          className="w-12 h-12 object-contain"
+                          width={120}
+                          height={120}
+                          className="object-contain"
                         />
-                        <span className="mt-2 text-sm font-medium text-purple-800">
+                        <span className="mt-1 text-sm font-medium text-teal-800">
                           {inst.charAt(0).toUpperCase() + inst.slice(1)}
                         </span>
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 </div>
