@@ -13,6 +13,7 @@ import ThreeThereminVisualizer from "../components/ThreeThereminVisualizer";
 import Header from "@/components/ui/header";
 import { keySignatures } from "./data/keySignatures";
 import CircleOfFifths from "../components/CircleOfFifths";
+import Image from "next/image";
 
 // -------------------- Constants --------------------
 const sampleURLs: Record<string, string> = {
@@ -1055,20 +1056,36 @@ export default function Page() {
                       ))}
                     </select>
                   </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Instrument:
-                    <select
-                      value={instrument}
-                      onChange={(e) =>
-                        setInstrument(e.target.value as "piano" | "guitar" | "theremin")
-                      }
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value="piano">Piano</option>
-                      <option value="guitar">Guitar</option>
-                      <option value="theremin">Theremin</option>
-                    </select>
-                  </label>
+                  <div className="mb-4">
+                   <h3 className="text-lg font-semibold text-teal-700 mb-2">Instrument</h3>
+                   <div className="flex gap-2">
+                     {(["piano", "guitar", "theremin"] as const).map((inst) => (
+                       <button
+                         key={inst}
+                         onClick={() => setInstrument(inst)}
+                         className={`
+                           flex‑1 flex flex-col items-center p-2
+                           bg-white rounded-lg shadow
+                           transition
+                           ${instrument === inst
+                             ? "ring-2 ring-teal-600"
+                             : "hover:ring-1 hover:ring-teal-300"}
+                         `}
+                       >
+                         <Image
+                           src={`/instrumentimg/${inst}icon.png`}
+                           alt={inst}
+                           width={40}
+                           height={40}
+                           className="object-contain"
+                         />
+                         <span className="mt-1 text-sm font-medium text-teal-800">
+                           {inst.charAt(0).toUpperCase() + inst.slice(1)}
+                         </span>
+                       </button>
+                     ))}
+                   </div>
+                  </div>
                   <label className="flex items-center gap-2 text-teal-700">
                     Mode:
                     <select
