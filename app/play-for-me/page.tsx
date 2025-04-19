@@ -931,7 +931,7 @@ export default function PlayForMePage() {
                   <div className="flex items-center space-x-4">
                     <input
                       type="range"
-                      min={60}
+                      min={40}
                       max={180}
                       value={bpm}
                       onChange={(e) => setBpm(Number(e.target.value))}
@@ -947,15 +947,7 @@ export default function PlayForMePage() {
                   <CircleOfFifths selectedKey={selectedKey} onSelectKey={setSelectedKey} />
                 </div>
 
-                {/* Camera Toggle */}
-                <Button
-                  onClick={() => setWebcamEnabled(!webcamEnabled)}
-                  className={`w-full mt-4 ${
-                    webcamEnabled ? "bg-red-500 hover:bg-red-600" : "bg-purple-600 hover:bg-purple-700"
-                  } text-white`}
-                >
-                  {webcamEnabled ? "Disable Camera" : "Enable Camera"}
-                </Button>
+                
 
                 <div className="mb-4">
                   <label>
@@ -1005,23 +997,6 @@ export default function PlayForMePage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* How to Use */}
-            <Card className="bg-white shadow-md">
-              <CardHeader className="bg-purple-50 border-b border-purple-100">
-                <h2 className="text-2xl font-bold text-purple-800">How to Use</h2>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ol className="list-decimal list-inside space-y-2 text-purple-700">
-                  <li>Enable Camera</li>
-                  <li>Pick Key, Chord Pattern, & Rhythm</li>
-                  <li>Closed fist over a chord cell = base chord for the 8-chord pattern</li>
-                  <li>Minor keys are automatically handled with case fallback!</li>
-                </ol>
-
-                
-              </CardContent>
-            </Card>
           </motion.div>
 
           {/* Right panel */}
@@ -1031,6 +1006,15 @@ export default function PlayForMePage() {
                 <h2 className="text-2xl font-bold text-purple-800">Gesture Control</h2>
               </CardHeader>
               <CardContent className="p-6">
+                {/* Camera Toggle */}
+                <Button
+                  onClick={() => setWebcamEnabled(!webcamEnabled)}
+                  className={`w-full mb-4 ${
+                    webcamEnabled ? "bg-red-500 hover:bg-red-600" : "bg-purple-600 hover:bg-purple-700"
+                  } text-white`}
+                >
+                  {webcamEnabled ? "Disable Camera" : "Enable Camera"}
+                </Button>
                 <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden mb-6">
                   {!webcamEnabled ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 text-center p-6">
@@ -1223,11 +1207,12 @@ export default function PlayForMePage() {
         >
           <Card className="bg-gradient-to-b from-purple-500 to-purple-600 text-white shadow-lg">
             <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-2">Hands-Free Playing</h3>
-              <p>
-                Focus on musical expression without manually fretting chords.
-                Great for practicing progressions or improvising solos on top.
-              </p>
+              <h3 className="text-xl font-bold mb-2">How To Use:</h3>
+              <ol className="list-decimal list-inside space-y-1 ">
+                  <li>Enable Camera</li>
+                  <li>Pick Key, Chord Pattern, & Rhythm</li>
+                  <li>Closed fist over a chord cell = base chord for the 8-chord pattern</li>
+                </ol>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-b from-purple-600 to-purple-700 text-white shadow-lg">
