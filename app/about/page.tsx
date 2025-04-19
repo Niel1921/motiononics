@@ -61,7 +61,7 @@ export default function AboutPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
           >
             <Image 
-              src="/images/about-hero.jpg" 
+              src="/gestureimg/gesturegroup.webp" 
               alt="Person controlling music through gestures" 
               fill
               className="object-cover"

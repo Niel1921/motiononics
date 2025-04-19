@@ -44,6 +44,18 @@ const chordPatternsByGenre = {
       description: "I–iii–vi–IV–ii–V–I–I, 8 total beats.",
       romanArray: ["I", "iii", "vi", "IV", "ii", "V", "I", "I"],
     },
+    {
+      id: "pop3",
+      name: "Pop Walkdown",
+      description: "vi–V–IV–iii–ii–I–IV–V",
+      romanArray: ["vi", "V", "IV", "iii", "ii", "I", "IV", "V"],
+    },
+    {
+      id: "pop4",
+      name: "Pop Circle",
+      description: "I–vi–ii–V progression loop",
+      romanArray: ["I", "vi", "ii", "V", "I", "vi", "ii", "V"],
+    },
   ],
   rock: [
     {
@@ -57,6 +69,18 @@ const chordPatternsByGenre = {
       name: "Pop Punk 8",
       description: "I–V–vi–IV repeated for 8 beats.",
       romanArray: ["I", "V", "vi", "IV", "I", "V", "vi", "IV"],
+    },
+    {
+      id: "rock3",
+      name: "Minor Rock Turnaround",
+      description: "i–bVII–bVI–bVII, repeat",
+      romanArray: ["i", "bVII", "bVI", "bVII", "i", "bVII", "bVI", "bVII"],
+    },
+    {
+      id: "rock4",
+      name: "Bluesy Rock I–IV–V",
+      description: "I–IV–I–V–IV–I–V–I",
+      romanArray: ["I", "IV", "I", "V", "IV", "I", "V", "I"],
     },
   ],
   funk: [
@@ -72,6 +96,18 @@ const chordPatternsByGenre = {
       description: "ii7–V7 repeated, then I7, for 8 beats",
       romanArray: ["ii7", "V7", "ii7", "V7", "ii7", "V7", "I7", "I7"],
     },
+    {
+      id: "funk3",
+      name: "Funk Climb",
+      description: "I7–ii7–iii7–IV7–V7–IV7–ii7–I7",
+      romanArray: ["I7", "ii7", "iii7", "IV7", "V7", "IV7", "ii7", "I7"],
+    },
+    {
+      id: "funk4",
+      name: "James Brown Style",
+      description: "I7-based with IV7 stabs",
+      romanArray: ["I7", "I7", "IV7", "I7", "IV7", "I7", "V7", "I7"],
+    },
   ],
   jazz: [
     {
@@ -86,8 +122,73 @@ const chordPatternsByGenre = {
       description: "I–VI–ii–V repeated for 8 steps (2 cycles).",
       romanArray: ["I", "VI", "ii", "V", "I", "VI", "ii", "V"],
     },
+    {
+      id: "jazz3",
+      name: "Coltrane Circle",
+      description: "I–bIII–V–I–bIII–V–I–I",
+      romanArray: ["I", "bIII", "V", "I", "bIII", "V", "I", "I"],
+    },
+    {
+      id: "jazz4",
+      name: "Descending ii–V",
+      description: "ii–V–I moving by whole steps",
+      romanArray: ["ii", "V", "I", "bii", "bV", "bI", "ii", "V"],
+    },
+  ],
+  blues: [
+    {
+      id: "blues1",
+      name: "12-Bar Blues Condensed",
+      description: "Classic blues form in 8 steps.",
+      romanArray: ["I7", "IV7", "I7", "I7", "IV7", "IV7", "I7", "V7"],
+    },
+    {
+      id: "blues2",
+      name: "Turnaround Focus",
+      description: "Classic turnaround, I7–IV7–I7–V7–IV7–I7–V7–I7",
+      romanArray: ["I7", "IV7", "I7", "V7", "IV7", "I7", "V7", "I7"],
+    },
+    {
+      id: "blues3",
+      name: "Shuffled Blues",
+      description: "I7–I7–IV7–IV7–I7–V7–IV7–I7",
+      romanArray: ["I7", "I7", "IV7", "IV7", "I7", "V7", "IV7", "I7"],
+    },
+    {
+      id: "blues4",
+      name: "Slow Blues Feel",
+      description: "I7 vamp with embellishment",
+      romanArray: ["I7", "I7", "I7", "I7", "IV7", "IV7", "I7", "V7"],
+    },
+  ],
+  latin: [
+    {
+      id: "latin1",
+      name: "Latin I–IV–V",
+      description: "I–IV–V progression with repeats",
+      romanArray: ["I", "IV", "V", "I", "IV", "V", "I", "V"],
+    },
+    {
+      id: "latin2",
+      name: "Bossa Nova",
+      description: "ii–V–I style jazz Latin progression",
+      romanArray: ["ii", "V", "I", "vi", "ii", "V", "I", "I"],
+    },
+    {
+      id: "latin3",
+      name: "Salsa Feel",
+      description: "Imaj7–IV7–V7–Imaj7 loop",
+      romanArray: ["I7", "IV7", "V7", "I7", "IV7", "V7", "I7", "V7"],
+    },
+    {
+      id: "latin4",
+      name: "Son Clave Inspired",
+      description: "I–vi–IV–V–I–ii–V–I",
+      romanArray: ["I", "vi", "IV", "V", "I", "ii", "V", "I"],
+    },
   ],
 };
+
 
 // ------------------------------------------------------------------
 // 2) 8-Step Rhythms by Genre
@@ -96,65 +197,181 @@ const rhythmPatternsByGenre = {
   pop: [
     {
       id: "pop-basic",
-      name: "Pop Straight Eighths",
-      description: "Simple 8-beat pop pattern, mild accent on 1 & 5.",
+      name: "Straight Eighths",
+      description: "Basic rhythm, equal spacing.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.8, 0.4, 0.5, 0.4, 0.8, 0.4, 0.5, 0.6],
+      velocities: [0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7],
     },
     {
-      id: "pop-sync",
+      id: "pop-syncopation",
       name: "Pop Syncopation",
-      description: "Accents on off-beats, 8 steps.",
+      description: "Pushes on offbeats.",
+      pattern: [1,0.5,1,0.5,1,0.5,1,0.5],
+      velocities: [0.8,0.6,0.7,0.5,0.8,0.6,0.7,0.5],
+    },
+    {
+      id: "pop-long-short",
+      name: "Long-Short Groove",
+      description: "Alternating durations.",
+      pattern: [1.5,0.5,1.5,0.5,1.5,0.5,1.5,0.5],
+      velocities: [0.8,0.6,0.7,0.5,0.8,0.6,0.7,0.5],
+    },
+    {
+      id: "pop-accented-quarters",
+      name: "Quarter Groove",
+      description: "Heavier on every beat.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.6,0.8,0.5,0.7,0.6,0.8,0.5,0.9],
+      velocities: [1,0.6,1,0.6,1,0.6,1,0.6],
     },
   ],
   rock: [
     {
       id: "rock-straight",
-      name: "Rock Driving",
-      description: "Strong accent on 1 & 5, 8 steps.",
+      name: "Rock Eighths",
+      description: "Driving straight 8s.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.9,0.4,0.8,0.4,0.9,0.4,0.8,0.6],
+      velocities: [0.9,0.5,0.9,0.5,0.9,0.5,0.9,0.5],
     },
     {
-      id: "rock-half",
-      name: "Rock Half-Time",
-      description: "Heavier accent on second half, 8 steps.",
+      id: "rock-half-time",
+      name: "Half-Time Feel",
+      description: "Spacey, laid back rock.",
+      pattern: [2,1,1,2,1,1,2,1],
+      velocities: [0.8,0.4,0.6,0.8,0.4,0.6,0.9,0.5],
+    },
+    {
+      id: "rock-syncopated",
+      name: "Rock Syncopation",
+      description: "Accent off-beats.",
+      pattern: [0.5,1.5,0.5,1.5,0.5,1.5,0.5,1.5],
+      velocities: [0.6,0.9,0.6,0.9,0.6,0.9,0.6,0.9],
+    },
+    {
+      id: "rock-stomp",
+      name: "Stomp Groove",
+      description: "Quarter stomp rhythm.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.7,0.3,0.7,0.3,0.9,0.3,0.7,0.6],
+      velocities: [1,0.4,1,0.4,1,0.4,1,0.4],
     },
   ],
   funk: [
     {
-      id: "funk1",
-      name: "Funk Off-Beat",
-      description: "Syncopated off-beats, 8 steps.",
+      id: "funk-basic",
+      name: "Funk Straight",
+      description: "Even funk hits.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.4,0.8,0.3,0.9,0.4,0.8,0.3,1.0],
+      velocities: [0.8,0.5,0.9,0.6,0.8,0.5,0.9,0.6],
     },
     {
-      id: "funk2",
-      name: "Funky Shuffle",
-      description: "Shuffle feel, 8 steps.",
+      id: "funk-syncopated",
+      name: "Funk Syncopation",
+      description: "Heavy on offbeats.",
+      pattern: [0.5,1.5,0.5,1.5,0.5,1.5,0.5,1.5],
+      velocities: [0.7,1,0.6,0.9,0.7,1,0.6,0.9],
+    },
+    {
+      id: "funk-triplet",
+      name: "Triplet Feel",
+      description: "Swung groove.",
+      pattern: [0.66,0.54,0.66,0.54,0.66,0.54,0.66,0.54],
+      velocities: [0.8,0.6,0.8,0.6,0.8,0.6,0.8,0.6],
+    },
+    {
+      id: "funk-perc",
+      name: "Percussive Funk",
+      description: "Dynamic percussive hits.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.7,0.5,0.7,0.8,0.6,0.8,0.7,0.9],
+      velocities: [1,0.3,0.7,1,0.3,0.7,1,0.5],
     },
   ],
   jazz: [
     {
-      id: "jazz-swing1",
-      name: "Light Swing 8",
-      description: "Gentle swing pattern for 8 beats.",
+      id: "jazz-straight",
+      name: "Jazz Even",
+      description: "Straight jazz feel.",
       pattern: [1,1,1,1,1,1,1,1],
-      velocities: [0.7,0.9,0.5,0.8,0.7,0.9,0.5,0.8],
+      velocities: [0.6,0.6,0.6,0.6,0.6,0.6,0.6,0.6],
     },
     {
-      id: "jazz-swing2",
-      name: "Accent on 2 & 4",
-      description: "Jazz backbeat accent on 2 & 4, total 8 steps.",
+      id: "jazz-swing",
+      name: "Swing Eighths",
+      description: "Swung rhythm feel.",
+      pattern: [0.66,0.34,0.66,0.34,0.66,0.34,0.66,0.34],
+      velocities: [0.9,0.6,0.9,0.6,0.9,0.6,0.9,0.6],
+    },
+    {
+      id: "jazz-backbeat",
+      name: "Jazz Backbeat",
+      description: "Accent on 2 & 4.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.3,0.9,0.3,0.9,0.3,0.9,0.3,0.9],
+    },
+    {
+      id: "jazz-sync",
+      name: "Syncopated Jazz",
+      description: "Pushes before the beat.",
+      pattern: [1.5,0.5,1.5,0.5,1.5,0.5,1.5,0.5],
+      velocities: [0.8,0.5,0.7,0.4,0.8,0.5,0.7,0.4],
+    },
+  ],
+  blues: [
+    {
+      id: "blues-basic",
+      name: "Shuffle Feel",
+      description: "Classic blues shuffle.",
+      pattern: [0.66,0.34,0.66,0.34,0.66,0.34,0.66,0.34],
+      velocities: [0.9,0.5,0.9,0.5,0.9,0.5,0.9,0.5],
+    },
+    {
+      id: "blues-slow",
+      name: "Slow Blues",
+      description: "Laid-back rhythm.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.6,0.3,0.6,0.3,0.6,0.3,0.6,0.3],
+    },
+    {
+      id: "blues-accented",
+      name: "Backbeat Accents",
+      description: "Snare on 2 & 4 feel.",
       pattern: [1,1,1,1,1,1,1,1],
       velocities: [0.4,0.8,0.4,0.9,0.4,0.8,0.4,0.9],
+    },
+    {
+      id: "blues-stomp",
+      name: "Stomp Groove",
+      description: "Rhythmic stomp blues.",
+      pattern: [1.5,0.5,1.5,0.5,1.5,0.5,1.5,0.5],
+      velocities: [0.9,0.4,0.8,0.3,0.9,0.4,0.8,0.3],
+    },
+  ],
+  latin: [
+    {
+      id: "latin-basic",
+      name: "Clave Straight",
+      description: "Even Latin hits.",
+      pattern: [1,1,1,1,1,1,1,1],
+      velocities: [0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7],
+    },
+    {
+      id: "latin-sync",
+      name: "Clave Syncopated",
+      description: "3-2 clave-inspired.",
+      pattern: [1,0.5,0.5,1,1,0.5,0.5,1],
+      velocities: [0.9,0.6,0.5,0.8,0.9,0.6,0.5,0.8],
+    },
+    {
+      id: "latin-tumbao",
+      name: "Tumbao Feel",
+      description: "Bass and clave combo rhythm.",
+      pattern: [1.5,0.5,1.5,0.5,1.5,0.5,1.5,0.5],
+      velocities: [0.8,0.6,0.9,0.5,0.8,0.6,0.9,0.5],
+    },
+    {
+      id: "latin-ride",
+      name: "Bossa Groove",
+      description: "Light Bossa ride rhythm.",
+      pattern: [1,1,1,1,1,1,1,1], 
+      velocities: [0.5,0.7,0.5,0.7,0.5,0.7,0.5,0.7],
     },
   ],
 };
@@ -1208,7 +1425,7 @@ export default function PlayForMePage() {
           <Card className="bg-gradient-to-b from-purple-500 to-purple-600 text-white shadow-lg">
             <CardContent className="p-6">
               <h3 className="text-xl font-bold mb-2">How To Use:</h3>
-              <ol className="list-decimal list-inside space-y-1 ">
+              <ol className="list-decimal list-inside space-y-3 ">
                   <li>Enable Camera</li>
                   <li>Pick Key, Chord Pattern, & Rhythm</li>
                   <li>Closed fist over a chord cell = base chord for the 8-chord pattern</li>
@@ -1217,20 +1434,21 @@ export default function PlayForMePage() {
           </Card>
           <Card className="bg-gradient-to-b from-purple-600 to-purple-700 text-white shadow-lg">
             <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-2">Dynamic Patterns</h3>
+              <h3 className="text-xl font-bold mb-2">Rhythm and Chord Settings</h3>
               <p>
-                Choose from multiple 8-chord progressions and 8-step rhythms,
-                ensuring fresh musical ideas across different genres.
+                The rhythm section allows you to choose a genre and a specific rhythm of your chords to make them sound more interesiting! 
+                <br/>
+                The chord section allows you to choose a genre and a range of melodies to make varied songs!
               </p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-b from-purple-700 to-purple-800 text-white shadow-lg">
             <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-2">Harmonic Exploration</h3>
+              <h3 className="text-xl font-bold mb-2">Record-For-Me</h3>
               <p>
-                Try out new chords by picking different cells.
-                Each cell chord redefines “I” for the entire 8-chord sequence,
-                now fixed for minor keys too!
+                Select how long you want your recording to be (1-16 bars). Click the button to start recording!
+                <br/>
+                You can download the chords youve recorded in order as a text file, or the audio as a WAV file to listen to again!
               </p>
             </CardContent>
           </Card>
