@@ -142,6 +142,7 @@ function isBackOfHand(handLandmarks: { x: number; y: number; z?: number }[]) {
 // We'll store the starting Y position for "None" gesture swipes.
 let lastNoneY: number | null = null;
 
+
 // -------------------- Helper: playGuitarString --------------------
 // Plays the guitar note for a given string index using the "None" sample.
 // Uses a linear gain ramp to sustain the note for the duration calculated from BPM and noteLength.
@@ -236,9 +237,13 @@ export default function Page() {
   const convolverRef = useRef<ConvolverNode | null>(null);
   const notePlayingRef = useRef<boolean>(false);
 
-  // Backing track (omitted for brevity)
-  const [backingBuffer, setBackingBuffer] = useState<AudioBuffer | null>(null);
-  const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  // right after your `const [instrument, …] = useState…`
+const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
+  theremin: "w-[640px] h-[790px]", 
+  guitar:   "w-[640px] h-[280px]",    
+  piano:    "w-[640px] h-[280px]",    
+};
+
 
   // ---------------------------------------------------------------------
   // INIT AUDIO
@@ -283,19 +288,6 @@ export default function Page() {
       console.error("Error loading impulse response:", err);
     }
 
-    // Load backing track (optional)
-    try {
-      const backingResponse = await fetch("/samples/backing.mp3");
-      if (backingResponse.ok) {
-        const trackBuffer = await backingResponse.arrayBuffer();
-        setBackingBuffer(await audioCtx.decodeAudioData(trackBuffer));
-        console.log("Loaded backing track.");
-      } else {
-        console.warn("Failed to fetch backing track:", backingResponse.statusText);
-      }
-    } catch (err) {
-      console.error("Error loading backing track:", err);
-    }
   }, []);
 
   // ---------------------------------------------------------------------
@@ -768,16 +760,18 @@ export default function Page() {
               const pinchDistance = Math.sqrt(dx * dx + dy * dy);
             
               const minPinch = 0.02; 
-              const maxPinch = 0.2;   
+              const maxPinch = 0.4;   
             
               // Map the pinchDistance to a 0–10 Hz range for the vibrato oscillator's rate
-              let lfoRate = ((pinchDistance - minPinch) / (maxPinch - minPinch)) * 5;
-              lfoRate = Math.max(0, Math.min(5, lfoRate)); // Clamp the value between 0 and 10 Hz
-            
-              // Update the vibrato oscillator's frequency smoothly
+              let lfoRate = ((pinchDistance - minPinch) / (maxPinch - minPinch)) * 10;
+              lfoRate = Math.max(0, Math.min(10, lfoRate));
+
               if (thereminVibratoOscRef.current) {
                 thereminVibratoOscRef.current.frequency.setTargetAtTime(lfoRate, now, 0.05);
               }
+
+              setThereminVibrato(lfoRate);
+
             }
             
           }
@@ -920,19 +914,18 @@ export default function Page() {
             </Card>
           </div>
 
-          {/* Central Column: Webcam & Visualizer */}
-          <div className="w-1/2 flex flex-col items-center gap-4 relative">
+          {/* Central Column */}
+          <div className="w-1/2 flex flex-col items-center gap-4">
             <div className="relative w-[640px] h-[480px] border rounded-lg shadow-lg overflow-hidden">
               {!webcamEnabled ? (
                 <Button
                   onClick={() => {
                     setWebcamEnabled(true);
-                    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+                    if (audioContextRef.current?.state === "suspended") {
                       audioContextRef.current.resume();
-                      console.log("Resumed AudioContext from suspended state.");
                     }
                   }}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 text-xl z-20 bg-teal-500 hover:bg-teal-600 text-white"
+                  className="absolute inset-0 m-auto px-8 py-4 text-xxl z-20 bg-teal-500 hover:bg-teal-600 text-white"
                 >
                   Enable Webcam
                 </Button>
@@ -944,32 +937,36 @@ export default function Page() {
                   Stop Video
                 </Button>
               )}
-              <video ref={videoRef} className="w-[640px] h-[480px] scale-x-[-1]" muted playsInline />
-              <canvas ref={canvasRef} width={640} height={480} className="absolute top-0 left-0" />
-              {instrument === "guitar" && mode === "manual" &&(
-                <div className="absolute inset-0 pointer-events-none">
-                  {[0, 1, 2, 3, 4, 5].map((i) => {
-                    const offsetPercent = (i + 0.5) / 6;
-                    const topPercent = 25 + offsetPercent * (50 * stringSpacing);
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          position: "absolute",
-                          top: `${topPercent}%`,
-                          left: 0,
-                          right: 0,
-                          height: "1px",
-                          background: "rgba(255,255,255,0.8)",
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+              <video
+                ref={videoRef}
+                className="w-full h-full scale-x-[-1]"
+                muted
+                playsInline
+              />
+              <canvas
+                ref={canvasRef}
+                width={640}
+                height={480}
+                className="absolute top-0 left-0"
+              />
 
-              {/* Explicitly handle Theremin manual visualization */}
-              {instrument === "theremin" && mode === "manual" && (
+              {(instrument !== "theremin" &&
+                (mode === "autoChord" || mode === "arpeggiator")) && (
+                <ChordGridVisualizer
+                  chords={getChordsForKey(selectedKey)}
+                  currentCell={currentChordCell}
+                />
+              )}
+            </div>
+
+            {/* ——— universal visualizer panel ——— */}
+            <div
+              className={`
+                ${visualizerSizes[instrument]}
+                border rounded-lg shadow-lg overflow-hidden
+              `}
+            >
+              {instrument === "theremin" ? (
                 <ThreeThereminVisualizer
                   frequency={thereminFrequency}
                   volume={thereminVolume}
@@ -980,35 +977,17 @@ export default function Page() {
                   onVibratoChange={setThereminVibrato}
                   onWaveformChange={setThereminWaveform}
                 />
-              )}
-
-              {/* Handle ChordGrid for autoChord/arpeggiator */}
-              {(mode === "autoChord" || mode === "arpeggiator") && (
-                <ChordGridVisualizer chords={getChordsForKey(selectedKey)} currentCell={currentChordCell} />
+              ) : instrument === "guitar" ? (
+                <ThreeGuitarVisualizer
+                  ref={guitarRef}
+                  currentChord={currentChordName}
+                />
+              ) : (
+                <ThreePianoVisualizer currentNotes={currentNotes} />
               )}
             </div>
+          </div>
 
-            {/* Additional visualizer for Piano/Guitar in all relevant modes */}
-            {instrument !== "theremin" && mode !== "manual" && (
-              <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
-                {instrument === "guitar" ? (
-                  <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
-                ) : (
-                  <ThreePianoVisualizer currentNotes={currentNotes} />
-                )}
-              </div>
-            )}
-
-            {instrument !== "theremin" && mode === "manual" && (
-              <div className="w-[640px] h-[280px] border rounded-lg shadow-lg">
-                {instrument === "guitar" ? (
-                  <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
-                ) : (
-                  <ThreePianoVisualizer currentNotes={currentNotes} />
-                )}
-              </div>
-            )}
-            </div>
 
           {/* Right Column: Controls Panel */}
           <div className="w-1/4">
