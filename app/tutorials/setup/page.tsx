@@ -724,9 +724,6 @@ export default function InstrumentTutorialPage() {
                     volume={handPosition ? handPosition.y : 0.5}
                     vibrato={1}
                     waveform="sine"
-                    onFrequencyChange={(val) => console.log("Frequency changed:", val)}
-                    onVolumeChange={(val) => console.log("Volume changed:", val)}
-                    onVibratoChange={(val) => console.log("Vibrato changed:", val)}
                     onWaveformChange={(val) => console.log("Waveform changed:", val)}
                   />
                 )}
