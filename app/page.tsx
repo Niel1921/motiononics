@@ -553,6 +553,8 @@ export default function Page() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
     if (notePlayingRef.current) return;
+    notePlayingRef.current = true;
+
     const noteToSemitone: Record<string, number> = {
       C: 0,
       "C#": 1,
@@ -589,36 +591,34 @@ export default function Page() {
       let down = up.slice(0, -1).reverse();
       pattern = up.concat(down);
     }
-    console.log("Playing arpeggio of:", chordLabel);
-    const totalNotes = pattern.length;
-    const noteDuration = duration / totalNotes;
-    pattern.forEach((intervalVal, i) => {
-      const source = audioCtx.createBufferSource();
-      const sampleKey = instrument === "guitar" ? "None" : "Closed_Fist";
-      source.buffer = samplesRef.current[sampleKey];
-      if (!source.buffer) return;
-      const semitoneOffset = (noteToSemitone[root] ?? 0) + intervalVal;
-      source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
-      const gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.2;
-      source.connect(gainNode);
-      setTimeout(() => {
-        setCurrentNotes([(noteToSemitone[root] + intervalVal) % 12]);
-      }, i * noteDuration * 1000);
-      if (convolverRef.current) {
-        gainNode.connect(convolverRef.current);
-        convolverRef.current.connect(audioCtx.destination);
-      } else {
-        gainNode.connect(audioCtx.destination);
-      }
-      source.start(audioCtx.currentTime + i * noteDuration);
-      source.stop(audioCtx.currentTime + (i + 1) * noteDuration);
+
+    const noteDuration = duration;      // seconds per note
+    const totalTime = noteDuration * pattern.length;    pattern.forEach((intervalVal, i) => {
+    const source = audioCtx.createBufferSource();
+    const sampleKey = instrument === "guitar" ? "None" : "Closed_Fist";
+    source.buffer = samplesRef.current[sampleKey];
+    if (!source.buffer) return;
+    const semitoneOffset = (noteToSemitone[root] ?? 0) + intervalVal;
+    source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.2;
+    source.connect(gainNode);
+    setTimeout(() => {
+      setCurrentNotes([(noteToSemitone[root] + intervalVal) % 12]);
+    }, i * noteDuration * 1000);
+    if (convolverRef.current) {
+      gainNode.connect(convolverRef.current);
+      convolverRef.current.connect(audioCtx.destination);
+    } else {
+      gainNode.connect(audioCtx.destination);
+    }
+    source.start(audioCtx.currentTime + i * noteDuration);
+    source.stop(audioCtx.currentTime + (i + 1) * noteDuration);
     });
-    notePlayingRef.current = true;
     setTimeout(() => {
       setCurrentNotes([]);
       notePlayingRef.current = false;
-    }, duration * 1000);
+    }, totalTime * 1000);
   }
 
   // ---------------------------------------------------------------------
