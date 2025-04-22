@@ -1015,45 +1015,8 @@ export default function Page() {
                 <h3 className="text-lg font-semibold text-teal-800">Controls</h3>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
-                  <label className="flex items-center gap-2 text-teal-700">
-                    BPM:
-                    <input
-                      type="number"
-                      value={bpm}
-                      onChange={(e) => setBpm(Number(e.target.value))}
-                      className="w-16 px-2 py-1 border rounded focus:ring-teal-500"
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Note Length:
-                    <select
-                      value={noteLength}
-                      onChange={(e) => setNoteLength(Number(e.target.value))}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value={0.25}>16th</option>
-                      <option value={0.5}>8th</option>
-                      <option value={1}>Quarter</option>
-                      <option value={2}>Half</option>
-                      <option value={4}>Whole</option>
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Key:
-                    <select
-                      value={selectedKey}
-                      onChange={(e) => setSelectedKey(e.target.value)}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value="None">None (Chromatic)</option>
-                      {Object.keys(keySignatures).map((keyName) => (
-                        <option key={keyName} value={keyName}>
-                          {keyName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                
+                  
                   <div className="mb-4">
                    <h3 className="text-lg font-semibold text-teal-700 mb-2">Instrument</h3>
                    <div className="flex gap-4">
@@ -1084,18 +1047,87 @@ export default function Page() {
                      ))}
                    </div>
                   </div>
+
+                  <div className="mb-4 w-full">
+                    <h3 className="text-lg font-semibold text-teal-700 mb-2">Mode</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["manual", "autoChord", "arpeggiator"] as const).map((modeOption) => (
+                        <button
+                          key={modeOption}
+                          onClick={() => setMode(modeOption)}
+                          className={`
+                            flex flex-col items-center p-2
+                            bg-white rounded-lg shadow
+                            transition h-full
+                            ${mode === modeOption
+                              ? "ring-2 ring-teal-600"
+                              : "hover:ring-1 hover:ring-teal-300"}
+                          `}
+                        >
+                          <div className="h-24 w-24 relative mb-1">
+                            <Image
+                              src={`/textures/${modeOption}img.jpg`}
+                              alt={modeOption}
+                              fill
+                              className="object-cover rounded-md"
+                            />
+                          </div>
+                          <span className="mt-1 text-sm font-medium text-teal-800">
+                            {modeOption === "autoChord" ? "Auto Chord" : 
+                            modeOption.charAt(0).toUpperCase() + modeOption.slice(1)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
+                
+                {/* BPM */}
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-teal-700 mb-2">Tempo (BPM)</h3>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min={40}
+                      max={180}
+                      value={bpm}
+                      onChange={(e) => setBpm(Number(e.target.value))}
+                      className="w-full accent-teal-600"
+                    />
+                    <span className="text-teal-800 font-semibold">{bpm}</span>
+                  </div>
+                </div>
                   <label className="flex items-center gap-2 text-teal-700">
-                    Mode:
+                    Note Length:
                     <select
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value as typeof mode)}
+                      value={noteLength}
+                      onChange={(e) => setNoteLength(Number(e.target.value))}
                       className="px-2 py-1 border rounded focus:ring-teal-500"
                     >
-                      <option value="manual">Manual</option>
-                      <option value="autoChord">Auto Chord</option>
-                      <option value="arpeggiator">Arpeggiator</option>
+                      <option value={0.25}>16th</option>
+                      <option value={0.5}>8th</option>
+                      <option value={1}>Quarter</option>
+                      <option value={2}>Half</option>
+                      <option value={4}>Whole</option>
                     </select>
                   </label>
+                  <label className="flex items-center gap-2 text-teal-700">
+                    Key:
+                    <select
+                      value={selectedKey}
+                      onChange={(e) => setSelectedKey(e.target.value)}
+                      className="px-2 py-1 border rounded focus:ring-teal-500"
+                    >
+                      <option value="None">None (Chromatic)</option>
+                      {Object.keys(keySignatures).map((keyName) => (
+                        <option key={keyName} value={keyName}>
+                          {keyName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                 
                   {mode === "arpeggiator" && (
                     <div className="space-y-3 border-t border-gray-200 pt-3">
                       <div className="space-y-2">
@@ -1128,6 +1160,7 @@ export default function Page() {
                       </div>
                     </div>
                   )}
+                  {instrument === "guitar" && (
                    <div className="mt-2 flex items-center">
                     <span className="mr-2">String Spacing</span>
                     <input
@@ -1140,6 +1173,7 @@ export default function Page() {
                       className="w-40"
                     />
                   </div>
+                  )}
                 </div>
                 <Button
                   onClick={() => {
