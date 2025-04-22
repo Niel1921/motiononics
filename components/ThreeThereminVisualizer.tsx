@@ -8,9 +8,6 @@ export type ThreeThereminVisualizerProps = {
   volume: number;    // normalized between 0 and 1
   vibrato: number;   // vibrato rate in Hz (e.g., 0 to 10 Hz)
   waveform: string;  // "sine", "square", "sawtooth", "triangle", etc.
-  onFrequencyChange?: (value: number) => void;
-  onVolumeChange?: (value: number) => void;
-  onVibratoChange?: (value: number) => void;
   onWaveformChange?: (value: string) => void;
 };
 
@@ -19,7 +16,6 @@ export default function ThreeThereminVisualizer({
   volume,
   vibrato,
   waveform,
-  onFrequencyChange,
   onWaveformChange,
 }: ThreeThereminVisualizerProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);

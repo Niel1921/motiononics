@@ -21,6 +21,49 @@ const sampleURLs: Record<string, string> = {
   None: "/samples/guitarnew.wav",       
 };
 
+const NOTE_TO_SEMITONE: Record<string, number> = {
+  // Naturals & enharmonic equivalents
+  C: 0,
+  "B#": 0,
+  D: 2,
+  E: 4,
+  "Fb": 4,
+  F: 5,
+  "E#": 5,
+  G: 7,
+  A: 9,
+  B: 11,
+  "Cb": 11,
+
+  // Sharps ↔ Flats
+  "C#": 1,  "Db": 1,
+  "D#": 3,  "Eb": 3,
+  "F#": 6,  "Gb": 6,
+  "G#": 8,  "Ab": 8,
+  "A#": 10, "Bb": 10,
+};
+
+
+
+function snapChromaticToKey(chromatic: number, keyName: string): number {
+  if (keyName === "None") return chromatic;
+  const names = keySignatures[keyName]?.notes;
+  if (!names) return chromatic;
+
+  // map → filter undefined → sort
+  const scale = names
+    .map(n => NOTE_TO_SEMITONE[n])
+    .filter((s): s is number => Number.isFinite(s))
+    .sort((a, b) => a - b);
+
+  if (!scale.length) return chromatic;
+
+  for (const note of scale) {
+    if (note >= chromatic) return note;
+  }
+  return scale[scale.length - 1];
+}
+
 // Tweak this value as needed (in normalized coordinates)
 const MIN_SWIPE_DISTANCE = 0.07;
 
@@ -231,6 +274,12 @@ export default function Page() {
   const [thereminVibrato, setThereminVibrato] = useState<number>(2);
   const [thereminWaveform, setThereminWaveform] = useState<string>("square");
 
+  const availableSemitones = React.useMemo(() => {
+    if (selectedKey === "None") return Array.from({length:12}, (_,i)=>i);
+    return keySignatures[selectedKey].notes
+      .map(n => NOTE_TO_SEMITONE[n]);
+  }, [selectedKey]);
+
   // Audio-related refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
@@ -238,11 +287,11 @@ export default function Page() {
   const notePlayingRef = useRef<boolean>(false);
 
   // right after your `const [instrument, …] = useState…`
-const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
-  theremin: "w-[640px] h-[790px]", 
-  guitar:   "w-[640px] h-[280px]",    
-  piano:    "w-[640px] h-[280px]",    
-};
+  const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
+    theremin: "w-[640px] h-[790px]", 
+    guitar:   "w-[640px] h-[280px]",    
+    piano:    "w-[640px] h-[280px]",    
+  };
 
 
   // ---------------------------------------------------------------------
@@ -382,42 +431,39 @@ const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
   // ---------------------------------------------------------------------
   // Audio / chord / note helper functions (unchanged except for note length handling)
   // ---------------------------------------------------------------------
-  function playNoteManual(gestureLabel: string, handPosition: { x: number; y: number }) {
+  function playNoteManual(
+    gestureLabel: string,
+    handPosition: { x: number; y: number }
+  ) {
     const audioCtx = audioContextRef.current;
-    if (!audioCtx) return;
-    if (notePlayingRef.current) {
-      console.log("Already playing a note. Skip");
-      return;
-    }
+    if (!audioCtx || notePlayingRef.current) return;
     const sampleBuffer = samplesRef.current[gestureLabel];
-    if (!sampleBuffer) {
-      console.warn(`No sample loaded for gesture: ${gestureLabel}`);
-      return;
-    }
-    const noteIndex = Math.min(11, Math.floor(handPosition.x * 12));
-    setCurrentNotes([noteIndex]);
+    if (!sampleBuffer) return;
+  
+    const x = Math.max(0, Math.min(1, handPosition.x));
+    const chromatic = Math.floor(x * 12);
+    const semitone = snapChromaticToKey(chromatic, selectedKey);
+    if (!Number.isFinite(semitone)) return;
+  
+    setCurrentNotes([semitone]);
     setTimeout(() => setCurrentNotes([]), 500);
-
-
+  
     const duration = (60 / bpm) * noteLength;
     const source = audioCtx.createBufferSource();
     source.buffer = sampleBuffer;
-    source.playbackRate.value = Math.pow(2, noteIndex / 12);
+    source.playbackRate.value = Math.pow(2, semitone / 12);
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.2 + (1 - handPosition.y) * 0.8;
+    const y = Math.max(0, Math.min(1, handPosition.y));
+    gainNode.gain.value = 0.2 + (1 - y) * 0.8;    
     source.connect(gainNode);
-    if (convolverRef.current) {
-      gainNode.connect(convolverRef.current);
-      convolverRef.current.connect(audioCtx.destination);
-    } else {
-      gainNode.connect(audioCtx.destination);
-    }
+    if (convolverRef.current) gainNode.connect(convolverRef.current).connect(audioCtx.destination);
+    else gainNode.connect(audioCtx.destination);
+  
     source.start();
     source.stop(audioCtx.currentTime + duration);
+  
     notePlayingRef.current = true;
-    setTimeout(() => {
-      notePlayingRef.current = false;
-    }, duration * 1000);
+    setTimeout(() => { notePlayingRef.current = false; }, duration * 1000);
   }
 
   function playChordFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
@@ -845,31 +891,6 @@ const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
     currentChordCell !== null ? getChordsForKey(selectedKey)[currentChordCell]?.name : null;
 
   // ---------------------------------------------------------------------
-  // Visualizer Component 
-  // ---------------------------------------------------------------------
-  const visualizerComponent =
-  instrument === "theremin" ? (
-    <ThreeThereminVisualizer
-      frequency={thereminFrequency}
-      volume={thereminVolume}
-      vibrato={thereminVibrato}
-      waveform={thereminWaveform}
-      onFrequencyChange={setThereminFrequency}
-      onVolumeChange={setThereminVolume}
-      onVibratoChange={setThereminVibrato}
-      onWaveformChange={setThereminWaveform}
-    />
-    ) : mode === "manual" || mode ==="autoChord" || mode ==="arpeggiator" ? (
-      instrument === "guitar" ? (
-        <ThreeGuitarVisualizer ref={guitarRef} currentChord={currentChordName} />
-      ) : (
-        <ThreePianoVisualizer currentNotes={currentNotes} />
-      )
-    ) : (
-      <ChordGridVisualizer chords={getChordsForKey(selectedKey)} currentCell={currentChordCell} />
-    );
-
-  // ---------------------------------------------------------------------
   // RENDER
   // ---------------------------------------------------------------------
   return (
@@ -972,9 +993,6 @@ const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
                   volume={thereminVolume}
                   vibrato={thereminVibrato}
                   waveform={thereminWaveform}
-                  onFrequencyChange={setThereminFrequency}
-                  onVolumeChange={setThereminVolume}
-                  onVibratoChange={setThereminVibrato}
                   onWaveformChange={setThereminWaveform}
                 />
               ) : instrument === "guitar" ? (
@@ -983,7 +1001,8 @@ const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
                   currentChord={currentChordName}
                 />
               ) : (
-                <ThreePianoVisualizer currentNotes={currentNotes} />
+                <ThreePianoVisualizer currentNotes={currentNotes} 
+                availableSemitones={availableSemitones}/>
               )}
             </div>
           </div>
