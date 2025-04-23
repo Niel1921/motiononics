@@ -10,9 +10,8 @@ import CircleOfFifths from "@/components/CircleOfFifths";
 import { keySignatures } from "../data/keySignatures";
 import Link from "next/link";
 import Image from "next/image";
-import ThreePianoVisualizer from "@/components/ThreePianoVisualizer";
-import ThreeGuitarVisualizer, { ThreeGuitarVisualizerHandle } from "@/components/ThreeGuitarVisualizer";
-import * as THREE from "three";
+import { Renderer, Stave, StaveNote, Formatter, Voice, Modifier, Factory, Annotation } from 'vexflow';
+import { jsPDF } from 'jspdf';
 
 // -------------------- Animation Variants --------------------
 const pageVariants = {
@@ -376,6 +375,8 @@ const rhythmPatternsByGenre = {
   ],
 };
 
+
+
 // ------------------------------------------------------------------
 // 3) Mapping from roman numerals => offset in the 9-chord array
 //    We'll do a simple approach so "I" => +0, "V" => +4, "vi" => +5, etc.
@@ -547,22 +548,18 @@ export default function PlayForMePage() {
   const [handPosition, setHandPosition] = useState<{ x: number; y: number } | null>(null);
   const [handVisible, setHandVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const toggleCamera = () => setWebcamEnabled(prev => !prev);
   const audioPreviewRef = useRef<HTMLAudioElement>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
 
   const [recording, setRecording] = useState(false);
-  const [barsToRecord, setBarsToRecord] = useState(2);
   const [recordedChords, setRecordedChords] = useState<string[]>([]);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 
   const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
-  const mediaDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const pcmLeftRef = useRef<Float32Array[]>([]);
   const pcmRightRef = useRef<Float32Array[]>([]);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+
   
 
   // Audio
@@ -571,7 +568,6 @@ export default function PlayForMePage() {
   const notePlayingRef = useRef(false);
   const convolverRef = useRef<ConvolverNode | null>(null);
   const beatTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null);
 
   // Visual
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -983,6 +979,97 @@ export default function PlayForMePage() {
     beatTimerRef.current = setTimeout(doNext, beatDurations[0]);
   }
 
+  function downloadChordSheetPDF(chords: string[]) {
+    // 1) Layout settings
+    const measuresPerLine = 4;
+    const lines          = Math.ceil(chords.length / measuresPerLine);
+    const width          = 300;
+    const lineHeight     = 120;           // tweak this if you want more vertical spacing
+    const height         = lineHeight * lines + 60; // +60px top margin
+  
+    // 2) Create an HTMLCanvasElement
+    const canvas = document.createElement("canvas");
+    canvas.width  = width;
+    canvas.height = height;
+    document.body.appendChild(canvas);
+  
+    // 3) Render VexFlow into that canvas
+    const vfRenderer = new Renderer(canvas, Renderer.Backends.CANVAS);
+    vfRenderer.resize(width, height);
+    const ctx = vfRenderer.getContext();
+  
+    let y = 40; // start a little below the top
+    for (let line = 0; line < lines; line++) {
+      // draw a stave
+      const stave = new Stave(10, y, width - 20);
+      if (line === 0) stave.addClef("treble").addTimeSignature("4/4");
+      stave.setContext(ctx).draw();
+  
+      // slice out exactly 4 chords
+      const slice = chords.slice(
+        line * measuresPerLine,
+        line * measuresPerLine + measuresPerLine
+      );
+  
+      // build up to 4 VexFlow notes (pad with rests if needed)
+      const notes = slice.map((chord) => {
+        const semis = getNotesForChord(chord);
+        const keys  = semis.map((semi) => {
+          // shift down one octave: middle C is MIDI 60, so add 48
+          const n = semi + 48;
+          const octave = Math.floor(n / 12);
+          const name   = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"][n % 12];
+          return `${name}/${octave}`;
+        });
+        const staveNote = new StaveNote({ keys, duration: "q" });
+        // chord name above
+        const ann = new Annotation(chord)
+          .setFont("Arial", 12)
+          .setVerticalJustification(Annotation.VerticalJustify.TOP);
+        staveNote.addModifier(ann);
+        return staveNote;
+      });
+  
+      // pad with quarter-note rests if <4
+      for (let i = slice.length; i < measuresPerLine; i++) {
+        notes.push(new StaveNote({ keys: ["b/4"], duration: "qr" }));
+      }
+  
+      // create a 4/4 voice
+      const voice = new Voice({ numBeats: measuresPerLine, beatValue: 4 });
+      voice.addTickables(notes);
+  
+      // format & draw
+      new Formatter().joinVoices([voice]).format([voice], width - 100);
+      voice.draw(ctx, stave);
+  
+      y += lineHeight;
+    }
+  
+    // 4) Turn canvas into a true PNG
+    const pngData = canvas.toDataURL("image/png");
+    document.body.removeChild(canvas);
+  
+    // 5) Build PDF
+    const pdf = new jsPDF({
+      unit: "px",
+      format: [width + 20, height + 40],
+    });
+    pdf.setFontSize(16);
+    pdf.text("My Chords", pdf.internal.pageSize.getWidth() / 2, 20, {
+      align: "center",
+    });
+    pdf.addImage(pngData, "PNG", 10, 30, width, height);
+    pdf.setFontSize(10);
+    pdf.text(
+      `Generated by Motiononics on ${new Date().toLocaleDateString()}`,
+      pdf.internal.pageSize.getWidth() / 2,
+      pdf.internal.pageSize.getHeight() - 10,
+      { align: "center" }
+    );
+    pdf.save("chord-sheet-music.pdf");
+  }
+  
   // -------------------- playChord --------------------
   function playChord(chordName: string, beatDurationMs: number, velocity: number = 0.7) {
     const audioCtx = audioContextRef.current;
@@ -1386,6 +1473,18 @@ export default function PlayForMePage() {
                             <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                           </svg>
                           Download Chord TXT
+                        </motion.button>
+
+                        <motion.button
+                          className="px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors flex items-center shadow-md"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => downloadChordSheetPDF(recordedChords)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
+                          Download Chord Sheet
                         </motion.button>
                       </motion.div>
                     )}

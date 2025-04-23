@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import * as THREE from "three";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
@@ -77,10 +76,8 @@ const guitarStringMapping = [
 ];
 
 // -------------------- Global Debounce Object --------------------
-// Tracks which guitar strings are currently playing.
+
 let playingStrings: Record<number, boolean> = {};
-
-
 
 // -------------------- Chord Grid Visualizer --------------------
 function ChordGridVisualizer({
@@ -429,7 +426,7 @@ export default function Page() {
   }
 
   // ---------------------------------------------------------------------
-  // Audio / chord / note helper functions (unchanged except for note length handling)
+  // Audio / chord / note helper functions 
   // ---------------------------------------------------------------------
   function playNoteManual(
     gestureLabel: string,
