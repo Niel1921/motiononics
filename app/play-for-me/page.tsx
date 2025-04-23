@@ -836,7 +836,7 @@ export default function PlayForMePage() {
                 const landmarks = results.landmarks[0];
                 const avgX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
                 const avgY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
-                const position = { x: avgX, y: avgY };
+                const position = { x: 1 - avgX, y: avgY };
                 setHandPosition(position);
 
                 const cellX = Math.floor(position.x * 3);
@@ -1011,10 +1011,10 @@ export default function PlayForMePage() {
       const gainNode = audioCtx.createGain();
       gainNode.gain.value = (velocity * (1 - i * 0.05)) / notes.length;
   
-      // connect the source into your gain
+      // connect the source into  gain
       source.connect(gainNode);
   
-      // then go to your reverb or straight to output
+      // then go to reverb or straight to output
       if (convolverRef.current) {
         gainNode.connect(convolverRef.current);
         convolverRef.current.connect(audioCtx.destination);
@@ -1182,13 +1182,15 @@ export default function PlayForMePage() {
               </CardContent>
             </Card>
   
+            {/* Updated Record-For-Me Card */}
             <motion.div
-              className="bg-white shadow-md mb-6"
+              className="bg-white shadow-md rounded-lg overflow-hidden mb-6"
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
               <CardHeader className="bg-purple-50 border-b border-purple-100">
-                <h2 className="text-2xl font-bold text-purple-800">Record‑For‑Me</h2>
+                <h2 className="text-2xl font-bold text-purple-800">Record-For-Me</h2>
               </CardHeader>
               <CardContent className="p-6">
                 {/* Error banner */}
@@ -1198,107 +1200,200 @@ export default function PlayForMePage() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="mb-4 p-3 bg-red-100 text-red-800 rounded"
+                      transition={{ duration: 0.3 }}
+                      className="mb-4 p-3 bg-red-100 text-red-800 rounded-md border border-red-200"
                     >
-                      {errorMessage}
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errorMessage}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-  
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-purple-700">Record Chords</h3>
-                  <Button
-                    onClick={() => {
-                      if (!webcamEnabled) {
-                        setErrorMessage('Please enable your camera before recording.');
-                        return;
-                      }
-                      setErrorMessage('');
-                      recording ? stopRecording() : startRecording();
-                    }}
-                    className={`ml-4 px-6 py-2 rounded transition-colors duration-150 font-semibold ${
-                      recording
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-green-600 hover:bg-green-700'
-                    } text-white`}
+
+                <div className="flex flex-col md:flex-row items-center justify-between mb-6">
+                  <div className="w-full md:w-auto mb-4 md:mb-0">
+                    <h3 className="text-lg font-semibold text-purple-700 mb-1">Record Your Chord Progression</h3>
+                  </div>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    {recording ? 'Stop Recording' : 'Start Recording'}
-                  </Button>
-                </div>
-  
-                {blobUrl && (
-                  <audio
-                    key={blobUrl}           
-                    ref={audioPreviewRef}
-                    controls
-                    src={blobUrl}
-                    className="w-full my-4"
-                  />
-                )}
-  
-                <div className="flex flex-wrap gap-2 mt-2">
-                <AnimatePresence>
-                  {(recording || recordedBlob) && (
                     <Button
-                      variant="outline"
-                      className="border-gray-400 text-gray-700 hover:bg-gray-100"
                       onClick={() => {
-                        if (recorderNodeRef.current) {
-                          if (convolverRef.current) {
-                            convolverRef.current.disconnect(recorderNodeRef.current);
-                          }
-                          recorderNodeRef.current.disconnect(audioContextRef.current!.destination);
-                          recorderNodeRef.current = null;
+                        if (!webcamEnabled) {
+                          setErrorMessage('Please enable your camera before recording.');
+                          return;
                         }
-                        pcmLeftRef.current = [];
-                        pcmRightRef.current = [];
-                        if (blobUrl) {
-                          URL.revokeObjectURL(blobUrl);
-                          setBlobUrl(null);
-                        }
-                        setRecording(false);
-                        setRecordedChords([]);
-                        setRecordedBlob(null);
-                        setErrorMessage("");
+                        setErrorMessage('');
+                        recording ? stopRecording() : startRecording();
                       }}
+                      className={`px-6 py-2 rounded-lg shadow-md transition-colors duration-150 font-semibold ${
+                        recording
+                          ? 'bg-red-500 hover:bg-red-600'
+                          : 'bg-purple-600 hover:bg-purple-700'
+                      } text-white flex items-center`}
                     >
-                      Retry
+                      {recording ? (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                          </svg>
+                          Stop Recording
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                          Start Recording
+                        </>
+                      )}
                     </Button>
-                  
+                  </motion.div>
+                </div>
+
+                {/* Recording indicator */}
+                <AnimatePresence>
+                  {recording && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg"
+                    >
+                      <div className="flex items-center">
+                        <div className="relative mr-3">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          <div className="w-3 h-3 bg-red-500 rounded-full absolute top-0 left-0 animate-ping opacity-75"></div>
+                        </div>
+                        <span className="text-purple-800 font-medium">Recording in progress...</span>
+                      </div>
+                      <div className="mt-2 text-sm text-purple-600">
+                        Make fist gestures to trigger chords. Each chord will be recorded in sequence.
+                      </div>
+                    </motion.div>
                   )}
-                  </AnimatePresence>
+                </AnimatePresence>
+
+                {/* Audio player */}
+                <AnimatePresence>
+                  {blobUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.3 }}
+                      className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg"
+                    >
+                      <h4 className="text-purple-700 font-medium mb-2">
+                        Your Recording
+                      </h4>
+                      <audio
+                        key={blobUrl}
+                        ref={audioPreviewRef}
+                        controls
+                        src={blobUrl}
+                        className="w-full"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Action buttons */}
+                <div className="flex flex-wrap gap-2 mt-4">
                   <AnimatePresence>
-                  {recordedBlob && (
-                    <>
-                      <a
-                        href={URL.createObjectURL(recordedBlob)}
-                        download="play-for-me.wav"
-                        className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors"
+                    {(recording || recordedBlob) && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
                       >
-                        Download WAV
-                      </a>
-                      <Button
-                        className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
-                        onClick={() => {
-                          const txt = recordedChords.join(' ');
-                          const blob = new Blob([txt], { type: 'text/plain' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = 'chords.txt';
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }}
+                        <Button
+                          variant="outline"
+                          className="border-gray-400 text-gray-700 hover:bg-gray-100 flex items-center"
+                          onClick={() => {
+                            if (recorderNodeRef.current) {
+                              if (convolverRef.current) {
+                                convolverRef.current.disconnect(recorderNodeRef.current);
+                              }
+                              recorderNodeRef.current.disconnect(audioContextRef.current!.destination);
+                              recorderNodeRef.current = null;
+                            }
+                            pcmLeftRef.current = [];
+                            pcmRightRef.current = [];
+                            if (blobUrl) {
+                              URL.revokeObjectURL(blobUrl);
+                              setBlobUrl(null);
+                            }
+                            setRecording(false);
+                            setRecordedChords([]);
+                            setRecordedBlob(null);
+                            setErrorMessage("");
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                          </svg>
+                          Reset
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <AnimatePresence>
+                    {recordedBlob && (
+                      <motion.div 
+                        className="flex gap-2"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2, delay: 0.1 }}
                       >
-                        Download Chord TXT
-                      </Button>
-                    </>
-                  )}
+                        <motion.a
+                          href={URL.createObjectURL(recordedBlob)}
+                          download="play-for-me.wav"
+                          className="px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-colors flex items-center shadow-md"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                          Download WAV
+                        </motion.a>
+                        
+                        <motion.button
+                          className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors flex items-center shadow-md"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            const txt = recordedChords.join(' ');
+                            const blob = new Blob([txt], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'chords.txt';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
+                          Download Chord TXT
+                        </motion.button>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
               </CardContent>
             </motion.div>
-          </motion.div>
+            </motion.div>
 
 
 
