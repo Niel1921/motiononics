@@ -980,12 +980,16 @@ export default function PlayForMePage() {
   }
 
   function downloadChordSheetPDF(chords: string[]) {
+
+    const tonic = selectedKey.split(' ')[0];           // e.g. "G" or "Bb"
+    const isMinor = selectedKey.includes('Minor');
+    const vfKey   = isMinor ? tonic + 'm' : tonic;  
     // 1) Layout settings
     const measuresPerLine = 4;
     const lines          = Math.ceil(chords.length / measuresPerLine);
-    const width          = 300;
-    const lineHeight     = 120;           // tweak this if you want more vertical spacing
-    const height         = lineHeight * lines + 60; // +60px top margin
+    const width          = 400;
+    const lineHeight     = 120;          
+    const height         = lineHeight * lines + 200; 
   
     // 2) Create an HTMLCanvasElement
     const canvas = document.createElement("canvas");
@@ -1002,7 +1006,7 @@ export default function PlayForMePage() {
     for (let line = 0; line < lines; line++) {
       // draw a stave
       const stave = new Stave(10, y, width - 20);
-      if (line === 0) stave.addClef("treble").addTimeSignature("4/4");
+      if (line === 0) stave.addClef("treble").addTimeSignature("4/4").addKeySignature(vfKey);
       stave.setContext(ctx).draw();
   
       // slice out exactly 4 chords
