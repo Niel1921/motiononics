@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -918,21 +918,62 @@ export default function Page() {
               <CardHeader className="bg-teal-50 py-3 px-4 border-b border-teal-100">
                 <h2 className="text-lg font-medium text-teal-800">Circle of Fifths</h2>
                 <Link href="/tutorials/chord-modes">
-                    <Button className="bg-teal-500 hover:bg-teal-600 text-white">Learn more!</Button>
+                  <Button className="bg-teal-500 hover:bg-teal-600 text-white">Learn more!</Button>
                 </Link>
               </CardHeader>
-              <CardContent className="p-4 flex justify-center">
-                <div className="w-full flex flex-col items-center">
+              <CardContent className="p-4 flex flex-col items-center">
+                {/* the wheel */}
+                <div className="w-full flex justify-center">
                   <CircleOfFifths
                     selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
                     onSelectKey={(keyName) => setSelectedKey(keyName)}
                   />
                 </div>
-                <div className="mt-4">
-                  
-                </div>
+
+                {/* dropdown + reset, below the wheel */}
+                <motion.div
+                  className="mt-4 w-full bg-teal-50 rounded-lg p-3 border border-teal-100"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                  <h4 className="text-teal-800 font-medium mb-2">Key</h4>
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <select
+                        value={selectedKey}
+                        onChange={(e) => setSelectedKey(e.target.value)}
+                        className="w-full p-2 pl-3 pr-10 bg-white border border-teal-200 rounded-md text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="None">None (Chromatic)</option>
+                        {Object.keys(keySignatures).map((keyName) => (
+                          <option key={keyName} value={keyName}>
+                            {keyName}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-teal-700">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      onClick={() => setSelectedKey("None")}
+                    >
+                      Reset (Chromatic)
+                    </Button>
+                  </div>
+                </motion.div>
               </CardContent>
             </Card>
+
           </div>
 
           {/* Central Column */}
@@ -1047,151 +1088,244 @@ export default function Page() {
                      ))}
                    </div>
                   </div>
-
-                  <div className="mb-4 w-full">
-                    <h3 className="text-lg font-semibold text-teal-700 mb-2">Mode</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(["manual", "autoChord", "arpeggiator"] as const).map((modeOption) => (
-                        <button
-                          key={modeOption}
-                          onClick={() => setMode(modeOption)}
-                          className={`
-                            flex flex-col items-center p-2
-                            bg-white rounded-lg shadow
-                            transition h-full
-                            ${mode === modeOption
-                              ? "ring-2 ring-teal-600"
-                              : "hover:ring-1 hover:ring-teal-300"}
-                          `}
-                        >
-                          <div className="h-24 w-24 relative mb-1">
-                            <Image
-                              src={`/textures/${modeOption}img.jpg`}
-                              alt={modeOption}
-                              fill
-                              className="object-cover rounded-md"
-                            />
-                          </div>
-                          <span className="mt-1 text-sm font-medium text-teal-800">
-                            {modeOption === "autoChord" ? "Auto Chord" : 
-                            modeOption.charAt(0).toUpperCase() + modeOption.slice(1)}
-                          </span>
-                        </button>
-                      ))}
+                  {(instrument !== "theremin" &&
+                    <div className="mb-4 w-full">
+                      <h3 className="text-lg font-semibold text-teal-700 mb-2">Mode</h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(["manual", "autoChord", "arpeggiator"] as const).map((modeOption) => (
+                          <button
+                            key={modeOption}
+                            onClick={() => setMode(modeOption)}
+                            className={`
+                              flex flex-col items-center p-2
+                              bg-white rounded-lg shadow
+                              transition h-full
+                              ${mode === modeOption
+                                ? "ring-2 ring-teal-600"
+                                : "hover:ring-1 hover:ring-teal-300"}
+                            `}
+                          >
+                            <div className="h-24 w-24 relative mb-1">
+                              <Image
+                                src={`/textures/${modeOption}img.jpg`}
+                                alt={modeOption}
+                                fill
+                                className="object-cover rounded-md"
+                              />
+                            </div>
+                            <span className="mt-1 text-sm font-medium text-teal-800">
+                              {modeOption === "autoChord" ? "Auto Chord" : 
+                              modeOption.charAt(0).toUpperCase() + modeOption.slice(1)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
+                    )}
                 
-                {/* BPM */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-teal-700 mb-2">Tempo (BPM)</h3>
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="range"
-                      min={40}
-                      max={180}
-                      value={bpm}
-                      onChange={(e) => setBpm(Number(e.target.value))}
-                      className="w-full accent-teal-600"
-                    />
-                    <span className="text-teal-800 font-semibold">{bpm}</span>
-                  </div>
-                </div>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Note Length:
-                    <select
-                      value={noteLength}
-                      onChange={(e) => setNoteLength(Number(e.target.value))}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
+                {/* Improved Controls Section with Animations */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-teal-700 mb-3">Playback Settings</h3>
+                    
+                    {/* BPM Control */}
+                    <motion.div 
+                      className="mb-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
                     >
-                      <option value={0.25}>16th</option>
-                      <option value={0.5}>8th</option>
-                      <option value={1}>Quarter</option>
-                      <option value={2}>Half</option>
-                      <option value={4}>Whole</option>
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-teal-700">
-                    Key:
-                    <select
-                      value={selectedKey}
-                      onChange={(e) => setSelectedKey(e.target.value)}
-                      className="px-2 py-1 border rounded focus:ring-teal-500"
-                    >
-                      <option value="None">None (Chromatic)</option>
-                      {Object.keys(keySignatures).map((keyName) => (
-                        <option key={keyName} value={keyName}>
-                          {keyName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                 
-                  {mode === "arpeggiator" && (
-                    <div className="space-y-3 border-t border-gray-200 pt-3">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Octave Span</label>
-                        <select
-                          value={arpeggioOctaves}
-                          onChange={(e) => setArpeggioOctaves(Number(e.target.value))}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                        >
-                          <option value={1}>1 Octave</option>
-                          <option value={2}>2 Octaves</option>
-                        </select>
+                      <h4 className="text-teal-800 font-medium mb-2">Tempo (BPM)</h4>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="range"
+                          min={40}
+                          max={180}
+                          value={bpm}
+                          onChange={(e) => setBpm(Number(e.target.value))}
+                          className="w-full accent-teal-600"
+                        />
+                        <span className="text-teal-800 font-semibold bg-white px-3 py-1 rounded-md border border-teal-200 min-w-[3rem] text-center">
+                          {bpm}
+                        </span>
                       </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Direction</label>
-                        <div className="flex flex-col gap-2">
-                          <label className="flex items-center gap-1">
-                            <input type="radio" value="up" checked={arpeggioDirection === "up"} onChange={() => setArpeggioDirection("up")} className="accent-teal-600" />
-                            <span className="text-sm">Up</span>
-                          </label>
-                          <label className="flex items-center gap-1">
-                            <input type="radio" value="down" checked={arpeggioDirection === "down"} onChange={() => setArpeggioDirection("down")} className="accent-teal-600" />
-                            <span className="text-sm">Down</span>
-                          </label>
-                          <label className="flex items-center gap-1">
-                            <input type="radio" value="upDown" checked={arpeggioDirection === "upDown"} onChange={() => setArpeggioDirection("upDown")} className="accent-teal-600" />
-                            <span className="text-sm">Up &amp; Down</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {instrument === "guitar" && (
-                   <div className="mt-2 flex items-center">
-                    <span className="mr-2">String Spacing</span>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2"
-                      step="0.1"
-                      value={stringSpacing}
-                      onChange={(e) => setStringSpacing(Number(e.target.value))}
-                      className="w-40"
-                    />
-                  </div>
-                  )}
-                </div>
-                <Button
-                  onClick={() => {
-                    console.log("Test Sample button clicked.");
-                    if (mode === "manual") {
+                    </motion.div>
 
-                      if (audioContextRef.current)
-                        playGuitarString(3, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
-                    } else if (mode === "autoChord") {
-                      playChord("Cmaj");
-                    } else if (mode === "arpeggiator") {
-                      playArpeggio("Cmaj", (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
-                    }
-                  }}
-                  className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white"
-                >
-                  Test Sample
-                </Button>
+                    {/* Note Length */}
+                    <motion.div 
+                      className="mb-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <h4 className="text-teal-800 font-medium mb-2">Note Length</h4>
+                      <div className="grid grid-cols-5 gap-1">
+                        {[
+                          { value: 0.25, label: "16th" },
+                          { value: 0.5, label: "8th" },
+                          { value: 1, label: "1/4" },
+                          { value: 2, label: "1/2" },
+                          { value: 4, label: "Whole" }
+                        ].map((option, index) => (
+                          <motion.button
+                            key={option.value}
+                            onClick={() => setNoteLength(option.value)}
+                            className={`
+                              py-2 px-1 text-sm rounded-md transition-all
+                              ${noteLength === option.value 
+                                ? "bg-teal-600 text-white font-medium shadow-sm" 
+                                : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
+                            `}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.1 + index * 0.05 }}
+                          >
+                            {option.label}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+
+                    {/* Arpeggiator Settings (conditionally rendered) */}
+                    <AnimatePresence>
+                      {mode === "arpeggiator" && instrument!='theremin' && (
+                        <motion.div 
+                          className="space-y-4"
+                          initial={{ opacity: 0, height: 0, overflow: "hidden" }}
+                          animate={{ opacity: 1, height: "auto", overflow: "visible" }}
+                          exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {/* Octave Span */}
+                          <motion.div 
+                            className="bg-teal-50 rounded-lg p-3 border border-teal-100"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 }}
+                          >
+                            <h4 className="text-teal-800 font-medium mb-2">Octave Span</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {[1, 2].map((octave, index) => (
+                                <motion.button
+                                  key={octave}
+                                  onClick={() => setArpeggioOctaves(octave)}
+                                  className={`
+                                    py-2 px-4 rounded-md transition-all
+                                    ${arpeggioOctaves === octave 
+                                      ? "bg-teal-600 text-white font-medium shadow-sm" 
+                                      : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
+                                  `}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.2, delay: 0.2 + index * 0.1 }}
+                                >
+                                  {octave} {octave === 1 ? "Octave" : "Octaves"}
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+
+                          {/* Direction */}
+                          <motion.div 
+                            className="bg-teal-50 rounded-lg p-3 border border-teal-100"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.2 }}
+                          >
+                            <h4 className="text-teal-800 font-medium mb-2">Direction</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                { value: "up", label: "Up", icon: "↑" },
+                                { value: "down", label: "Down", icon: "↓" },
+                                { value: "upDown", label: "Up & Down", icon: "↕" }
+                              ].map((option, index) => (
+                                <motion.button
+                                  key={option.value}
+                                  onClick={() => setArpeggioDirection(option.value as "up" | "down" | "upDown")}
+                                  className={`
+                                    py-2 px-1 rounded-md transition-all flex flex-col items-center
+                                    ${arpeggioDirection === option.value 
+                                      ? "bg-teal-600 text-white font-medium shadow-sm" 
+                                      : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
+                                  `}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.2, delay: 0.3 + index * 0.1 }}
+                                >
+                                  <span className="text-lg mb-1">{option.icon}</span>
+                                  <span className="text-xs">{option.label}</span>
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Guitar String Spacing (conditionally rendered) */}
+                    <AnimatePresence>
+                      {instrument === "guitar" && mode === "manual" && (
+                        <motion.div 
+                          className="mt-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
+                          initial={{ opacity: 0, height: 0, overflow: "hidden" }}
+                          animate={{ opacity: 1, height: "auto", overflow: "visible" }}
+                          exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <h4 className="text-teal-800 font-medium mb-2">String Spacing</h4>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="range"
+                              min="0.5"
+                              max="2"
+                              step="0.1"
+                              value={stringSpacing}
+                              onChange={(e) => setStringSpacing(Number(e.target.value))}
+                              className="w-full accent-teal-600"
+                            />
+                            <span className="text-teal-800 font-semibold bg-white px-3 py-1 rounded-md border border-teal-200 min-w-[3rem] text-center">
+                              {stringSpacing.toFixed(1)}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Test Sample Button */}
+                  <motion.div 
+                    className="flex justify-center"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}
+                  >
+                    <motion.button
+                      onClick={() => {
+                        console.log("Test Sample button clicked.");
+                        if (mode === "manual") {
+                          if (audioContextRef.current)
+                            playGuitarString(3, audioContextRef.current, samplesRef.current, convolverRef.current, bpm, noteLength);
+                        } else if (mode === "autoChord") {
+                          playChord("Cmaj");
+                        } else if (mode === "arpeggiator") {
+                          playArpeggio("Cmaj", (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
+                        }
+                      }}
+                      className="w-full px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg shadow-md transition-colors flex items-center justify-center"
+                      whileHover={{ scale: 1.03, backgroundColor: "#0d9488" }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                      </svg>
+                      Test Sample
+                    </motion.button>
+                  </motion.div>
               </CardContent>
             </Card>
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
