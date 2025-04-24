@@ -175,8 +175,8 @@ function getChordsForKey(keyName: string) {
       { name: "G", roman: "V" },
       { name: "Am", roman: "vi" },
       { name: "Bdim", roman: "vii°" },
-      { name: "E", roman: "V/vi" },
-      { name: "D", roman: "V/V" },
+      { name: "E", roman: "I" },
+      { name: "D", roman: "V" },
     ];
   }
   
@@ -187,18 +187,17 @@ function getChordsForKey(keyName: string) {
   if (keyName.includes("Major")) {
     const sig = keySignatures[keyName];
     chords = [
-      sig.notes[5] + "min", // vi
-      sig.notes[1] + "min", // ii
-      sig.notes[3] + "maj", // IV
-      sig.notes[2] + "min", // iii
       sig.notes[0] + "maj", // I
+      sig.notes[1] + "min", // ii
+      sig.notes[2] + "min", // iii
+      sig.notes[3] + "maj", // IV
       sig.notes[4] + "maj", // V
+      sig.notes[5] + "min", // vi
       sig.notes[6] + "dim", // vii°
-      // Fixed: secDom property doesn't exist on KeySignature
-      sig.notes[2] + "maj", // Use a fallback value instead
+      sig.notes[2] + "maj", 
       sig.notes[1] + "maj",
     ];
-    roman = ["vi", "ii", "IV", "iii", "I", "V", "vii°", "V/vi", "V/V"];
+    roman = ["I", "ii", "iii", "IV", "V", "vi", "vii°", "I", "V"];
   } else if (keyName.includes("Minor")) {
     const sig = keySignatures[keyName];
     chords = [
@@ -726,17 +725,17 @@ export default function ChordModesPage() {
         >
           <Card className="bg-white shadow-md">
             <CardHeader className="bg-teal-50 border-b border-teal-100">
-              <h2 className="text-2xl font-bold text-teal-800">Introduction to Chord Modes</h2>
+              <h2 className="text-2xl font-bold text-teal-800">Introduction to Chords</h2>
             </CardHeader>
             <CardContent className="p-6">
               <div className="prose prose-teal max-w-none">
                 <p>
-                  When creating music, the relationship between chords forms the foundation of harmony. 
-                  In Motiononics, we've designed our chord mode systems to help you create compelling 
-                  musical progressions using intuitive hand gestures, even if you're new to music theory.
+                  When creating music, the way chords are linked together forms the foundation of a song. 
+                  In Motiononics, we've designed our chord mode systems to help you create 
+                  chord progressions using hand gestures, even if you're new to music theory.
                 </p>
                 
-                <h3 className="text-xl font-semibold text-teal-700 mt-6">What are Chord Modes?</h3>
+                <h3 className="text-xl font-semibold text-teal-700 mt-6">What are our Chord Modes?</h3>
                 <p>
                   In our application, "Chord Modes" refer to different ways you can play and interact with 
                   chord progressions:
@@ -744,12 +743,12 @@ export default function ChordModesPage() {
                 <ul className="list-disc pl-6">
                   <li><strong>Auto Chord Mode:</strong> Play complete chords with a single gesture</li>
                   <li><strong>Arpeggiator Mode:</strong> Play the notes of a chord sequentially as a pattern</li>
-                  <li><strong>Manual Mode:</strong> Play individual notes with precise control</li>
+                  <li><strong>Play-for-me Mode:</strong> Plays full chord progressions with one simple interaction</li>
                 </ul>
-                
+                <br></br>
                 <p>
                   These different modes allow you to explore harmonies and expressiveness regardless of your 
-                  musical background. The chord grid system visually organizes chords that sound good together, 
+                  musical background. The chord grid system organises chords that sound good together, 
                   based on music theory principles.
                 </p>
               </div>
@@ -774,22 +773,23 @@ export default function ChordModesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="prose prose-teal max-w-none">
                   <p>
-                    The Circle of Fifths is a fundamental music theory tool that shows the relationships
-                    between the 12 different key signatures in Western music. It's arranged in a circle 
-                    where each key is a perfect fifth (or 7 semitones) apart from its neighbors.
+                    The Circle of Fifths is a music theory tool that shows the relationships
+                    between the 12 different major and minor key signatures in Western music. It's arranged in a circle 
+                    where each key is a perfect fifth (or 7 steps/semitones) apart from its nearest 2 neighbors.
                   </p>
                   
                   <h3 className="text-xl font-semibold text-teal-700 mt-6">Why is it useful?</h3>
                   <ul className="list-disc pl-6">
                     <li><strong>Finding related keys:</strong> Keys next to each other on the circle share many notes and chords</li>
-                    <li><strong>Chord progressions:</strong> Movement around the circle often creates pleasing chord changes</li>
+                    <li><strong>Chord progressions:</strong> Movement around the circle often creates nice chord changes that you will have heard lots of times before</li>
                     <li><strong>Modulation:</strong> The circle shows good keys to transition to during a piece</li>
-                    <li><strong>Understanding key signatures:</strong> The circle visually organizes the number of sharps and flats in each key</li>
+                    <li><strong>Understanding key signatures:</strong> The circle visually organises the number of sharps and flats in each key</li>
                   </ul>
                   
+                  <br></br>
                   <p>
-                    In our application, the Circle of Fifths helps you select keys and understand the relationship
-                    between different chords in your progression.
+                    In motiononics, the Circle of Fifths helps you select keys and understand the relationship
+                    between different chords in your current key. <strong> Try it out by selecting a key to the right!</strong>
                   </p>
                 </div>
                 
@@ -820,12 +820,12 @@ export default function ChordModesPage() {
               <div className="prose prose-teal max-w-none mb-6">
                 <p>
                   Roman numerals are used in music theory to indicate the position of a chord within a key,
-                  regardless of what specific key you're in. This makes it easy to transpose chord progressions
+                  regardless of what specific key you're in. This makes it easy to learn chord progressions
                   between different keys.
                 </p>
                 <p>
-                  Upper-case numerals (I, IV, V) represent major chords, while lower-case numerals (ii, iii, vi)
-                  represent minor chords. The diminished chord is indicated with a small circle (vii°).
+                  Upper-case numerals (I, IV, V) represent major chords (happier sounding), while lower-case numerals (ii, iii, vi)
+                  represent minor chords (less bright and happy). The diminished chord is indicated with a small circle (vii°).
                 </p>
               </div>
               
@@ -835,7 +835,7 @@ export default function ChordModesPage() {
                     <tr className="bg-teal-50">
                       <th className="py-3 px-4 border-b border-teal-200 text-left text-teal-700">Roman Numeral</th>
                       <th className="py-3 px-4 border-b border-teal-200 text-left text-teal-700">Chord Type</th>
-                      <th className="py-3 px-4 border-b border-teal-200 text-left text-teal-700">Examples in C Major</th>
+                      <th className="py-3 px-4 border-b border-teal-200 text-left text-teal-700">Example in C Major</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -852,8 +852,8 @@ export default function ChordModesPage() {
               
               <div className="mt-6 prose prose-teal max-w-none">
                 <p>
-                  In our chord grid visualizer, these Roman numerals help you identify the function of each chord
-                  within your selected key, making it easier to understand and create compelling progressions.
+                  In our chord grid visualiser, these Roman numerals help you identify how each chord will sound
+                  within your selected key, making it easier to understand and create nice sounding progressions.
                 </p>
               </div>
             </CardContent>
@@ -871,15 +871,15 @@ export default function ChordModesPage() {
         >
           <Card className="bg-white shadow-md">
             <CardHeader className="bg-teal-50 border-b border-teal-100">
-              <h2 className="text-2xl font-bold text-teal-800">The Chord Grid Interface</h2>
+              <h2 className="text-2xl font-bold text-teal-800">The Chord Grid</h2>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="prose prose-teal max-w-none">
                   <p>
-                    Motiononics features a unique 3×3 chord grid interface that organizes chords by their 
-                    function and relationship within a key. This allows you to create harmonically pleasing 
-                    progressions with intuitive hand gestures.
+                    Motiononics uses a 3x3 chord grid interface to organise chords by their 
+                    function and relationship within a key. This allows you to create nice sounding 
+                    progressions with your hand gestures.
                   </p>
                   
                   <h3 className="text-xl font-semibold text-teal-700 mt-6">How the Grid Works</h3>
@@ -903,15 +903,15 @@ export default function ChordModesPage() {
                   <div className="p-4 border border-teal-200 rounded-lg bg-teal-50 shadow-sm">
                     <div className="w-full aspect-square max-w-md grid grid-cols-3 grid-rows-3 gap-1">
                       {[
-                        { name: "vi", roman: "vi", highlight: false },
+                        { name: "I", roman: "I", highlight: false },
                         { name: "ii", roman: "ii", highlight: false },
-                        { name: "IV", roman: "IV", highlight: false },
                         { name: "iii", roman: "iii", highlight: false },
-                        { name: "I", roman: "I", highlight: true },
-                        { name: "V", roman: "V", highlight: false },
+                        { name: "IV", roman: "IV", highlight: false },
+                        { name: "V", roman: "V", highlight: true },
+                        { name: "vi", roman: "vi", highlight: false },
                         { name: "vii°", roman: "vii°", highlight: false },
-                        { name: "V/vi", roman: "V/vi", highlight: false },
-                        { name: "V/V", roman: "V/V", highlight: false },
+                        { name: "I", roman: "I", highlight: false },
+                        { name: "V", roman: "V", highlight: false },
                       ].map((chord, index) => (
                         <div
                           key={index}
@@ -926,20 +926,8 @@ export default function ChordModesPage() {
                   <p className="text-center mt-4 text-sm text-teal-600 italic">Example chord grid layout</p>
                 </div>
               </div>
-              
-              <div className="mt-8 prose prose-teal max-w-none">
-                <h3 className="text-xl font-semibold text-teal-700">Gestures and the Grid</h3>
-                <p>
-                  When using gesture controls, your hand position in the camera's view maps directly to 
-                  positions on the chord grid:
-                </p>
-                <ul className="list-disc pl-6">
-                  <li>Moving your hand <strong>horizontally</strong> selects different chord functions</li>
-                  <li>Moving your hand <strong>vertically</strong> changes the harmonic tension</li>
-                  <li>Making a <strong>fist gesture</strong> triggers the chord at that position</li>
-                  <li>Using an <strong>open palm gesture</strong> in arpeggiator mode plays chord notes sequentially</li>
-                </ul>
-                
+
+              <div className="mt-8 prose prose-teal max-w-none">                
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mt-6">
                   <p className="text-sm">
                     <strong>Tip:</strong> Try moving your hand in a clockwise pattern around the grid to create a
@@ -971,7 +959,7 @@ export default function ChordModesPage() {
                   closed fist gesture at different positions to play chords in the key of {selectedKey}.
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                 <div className="flex flex-col space-y-4">
                   <div className="flex items-center justify-between">
@@ -1109,7 +1097,7 @@ export default function ChordModesPage() {
                   </div>
                 ))}
                 
-                <div className="bg-gradient-to-r from-teal-500 to-blue-500 text-white border rounded-lg p-5 shadow-sm md:col-span-2">
+                <div className="bg-teal-500 text-white border rounded-lg p-5 shadow-sm md:col-span-2">
                   <h3 className="text-xl font-bold mb-2">Try This!</h3>
                   <p>
                     Select the chord mode in Motiononics, choose {selectedKey} as your key, and try moving your hand 
@@ -1150,10 +1138,10 @@ export default function ChordModesPage() {
                   <div className="bg-teal-50 p-4 rounded-md">
                     <ol className="list-decimal list-inside space-y-2">
                       <li>Select Auto Chord Mode and choose a key</li>
-                      <li>Position your hand in the center of the grid (I chord)</li>
-                      <li>Move to the top-right (IV chord)</li>
-                      <li>Move to the middle-right (V chord)</li>
-                      <li>Return to the center (I chord)</li>
+                      <li>Position your hand in the top left of the grid (I chord)</li>
+                      <li>Move to the middle-left (IV chord)</li>
+                      <li>Move to the center (V chord)</li>
+                      <li>Return to the top left (I chord)</li>
                     </ol>
                   </div>
                 </div>
@@ -1164,28 +1152,24 @@ export default function ChordModesPage() {
                   <div className="bg-teal-50 p-4 rounded-md">
                     <ol className="list-decimal list-inside space-y-2">
                       <li>Switch to Arpeggiator Mode</li>
-                      <li>Make an open palm gesture at different grid positions</li>
-                      <li>Try changing the arpeggio direction (up, down, up-down)</li>
+                      <li>Make an closed fist gesture at different grid positions</li>
+                      <li>Try changing the arpeggio direction (up, down, up-down) and octave span</li>
                       <li>Notice how arpeggios outline the chord qualities</li>
                     </ol>
                   </div>
                 </div>
                 
                 <div className="bg-white border border-teal-100 rounded-lg p-5 shadow-sm">
-                  <h3 className="text-xl font-semibold text-teal-700 mb-2">3. Circle of Fifths Movement</h3>
-                  <p className="mb-4">Create a progression that follows the Circle of Fifths.</p>
+                  <h3 className="text-xl font-semibold text-teal-700 mb-2">3. Play-for-me Mode</h3>
+                  <p className="mb-4">Try out some of our pre made progressions on the Play-for-me Page!</p>
                   <div className="bg-teal-50 p-4 rounded-md">
                     <ol className="list-decimal list-inside space-y-2">
-                      <li>Start on the I chord (center of grid)</li>
-                      <li>Move to the IV chord (top-right)</li>
-                      <li>Move to the vii° chord (bottom-left)</li>
-                      <li>Move to the iii chord (left-middle)</li>
-                      <li>Move to the vi chord (top-left)</li>
-                      <li>Move to the ii chord (top-middle)</li>
-                      <li>Move to the V chord (middle-right)</li>
-                      <li>Return to I (center)</li>
+                      <li>Head to the Play-for-me page in the header at the top</li>
+                      <li>Pick your favourite genre for the chord progression</li>
+                      <li>Test out different 'root' chords with different rhythms and progressions</li>
+                      <li>Record your favourite progressions you find to listen to or use elsewhere!</li>
+                      
                     </ol>
-                    <p className="mt-2 text-sm italic">This progression follows a counterclockwise movement around the Circle of Fifths.</p>
                   </div>
                 </div>
               </div>
