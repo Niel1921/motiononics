@@ -277,6 +277,9 @@ export default function Page() {
       .map(n => NOTE_TO_SEMITONE[n]);
   }, [selectedKey]);
 
+  const [pianoInput, setPianoInput] = useState<"fist"|"finger">("fist");
+  const fingerPressedRef = useRef<Record<number, boolean>>({});
+
   // Audio-related refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplesRef = useRef<Record<string, AudioBuffer>>({});
@@ -839,6 +842,35 @@ export default function Page() {
                   }
                 }
               }
+              else if (instrument==="piano" && mode==="manual" && results.gestures && results.landmarks) {
+                results.gestures.forEach((gestArr,i)=>{
+                  if (!gestArr.length) return;
+                  const gesture = gestArr[0].categoryName;
+                  const lms = results.landmarks![i];
+                  const pos = getHandPosition(lms);
+                  updateHandPos(lms);
+    
+                  if (pianoInput==="fist" && gesture==="Closed_Fist") {
+                    playNoteManual("Closed_Fist", pos);
+                  }
+                  else if (pianoInput==="finger" && gesture==="None") {
+                    // detect tip-press for each fingertip
+                    const tips = [4,8,12,16,20];
+                    tips.forEach((idx, fi) => {
+                      const y = lms[idx].y;
+                      const avgOthers = tips.filter(j=>j!==idx)
+                        .reduce((sum,j)=>sum + lms[j].y,0)/4;
+                      const pressed = y - avgOthers > 0.06;
+                      if (pressed && !fingerPressedRef.current[idx]) {
+                        fingerPressedRef.current[idx] = true;
+                        playNoteManual("Closed_Fist",{ x: fi/(tips.length-1), y:0.5 });
+                      } else if (!pressed) {
+                        fingerPressedRef.current[idx] = false;
+                      }
+                    });
+                  }
+                });
+              }
               else if (mode === "autoChord" && instrument === "guitar" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
                     // exactly what piano does:
                     const cellX = Math.floor(pos.x * 3);
@@ -1323,6 +1355,25 @@ export default function Page() {
                       Test Sample
                     </motion.button>
                   </motion.div>
+
+                  {instrument==="piano" && mode==="manual" && (
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-teal-700 mb-2">Piano Input</h3>
+                    <div className="flex gap-2">
+                      {(["fist","finger"] as const).map(m => (
+                        <button key={m} onClick={()=>setPianoInput(m)}
+                          className={`flex-1 py-2 rounded-md border ${
+                            pianoInput===m 
+                              ? "bg-teal-600 text-white" 
+                              : "bg-white text-teal-700 hover:bg-teal-100"
+                          }`}
+                        >
+                          {m==="fist" ? "Closed Fist" : "Finger Tap"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card className="mt-6 rounded-xl border border-teal-100 shadow-lg bg-white overflow-hidden">
