@@ -37,28 +37,49 @@ export function useAudio() {
   }, []);
 
   function playGuitarString(
-    idx:number, bpm:number, noteLen:number
+    idx: number,
+    bpm: number,
+    noteLen: number
   ) {
-    const ctx = audioCtxRef.current; if (!ctx) return;
-    const samples = samplesRef.current; if (!samples["None"]) return;
-    if (playing.current[idx]) return;
-    playing.current[idx] = true;
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    const samples = samplesRef.current;
+    if (!samples["None"]) return;
+
+    // clamp idx into [0 .. GUITAR_STRING_MAPPING.length-1]
+    const safeIdx = Math.min(
+      Math.max(idx, 0),
+      GUITAR_STRING_MAPPING.length - 1
+    );
+    const mapping = GUITAR_STRING_MAPPING[safeIdx];
+
+    if (playing.current[safeIdx]) return;
+    playing.current[safeIdx] = true;
 
     const src = ctx.createBufferSource();
     src.buffer = samples["None"];
-    src.playbackRate.value = 2**(GUITAR_STRING_MAPPING[idx].semitoneOffset/12);
+    src.playbackRate.value =
+      2 ** (mapping.semitoneOffset / 12);
+
     const gain = ctx.createGain();
     gain.gain.value = 0.5;
     src.connect(gain);
-    (convolverRef.current ? gain.connect(convolverRef.current).connect(ctx.destination)
-                          : gain.connect(ctx.destination));
+    if (convolverRef.current) {
+      gain.connect(convolverRef.current).connect(ctx.destination);
+    } else {
+      gain.connect(ctx.destination);
+    }
 
-    const dur = (60/bpm)*noteLen;
+    const dur = (60 / bpm) * noteLen;
     gain.gain.setValueAtTime(0.5, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
-    src.start(); src.stop(ctx.currentTime + dur + 0.1);
+    src.start();
+    src.stop(ctx.currentTime + dur + 0.1);
 
-    setTimeout(() => playing.current[idx]=false, (dur+0.1)*1_000);
+    setTimeout(
+      () => (playing.current[safeIdx] = false),
+      (dur + 0.1) * 1000
+    );
   }
 
   return { initAudio, playGuitarString, audioCtxRef, samplesRef, convolverRef };
