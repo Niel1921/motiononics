@@ -20,15 +20,15 @@ const cardVariants = {
 
 export default function TutorialsPage() {
   return (
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
+    <Header />
+
     <motion.div
       className="min-h-screen bg-teal-50 p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Use our custom header at the top */}
-      <Header />
-
       {/* Page Title */}
       <div className="mt-8 text-center">
         <h1 className="text-4xl font-bold text-teal-800">Tutorials</h1>
@@ -39,12 +39,6 @@ export default function TutorialsPage() {
       </div>
 
       {/* Tutorials Grid */}
-      {/*
-        * We set `auto-rows-[1fr]` on the grid so every row shares the height of
-        * the tallest card in that row. Then we ensure each card stretches to
-        * fill that space with `h-full` while preserving a tidy column layout
-        * using Flexbox.
-      */}
       <main className="grid grid-cols-1 gap-6 md:grid-cols-1 lg:grid-cols-2 mt-8 auto-rows-[1fr]">
         {[
           {
@@ -158,5 +152,6 @@ export default function TutorialsPage() {
         </Link>
       </footer>
     </motion.div>
+    </div>
   );
 }
