@@ -41,7 +41,7 @@ const tutorialSteps = {
       gesture: "Closed_Fist",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/piano-fist-pitch.png",
+      image: "/gestureimg/fistlogo.png",
       tip: "Aim to keep your fist steady while sliding left/right to hear each semitone."
     },
     {
@@ -52,7 +52,7 @@ const tutorialSteps = {
       gesture: "Closed_Fist",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/piano-fist-volume.png",
+      image: "/gestureimg/fistlogo.png",
       tip: "Try moving your fist up and down while sliding left/right to control both pitch and volume."
     },
     {
@@ -63,7 +63,7 @@ const tutorialSteps = {
       gesture: "closed_fist",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/piano-palm-chord.png",
+      image: "/textures/autoChordimg.jpg",
       tip: "This control method works for chords and arpeggios!"
     },
     {
@@ -74,7 +74,7 @@ const tutorialSteps = {
       gesture: "closed_fist",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/piano-palm-chord.png",
+      image: "/textures/arpeggiatorimg.jpg",
       tip: "This control method works for chords and arpeggios!"
     },
   ],
@@ -98,7 +98,7 @@ const tutorialSteps = {
       gesture: "None",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/guitar-fist-fret.png",
+      image: "/gestureimg/backofhand.png",
     },
     {
       id: "guitar-3",
@@ -108,7 +108,7 @@ const tutorialSteps = {
       gesture: "Open_Palm",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/guitar-palm-strum.png",
+      image: "/gestureimg/fistlogo.png",
       tip: "This control method works for chords and arpeggios!"
     },
   ],
@@ -121,18 +121,18 @@ const tutorialSteps = {
       gesture: "Any",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/theremin-palm-pitch.png",
+      image: "/tutorialimg/horizontalhand.png",
       tip: "Keep your hand steady horizontally to hold a stable pitch."
     },
     {
       id: "theremin-2",
       title: "Control Volume with your left hand",
       description:
-        "With palm facing camera, move **up/down**. Top = loudest, bottom = silence.",
+        "Move your left hand up and down with any gesture. Top = loudest, bottom = silence.",
       gesture: "Open_Palm",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/gestureimg/theremin-palm-volume.png",
+      image: "/tutorialimg/verticalhand.png",
       tip: "Combine pitch + volume: use two hands (right for pitch, left for volume)."
     },
     {
@@ -568,7 +568,7 @@ export default function InstrumentTutorialPage() {
                   >
                     <div>
                       <div className="flex justify-between text-sm text-teal-700 mb-1">
-                        <span>Step {currentStepIndex + 1} of {currentSteps.length}</span>
+                        <span>Step {currentStepIndex + 1} of {currentSteps.length-1}</span>
                         <span>{Math.round(progress)}% completed</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">

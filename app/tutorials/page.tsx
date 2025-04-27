@@ -44,7 +44,7 @@ export default function TutorialsPage() {
           {
             title: "Introduction",
             description:
-              "Discover the basics of Motiononics: what it is, how it works, and the technology behind our innovative instrument.",
+              "Learn all of the gestures you'll need to play Motiononics.",
             link: "/tutorials/gesture-walkthrough",
           },
           {
@@ -97,7 +97,7 @@ export default function TutorialsPage() {
 
       {/* Supplemental video tutorials */}
       <motion.div
-        custom={3}
+        custom={2}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
