@@ -80,7 +80,6 @@ export default function Page() {
   const [currentNotes, setCurrentNotes] = useState<number[]>([]);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
-  const [stringSpacing, setStringSpacing] = useState<number>(1);
 
   // Theremin parameters (omitted for brevity)
   const [thereminFrequency, setThereminFrequency] = useState<number>(440);
@@ -436,8 +435,8 @@ export default function Page() {
     console.log("deltaY =>", deltaY);
     if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE) {
       console.log("Vertical swipe from", lastNoneY, "to", pos.y);
-      const oldIndex = getStringIndexFromY(lastNoneY, stringSpacing);
-      const newIndex = getStringIndexFromY(pos.y, stringSpacing);
+      const oldIndex = getStringIndexFromY(lastNoneY);
+      const newIndex = getStringIndexFromY(pos.y);
       const start = Math.min(oldIndex, newIndex);
       const end = Math.max(oldIndex, newIndex);
       if (audioCtxRef.current) {
@@ -463,171 +462,175 @@ export default function Page() {
     const videoEl = videoRef.current;
     const canvasEl = canvasRef.current;
     if (!videoEl || !canvasEl) return;
-    let animationFrameId: number;
+  
     const ctx = canvasEl.getContext("2d");
+    let animationFrameId: number;
+  
+    // --- handle one video frame ---
     const processFrame = async () => {
-      if (videoEl.readyState >= videoEl.HAVE_ENOUGH_DATA && ctx) {
-        ctx.save();
-        ctx.translate(canvasEl.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-        try {
-          const results = await gestureRecognizer.recognizeForVideo(videoEl, performance.now());
-          
-          // ------------------ Theremin Mode ------------------
-          if (instrument === "theremin" && results.landmarks && results.handedness) {
-            let leftHandLandmarks = null;
-            let rightHandLandmarks = null;
-            for (let i = 0; i < results.handedness.length; i++) {
-              const handednessArray = results.handedness[i];
-              if (handednessArray && handednessArray[0]) {
-                const handLabel = handednessArray[0].categoryName;
-                if (handLabel === "Left") leftHandLandmarks = results.landmarks[i];
-                else if (handLabel === "Right") rightHandLandmarks = results.landmarks[i];
-              }
-            }
-            if (leftHandLandmarks && rightHandLandmarks) {
-              // Update main oscillator frequency using left hand position (existing behavior)
-              const leftHandPos = getHandPosition(leftHandLandmarks);
-              const minFreq = 200;
-              const maxFreq = 600;
-              const frequency = minFreq + leftHandPos.x * (maxFreq - minFreq);
-            
-              // Update volume using right hand overall y-position with a dead zone and reduced max gain.
-              const rightHandPos = getHandPosition(rightHandLandmarks);
-              const rawVolume = 1 - rightHandPos.y;
-              const deadZone = 0.3;    // Below this raw volume, output is 0.
-              const maxGain = 0.5;     // Maximum gain (not 1).
-              let volume = 0;
-              if (rawVolume > deadZone) {
-                volume = ((rawVolume - deadZone) / (1 - deadZone)) * maxGain;
-              }
-            
-              const now = audioCtxRef.current!.currentTime;
-              if (thereminOscillatorRef.current) {
-                thereminOscillatorRef.current.frequency.setTargetAtTime(frequency, now, 0.05);
-              }
-              if (thereminGainRef.current) {
-                thereminGainRef.current.gain.setTargetAtTime(volume, now, 0.05);
-              }
-            
-              setThereminFrequency(frequency);
-              setThereminVolume(volume);
-            
-              const thumbTip = rightHandLandmarks[4];
-              const indexTip = rightHandLandmarks[8];
-              const dx = thumbTip.x - indexTip.x;
-              const dy = thumbTip.y - indexTip.y;
-              const pinchDistance = Math.sqrt(dx * dx + dy * dy);
-            
-              const minPinch = 0.02; 
-              const maxPinch = 0.4;   
-            
-              // Map the pinchDistance to a 0–10 Hz range for the vibrato oscillator's rate
-              let lfoRate = ((pinchDistance - minPinch) / (maxPinch - minPinch)) * 10;
-              lfoRate = Math.max(0, Math.min(10, lfoRate));
-
-              if (thereminVibratoOscRef.current) {
-                thereminVibratoOscRef.current.frequency.setTargetAtTime(lfoRate, now, 0.05);
-              }
-
-              setThereminVibrato(lfoRate);
-
-            }
-            
-          }
-
-          // ------------------ Other Instrument Modes ------------------
-          if (instrument !== "theremin" && results?.gestures) {
-            results.gestures.forEach((gestureArray, index) => {
-              if (gestureArray.length === 0) return;
-              const gesture = gestureArray[0];
-              console.log("Detected gesture:", gesture.categoryName);
-              const handLandmarks = results.landmarks[index];
-              if (!handLandmarks) return;
-              const pos = getHandPosition(handLandmarks);
-              updateHandPos(handLandmarks);
-              if (mode === "manual" && instrument === "guitar") {
-                const stringIndex = getStringIndexFromY(pos.y, stringSpacing);
-
-                if (gesture.categoryName === "None") {
-                  if (isBackOfHand(handLandmarks) && audioCtxRef.current){
-                    playGuitarString(stringIndex, bpm, noteLength);
-                    guitarRef.current?.triggerString(stringIndex);
-                  }
-                }
-              }
-              else if (instrument==="piano" && mode==="manual" && results.gestures && results.landmarks) {
-                results.gestures.forEach((gestArr,i)=>{
-                  if (!gestArr.length) return;
-                  const gesture = gestArr[0].categoryName;
-                  const lms = results.landmarks![i];
-                  const pos = getHandPosition(lms);
-                  updateHandPos(lms);
-    
-                  if (pianoInput==="fist" && gesture==="Closed_Fist") {
-                    playNoteManual("Closed_Fist", pos);
-                  }
-                  else if (pianoInput==="finger" && gesture==="None") {
-                    // detect tip-press for each fingertip
-                    const tips = [4,8,12,16,20];
-                    tips.forEach((idx, fi) => {
-                      const y = lms[idx].y;
-                      const avgOthers = tips.filter(j=>j!==idx)
-                        .reduce((sum,j)=>sum + lms[j].y,0)/4;
-                      const pressed = y - avgOthers > 0.06;
-                      if (pressed && !fingerPressedRef.current[idx]) {
-                        fingerPressedRef.current[idx] = true;
-                        playNoteManual("Closed_Fist",{ x: fi/(tips.length-1), y:0.5 });
-                      } else if (!pressed) {
-                        fingerPressedRef.current[idx] = false;
-                      }
-                    });
-                  }
-                });
-              }
-              else if (mode === "autoChord" && instrument === "guitar" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
-                    // exactly what piano does:
-                    const cellX = Math.floor(pos.x * 3);
-                    const cellY = Math.floor(pos.y * 3);
-                    const cellIndex = cellX + cellY * 3;
-                    setCurrentChordCell(cellIndex);
-                    setTimeout(() => setCurrentChordCell(null), 500);
-                    playChordFromHandPosition("Closed_Fist", pos);
-                  }
-              else if (mode === "arpeggiator" && instrument === "guitar" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
-                playArpeggioFromHandPosition("Closed_Fist", pos);
-              }
-              else {
-                if (gesture.categoryName === "Closed_Fist") {
-                  if (mode === "manual") playNoteManual("Closed_Fist", pos);
-                  else if (mode === "autoChord") playChordFromHandPosition("Closed_Fist", pos);
-                  else if (mode === "arpeggiator") playArpeggioFromHandPosition("Closed_Fist", pos);
-                }
-              }
-            });
-          }
-          if (results?.landmarks) {
-            results.landmarks.forEach((lmArr) => {
-              lmArr.forEach((lm) => {
-                ctx.beginPath();
-                ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 4, 0, 2 * Math.PI);
-                ctx.fillStyle = "blue";
-                ctx.fill();
-              });
-            });
-          }
-        } catch (err) {
-          console.error("Error processing frame:", err);
-        }
-        ctx.restore();
+      if (videoEl.readyState < videoEl.HAVE_ENOUGH_DATA || !ctx) {
+        animationFrameId = requestAnimationFrame(processFrame);
+        return;
       }
+  
+      // mirror & draw
+      ctx.save();
+      ctx.translate(canvasEl.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+  
+      try {
+        const results = await gestureRecognizer.recognizeForVideo(
+          videoEl,
+          performance.now()
+        );
+  
+        switch (instrument) {
+          case "theremin":
+            handleThereminFrame(results);
+            break;
+          default:
+            handleInstrumentFrame(results);
+        }
+  
+        drawLandmarks(results.landmarks);
+      } catch (err) {
+        console.error("Error processing frame:", err);
+      }
+  
+      ctx.restore();
       animationFrameId = requestAnimationFrame(processFrame);
     };
+  
+    // --- Theremin logic extracted ---
+    const handleThereminFrame = (results: any) => {
+      const { landmarks, handedness } = results;
+      if (!landmarks || !handedness) return;
+  
+      let leftLM: any[]|null = null, rightLM: any[]|null = null;
+      handedness.forEach((hArr: any[], i: number) => {
+        const label = hArr?.[0]?.categoryName;
+        if (label === "Left")  leftLM = landmarks[i];
+        if (label === "Right") rightLM = landmarks[i];
+      });
+      if (!leftLM || !rightLM) return;
+  
+      // frequency
+      const leftPos = getHandPosition(leftLM);
+      const freq = 200 + leftPos.x * 400;
+      // volume
+      const rightPos = getHandPosition(rightLM);
+      const rawVol = 1 - rightPos.y;
+      const vol = rawVol > 0.3
+        ? ((rawVol - 0.3) / 0.7) * 0.5
+        : 0;
+      // vibrato
+      const { x: tx, y: ty } = rightLM[4];
+      const { x: ix, y: iy } = rightLM[8];
+      const pinch = Math.hypot(tx - ix, ty - iy);
+      const vib = Math.min(10, Math.max(0, ((pinch - 0.02) / 0.38) * 10));
+  
+      const now = audioCtxRef.current!.currentTime;
+      thereminOscillatorRef.current?.frequency.setTargetAtTime(freq, now, 0.05);
+      thereminGainRef.current?.gain.setTargetAtTime(vol, now, 0.05);
+      thereminVibratoOscRef.current?.frequency.setTargetAtTime(vib, now, 0.05);
+  
+      setThereminFrequency(freq);
+      setThereminVolume(vol);
+      setThereminVibrato(vib);
+    };
+  
+    // --- Other instruments logic extracted ---
+    const handleInstrumentFrame = (results: any) => {
+      if (!results?.gestures || !results.landmarks) return;
+  
+      results.gestures.forEach((gestureArr: any[], i: number) => {
+        const gesture = gestureArr[0];
+        if (!gesture) return;
+  
+        const lm = results.landmarks[i];
+        const pos = getHandPosition(lm);
+        updateHandPos(lm);
+  
+        // consolidated guitar / piano / arpeggiator handlers
+        if (instrument === "guitar") {
+          if (mode === "manual" && gesture.categoryName === "None" && isBackOfHand(lm)) {
+            const idx = getStringIndexFromY(pos.y);
+            playGuitarString(idx, bpm, noteLength);
+            guitarRef.current?.triggerString(idx);
+          }
+          else if (mode === "autoChord" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
+            playChordFromHandPosition("Closed_Fist", pos);
+          }
+          else if (mode === "arpeggiator" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
+            playArpeggioFromHandPosition("Closed_Fist", pos);
+          }
+        }
+        else if (instrument === "piano") {
+          if (mode === "manual") {
+            if (pianoInput === "fist" && gesture.categoryName === "Closed_Fist") {
+              playNoteManual("Closed_Fist", pos);
+            }
+            else if (pianoInput === "finger" && gesture.categoryName === "None") {
+              detectFingerTap(lm);
+            }
+          }
+          else if (mode === "autoChord" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
+            playChordFromHandPosition("Closed_Fist", pos);
+          }
+          else if (mode === "arpeggiator" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {
+            playArpeggioFromHandPosition("Closed_Fist", pos);
+          }
+        }
+      });
+    };
+  
+    // --- draw landmark dots ---
+    const drawLandmarks = (allLandmarks: any[][] | null) => {
+      if (!allLandmarks) return;
+      allLandmarks.forEach(arr =>
+        arr.forEach(lm => {
+          ctx!.beginPath();
+          ctx!.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 4, 0, 2 * Math.PI);
+          ctx!.fillStyle = "blue";
+          ctx!.fill();
+        })
+      );
+    };
+  
+    // --- separated helper for finger-tap piano input ---
+    const detectFingerTap = (lms: any[]) => {
+      [4,8,12,16,20].forEach((idx, fi) => {
+        const y = lms[idx].y;
+        const avg = [4,8,12,16,20]
+          .filter(j => j!==idx)
+          .reduce((s,j)=>s + lms[j].y, 0) / 4;
+        const pressed = y - avg > 0.06;
+        if (pressed && !fingerPressedRef.current[idx]) {
+          fingerPressedRef.current[idx] = true;
+          playNoteManual("Closed_Fist", { x: fi/4, y: 0.5 });
+        } else if (!pressed) {
+          fingerPressedRef.current[idx] = false;
+        }
+      });
+    };
+  
     processFrame();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gestureRecognizer, webcamEnabled, instrument, bpm, noteLength, selectedKey, mode, arpeggioOctaves, arpeggioDirection]);
-
+  
+  }, [
+    gestureRecognizer,
+    webcamEnabled,
+    instrument,
+    mode,
+    bpm,
+    noteLength,
+    selectedKey,
+    pianoInput,
+    arpeggioOctaves,
+    arpeggioDirection,
+  ]);
+  
   // ---------------------------------------------------------------------
   // Current chord cell => highlight
   // ---------------------------------------------------------------------
@@ -733,7 +736,7 @@ export default function Page() {
                         }
                       });
                   }}
-                  className="absolute inset-0 m-auto px-8 py-4 text-xxl z-20 bg-teal-500 hover:bg-teal-600 text-white"
+                  className="absolute inset-0 mx-20 my-auto px-15 py-4 text-xxl z-20 bg-teal-500 hover:bg-teal-600 text-white"
                 >
                   Enable Webcam
                 </Button>
@@ -874,29 +877,35 @@ export default function Page() {
                     <h3 className="text-lg font-semibold text-teal-700 mb-3">Playback Settings</h3>
                     
                     {/* BPM Control */}
-                    <motion.div 
-                      className="mb-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <h4 className="text-teal-800 font-medium mb-2">Tempo (BPM)</h4>
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="range"
-                          min={40}
-                          max={180}
-                          value={bpm}
-                          onChange={(e) => setBpm(Number(e.target.value))}
-                          className="w-full accent-teal-600"
-                        />
-                        <span className="text-teal-800 font-semibold bg-white px-3 py-1 rounded-md border border-teal-200 min-w-[3rem] text-center">
-                          {bpm}
-                        </span>
-                      </div>
-                    </motion.div>
+                    <AnimatePresence>
+                      {instrument!='theremin' && (
+                        <motion.div 
+                          className="mb-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <h4 className="text-teal-800 font-medium mb-2">Tempo (BPM)</h4>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="range"
+                              min={40}
+                              max={180}
+                              value={bpm}
+                              onChange={(e) => setBpm(Number(e.target.value))}
+                              className="w-full accent-teal-600"
+                            />
+                            <span className="text-teal-800 font-semibold bg-white px-3 py-1 rounded-md border border-teal-200 min-w-[3rem] text-center">
+                              {bpm}
+                            </span>
+                          </div>
+                        </motion.div>
+                        )}
+                      </AnimatePresence>
 
                     {/* Note Length */}
+                    <AnimatePresence>
+                      {instrument!='theremin' && (
                     <motion.div 
                       className="mb-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
                       initial={{ opacity: 0, y: 10 }}
@@ -932,6 +941,9 @@ export default function Page() {
                         ))}
                       </div>
                     </motion.div>
+                      )}
+                    </AnimatePresence>
+
 
                     {/* Arpeggiator Settings (conditionally rendered) */}
                     <AnimatePresence>
@@ -1013,34 +1025,6 @@ export default function Page() {
                       )}
                     </AnimatePresence>
 
-                    {/* Guitar String Spacing (conditionally rendered) */}
-                    <AnimatePresence>
-                      {instrument === "guitar" && mode === "manual" && (
-                        <motion.div 
-                          className="mt-4 bg-teal-50 rounded-lg p-3 border border-teal-100"
-                          initial={{ opacity: 0, height: 0, overflow: "hidden" }}
-                          animate={{ opacity: 1, height: "auto", overflow: "visible" }}
-                          exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <h4 className="text-teal-800 font-medium mb-2">String Spacing</h4>
-                          <div className="flex items-center space-x-3">
-                            <input
-                              type="range"
-                              min="0.5"
-                              max="2"
-                              step="0.1"
-                              value={stringSpacing}
-                              onChange={(e) => setStringSpacing(Number(e.target.value))}
-                              className="w-full accent-teal-600"
-                            />
-                            <span className="text-teal-800 font-semibold bg-white px-3 py-1 rounded-md border border-teal-200 min-w-[3rem] text-center">
-                              {stringSpacing.toFixed(1)}
-                            </span>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
 
                   {/* Test Sample Button */}

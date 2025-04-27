@@ -1,9 +1,6 @@
 // hooks/useAudio.ts
 import { useRef, useCallback } from "react";
-import {
-  SAMPLE_URLS,
-  GUITAR_STRING_MAPPING,
-} from "../../lib/constants";
+import { SAMPLE_URLS, GUITAR_STRING_MAPPING } from "@/lib/constants";
 
 export function useAudio() {
   const audioCtxRef  = useRef<AudioContext|null>(null);
@@ -52,6 +49,14 @@ export function useAudio() {
       GUITAR_STRING_MAPPING.length - 1
     );
     const mapping = GUITAR_STRING_MAPPING[safeIdx];
+
+    if (!mapping || typeof mapping.semitoneOffset !== "number") {
+        console.warn(
+          `No guitar mapping for index ${safeIdx}.`,
+          GUITAR_STRING_MAPPING
+        );
+        return;
+      }
 
     if (playing.current[safeIdx]) return;
     playing.current[safeIdx] = true;

@@ -38,8 +38,8 @@ export function getChordsForKey(key:string) {
 }
 
 // Map a normalized Y (0–1) → guitar string index (0–5)
-export function getStringIndexFromY(y:number, spacing:number):number {
-  const top=0.25, bottom=top+0.5*spacing;
+export function getStringIndexFromY(y:number):number {
+  const top=0.25, bottom=top+0.5;
   const c = Math.min(Math.max(y,top),bottom);
   return Math.floor(((c-top)/(bottom-top))*6);
 }

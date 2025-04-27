@@ -568,7 +568,7 @@ export default function InstrumentTutorialPage() {
                   >
                     <div>
                       <div className="flex justify-between text-sm text-teal-700 mb-1">
-                        <span>Step {currentStepIndex + 1} of {currentSteps.length-1}</span>
+                        <span>Step {currentStepIndex + 1} of {currentSteps.length}</span>
                         <span>{Math.round(progress)}% completed</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
