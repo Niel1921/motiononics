@@ -30,110 +30,121 @@ const sampleURLs = {
 };
 
 // Tutorial steps for each instrument
+// Updated tutorialSteps: teaches exactly what each gesture does + how movement changes sound
 const tutorialSteps = {
   piano: [
     {
       id: "piano-1",
-      title: "Making Your First Note",
+      title: "Play a Note with a Fist",
       description:
-        "Make a fist gesture and position your hand at different horizontal positions to play different notes. Try to play a C note (leftmost position).",
+        "Make a closed fist and move your hand left to right across the screen. Your horizontal position changes the pitch: far left = low C, far right = high B.",
       gesture: "Closed_Fist",
-      targetPosition: { x: 0.1, y: 0.5 },
-      tolerance: 0.2,
-      image: "/tutorials/piano-gesture-1.jpg",
-      tip: "The horizontal position of your hand determines the pitch of the note.",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/piano-fist-pitch.png",
+      tip: "Aim to keep your fist steady while sliding left/right to hear each semitone."
     },
     {
       id: "piano-2",
-      title: "Controlling Volume",
+      title: "Control Volume with a Fist",
       description:
-        "Make a fist gesture and move your hand up and down to control the volume. Try to play a loud note by positioning your hand at the top of the screen.",
+        "Keep your fist and move your hand up and down. Bottom = softest volume, top = loudest.",
       gesture: "Closed_Fist",
-      targetPosition: { x: 0.5, y: 0.2 },
-      tolerance: 0.2,
-      image: "/tutorials/piano-gesture-2.jpg",
-      tip: "The vertical position of your hand controls the volume – higher means louder.",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/piano-fist-volume.png",
+      tip: "Try moving your fist up and down while sliding left/right to control both pitch and volume."
     },
     {
       id: "piano-3",
-      title: "Playing a Chord",
+      title: "Play a Chord with the chord grid",
       description:
-        "Make an open palm gesture to play a chord. Try to play a C major chord.",
-      gesture: "Open_Palm",
-      targetPosition: { x: 0.1, y: 0.5 },
-      tolerance: 0.2,
-      image: "/tutorials/piano-gesture-3.jpg",
-      tip: "Open palm gestures trigger chords instead of single notes.",
+        "Here is the chord grid: \n Try making a fist in a square to play the chord. Play the highlighted chord!",
+      gesture: "closed_fist",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/piano-palm-chord.png",
+      tip: "This control method works for chords and arpeggios!"
+    },
+    {
+      id: "piano-4",
+      title: "Try out an Arpeggio!",
+      description:
+        "Here is the chord grid: \n Try making a fist in a square to play the chord. Play the highlighted chord!",
+      gesture: "closed_fist",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/piano-palm-chord.png",
+      tip: "This control method works for chords and arpeggios!"
     },
   ],
   guitar: [
     {
       id: "guitar-1",
-      title: "Strumming a String",
+      title: "Pluck with a Fist",
       description:
-        "Make a fist gesture and position your hand at different vertical positions to select different strings. Try to play the lowest string (bottom position).",
+        "Make a closed fist and hold it. Your **vertical** position selects the string (bottom = low string, top = high string).",
       gesture: "Closed_Fist",
-      targetPosition: { x: 0.5, y: 0.9 },
-      tolerance: 0.2,
-      image: "/tutorials/guitar-gesture-1.jpg",
-      tip: "The vertical position determines which string you're playing.",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/guitar-fist-string.png",
+      tip: "Keep your fist still on one string to hear repeated plucks."
     },
     {
       id: "guitar-2",
-      title: "Changing Frets",
+      title: "Strum with the back of your hand",
       description:
-        "Make a fist gesture and position your hand at different horizontal positions to change the fret position. Try to play the 3rd fret.",
-      gesture: "Closed_Fist",
-      targetPosition: { x: 0.3, y: 0.5 },
-      tolerance: 0.2,
-      image: "/tutorials/guitar-gesture-2.jpg",
-      tip: "The horizontal position determines which fret you're playing.",
+        "Use the back of your hand to strum up and down the strings.",
+      gesture: "None",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/guitar-fist-fret.png",
     },
     {
       id: "guitar-3",
-      title: "Strumming Multiple Strings",
+      title: "Play a chord with the chord grid",
       description:
-        "Make an open palm gesture and move your hand from top to bottom to strum all strings.",
+        "Here is the chord grid: \n Try making a fist in a square to play the chord. Play the highlighted chord!",
       gesture: "Open_Palm",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/tutorials/guitar-gesture-3.jpg",
-      tip: "This mimics a real guitar strumming motion.",
+      image: "/gestureimg/guitar-palm-strum.png",
+      tip: "This control method works for chords and arpeggios!"
     },
   ],
   theremin: [
     {
       id: "theremin-1",
-      title: "Controlling Pitch",
+      title: "Control Pitch with yur right hand",
       description:
-        "Make an open palm gesture and move your hand left and right to change the pitch. Try to produce a low pitch sound (left side).",
-      gesture: "Open_Palm",
-      targetPosition: { x: 0.1, y: 0.5 },
-      tolerance: 0.2,
-      image: "/tutorials/theremin-gesture-1.jpg",
-      tip: "The theremin uses continuous pitch changes, unlike the discrete notes of a piano.",
+        "Hold your right hand up and move left to right. Left = lower pitch, right = higher pitch (continuous glide).",
+      gesture: "Any",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/theremin-palm-pitch.png",
+      tip: "Keep your hand steady horizontally to hold a stable pitch."
     },
     {
       id: "theremin-2",
-      title: "Controlling Volume",
+      title: "Control Volume with your left hand",
       description:
-        "Keep your palm open and move your hand up and down to control volume. Try to play a soft sound (bottom position).",
-      gesture: "Open_Palm",
-      targetPosition: { x: 0.5, y: 0.8 },
-      tolerance: 0.2,
-      image: "/tutorials/theremin-gesture-2.jpg",
-      tip: "Think of the theremin as having two invisible antennas – one for pitch and one for volume.",
-    },
-    {
-      id: "theremin-3",
-      title: "Creating a Vibrato Effect",
-      description:
-        "Make an open palm gesture and slightly vibrate your hand horizontally to create a vibrato effect.",
+        "With palm facing camera, move **up/down**. Top = loudest, bottom = silence.",
       gesture: "Open_Palm",
       targetPosition: { x: 0.5, y: 0.5 },
       tolerance: 0.5,
-      image: "/tutorials/theremin-gesture-3.jpg",
-      tip: "Small, rapid movements create interesting sound modulations.",
+      image: "/gestureimg/theremin-palm-volume.png",
+      tip: "Combine pitch + volume: use two hands (right for pitch, left for volume)."
+    },
+    {
+      id: "theremin-3",
+      title: "Add Vibrato with your left hand",
+      description:
+        "Make an L shape with your left thumb and index finger to create a 'vibrato' effect. Move thumb and finger closer to reduce the effect.",
+      gesture: "Any",
+      targetPosition: { x: 0.5, y: 0.5 },
+      tolerance: 0.5,
+      image: "/gestureimg/pinchlogo.png",
+      tip: "You can also make vibrato with your right hand by moving it left and right."
     },
   ],
 };
@@ -173,6 +184,11 @@ export default function InstrumentTutorialPage() {
   const [currentNote, setCurrentNote] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [handVisible, setHandVisible] = useState(false);
+
+  // seconds per beat at 40 BPM
+  const secondsPerBeat = 60 / 40; // = 1.5
+  // track when we last triggered a note
+  const lastNoteTimeRef = useRef<number>(0);
 
   // Computed properties
   const currentSteps = tutorialSteps[selectedInstrument];
@@ -398,12 +414,10 @@ export default function InstrumentTutorialPage() {
       if (!audioCtx || notePlayingRef.current) return;
       const sampleBuffer = samplesRef.current[gesture];
       if (!sampleBuffer) return;
-      notePlayingRef.current = true;
-      setTimeout(() => {
-        notePlayingRef.current = false;
-      }, 300);
+  
       let noteIndex = 0;
       let volume = 0.5;
+      // your existing pitch/volume mapping…
       if (selectedInstrument === "piano") {
         noteIndex = Math.min(11, Math.floor(position.x * 12));
         volume = 0.2 + (1 - position.y) * 0.8;
@@ -434,7 +448,7 @@ export default function InstrumentTutorialPage() {
     },
     [selectedInstrument]
   );
-
+  
   const checkStepCompletion = useCallback(
     (gesture: string, position: { x: number; y: number }) => {
       if (!currentStep) return;
@@ -652,7 +666,7 @@ export default function InstrumentTutorialPage() {
                 ) : (
                   <div className="relative aspect-video">
                     <video ref={videoRef} className="w-full h-full" muted playsInline />
-                    <canvas ref={canvasRef} width={1280} height={720} className="absolute top-0 left-0 w-full h-full" />
+                    <canvas ref={canvasRef} width={1080} height={720} className="absolute top-0 left-0 w-full h-full" />
                     <AnimatePresence>
                       {webcamEnabled && !handVisible && (
                         <motion.div
@@ -710,10 +724,11 @@ export default function InstrumentTutorialPage() {
                   </div>
                 )}
               </CardContent>
-              <div className="bg-gray-900 h-64 relative">
+              <div className="bg-gray-400 w-160 h-264 relative">
                 {selectedInstrument === "piano" && (
-                  //<ThreePianoVisualizer currentNote={currentNote} />
-                  <div></div>
+                  <ThreePianoVisualizer currentNotes={currentNote !== null ? [currentNote] : []}
+                  availableSemitones={Array.from({ length: 12 }, (_, i) => i)}/>
+                  
                 )}
                 {selectedInstrument === "guitar" && (
                   <ThreeGuitarVisualizer currentChord={currentChordName} />
@@ -741,43 +756,6 @@ export default function InstrumentTutorialPage() {
                   </Button>
                 </div>
               </div>
-            </Card>
-            <Card className="mt-6 bg-white shadow-lg rounded-xl overflow-hidden border border-teal-100">
-              <CardHeader className="bg-teal-50 border-b border-teal-100">
-                <h2 className="text-lg font-semibold text-teal-800">Gesture Guide</h2>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto bg-teal-100 rounded-full flex items-center justify-center mb-2">
-                      ✊
-                    </div>
-                    <h3 className="font-medium text-teal-700">Closed Fist</h3>
-                    <p className="text-xs text-gray-500">Play notes or trigger strings</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto bg-teal-100 rounded-full flex items-center justify-center mb-2">
-                      ✋
-                    </div>
-                    <h3 className="font-medium text-teal-700">Open Palm</h3>
-                    <p className="text-xs text-gray-500">Play chords or control theremin</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto bg-teal-100 rounded-full flex items-center justify-center mb-2">
-                      👍
-                    </div>
-                    <h3 className="font-medium text-teal-700">Thumb Up</h3>
-                    <p className="text-xs text-gray-500">Trigger arpeggios</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto bg-teal-100 rounded-full flex items-center justify-center mb-2">
-                      ✌️
-                    </div>
-                    <h3 className="font-medium text-teal-700">Victory</h3>
-                    <p className="text-xs text-gray-500">Modify sound effects</p>
-                  </div>
-                </div>
-              </CardContent>
             </Card>
           </div>
         </div>
