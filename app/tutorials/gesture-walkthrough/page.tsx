@@ -13,13 +13,13 @@ import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 
 // Piano notes for success feedback
 const pianoNotes = {
-  C4: "/samples/fist.wav",
-  E4: "/samples/fist.wav",
-  G4: "/samples/fist.wav",
-  C5: "/samples/fist.wav",
+  C4: "/samples/success.wav",
+  E4: "/samples/success.wav",
+  G4: "/samples/success.wav",
+  C5: "/samples/successfinal.mp3",
 };
 
-// Example gestures for the tutorial. Adjust `name` to match exactly how Mediapipe classifies them.
+
 const gestureList = [
   {
     name: "Closed_Fist", // must match gesture.categoryName from Mediapipe
@@ -363,7 +363,7 @@ export default function GestureWalkthroughWithMediapipe() {
     if (heldTime > 0 && heldTime < 3) {
       // Play a soft tick sound for feedback
       const tickSound = new Audio("/samples/tick.wav");
-      tickSound.volume = 0.3;
+      tickSound.volume = 0.8;
       tickSound.play().catch(err => console.error("Error playing audio:", err));
     }
     
