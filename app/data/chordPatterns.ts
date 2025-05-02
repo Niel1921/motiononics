@@ -1,168 +1,167 @@
 // chordPatterns.ts
 
-export interface ChordPattern {
+    export interface ChordPattern {
     id: string
     name: string
     description: string
     romanArray: string[]
-  }
-  
-  export const chordPatternsByGenre: Record<string, ChordPattern[]> = {
+    }
+
+    export const chordPatternsByGenre: Record<string, ChordPattern[]> = {
     pop: [
       {
         id: "pop1",
-        name: "Pop 8: I–V–vi–IV (x2)",
-        description: "8-step cycle: I, V, vi, IV repeated twice.",
+        name: "Sunshine Doubles",
+        description: "The classic pop progression repeated twice for emotional impact.",
         romanArray: ["I", "V", "vi", "IV", "I", "V", "vi", "IV"],
       },
       {
         id: "pop2",
-        name: "Pop Ballad Extended",
-        description: "I–iii–vi–IV–ii–V–I–I, 8 total beats.",
+        name: "Sentimental Journey",
+        description: "A complete emotional journey across 8 total beats.",
         romanArray: ["I", "iii", "vi", "IV", "ii", "V", "I", "I"],
       },
       {
         id: "pop3",
-        name: "Pop Walkdown",
-        description: "vi–V–IV–iii–ii–I–IV–V",
+        name: "Descending Dreams",
+        description: "A step-by-step descent followed by an uplifting conclusion.",
         romanArray: ["vi", "V", "IV", "iii", "ii", "I", "IV", "V"],
       },
       {
         id: "pop4",
-        name: "Pop Circle",
-        description: "I–vi–ii–V progression loop",
+        name: "Eternal Carousel",
+        description: "A cyclical progression that creates a feeling of perpetual motion.",
         romanArray: ["I", "vi", "ii", "V", "I", "vi", "ii", "V"],
       },
     ],
     rock: [
       {
         id: "rock1",
-        name: "Rock 8: I–bVII–IV–I (x2)",
-        description: "Driving rock, repeated twice for 8 beats.",
+        name: "Thunder Road",
+        description: "Driving rock energy, repeated twice for 8 powerful beats.",
         romanArray: ["I", "bVII", "IV", "I", "I", "bVII", "IV", "I"],
       },
       {
         id: "rock2",
-        name: "Pop Punk 8",
-        description: "I–V–vi–IV repeated for 8 beats.",
+        name: "Teenage Anthem",
+        description: "Emotionally charged progression repeated for 8 beats.",
         romanArray: ["I", "V", "vi", "IV", "I", "V", "vi", "IV"],
       },
       {
         id: "rock3",
-        name: "Minor Rock Turnaround",
-        description: "i–bVII–bVI–bVII, repeat",
+        name: "Darkside Roundabout",
+        description: "A minor key circular pattern with a brooding feel.",
         romanArray: ["i", "bVII", "bVI", "bVII", "i", "bVII", "bVI", "bVII"],
       },
       {
         id: "rock4",
-        name: "Bluesy Rock I–IV–V",
-        description: "I–IV–I–V–IV–I–V–I",
+        name: "Southern Crossroads",
+        description: "A bluesy rock pattern with a classic road-trip feel.",
         romanArray: ["I", "IV", "I", "V", "IV", "I", "V", "I"],
       },
     ],
     funk: [
       {
         id: "funk1",
-        name: "Funk Vamp (8 beats)",
-        description: "I7–IV7–I7–V7–I7–IV7–V7–I7",
+        name: "Groovy Bounce",
+        description: "Energetic funk vamp with a perfect balance of tension and release.",
         romanArray: ["I7", "IV7", "I7", "V7", "I7", "IV7", "V7", "I7"],
       },
       {
         id: "funk2",
-        name: "Funk II-V vamp",
-        description: "ii7–V7 repeated, then I7, for 8 beats",
+        name: "Double Step",
+        description: "A repeating pattern that builds tension before resolving.",
         romanArray: ["ii7", "V7", "ii7", "V7", "ii7", "V7", "I7", "I7"],
       },
       {
         id: "funk3",
-        name: "Funk Climb",
-        description: "I7–ii7–iii7–IV7–V7–IV7–ii7–I7",
+        name: "Mountain Ascent",
+        description: "A climbing pattern that peaks before gracefully descending home.",
         romanArray: ["I7", "ii7", "iii7", "IV7", "V7", "IV7", "ii7", "I7"],
       },
       {
         id: "funk4",
-        name: "James Brown Style",
-        description: "I7-based with IV7 stabs",
+        name: "Soul Foundations",
+        description: "Steady groove with small punctuated moments.",
         romanArray: ["I7", "I7", "IV7", "I7", "IV7", "I7", "V7", "I7"],
       },
     ],
     jazz: [
       {
         id: "jazz1",
-        name: "Jazz ii–V–I Extended",
-        description: "ii–V–I–vi–ii–V–I–I (8 steps)",
+        name: "Midnight Resolution",
+        description: "Jazz pattern that resolves over 8 steps.",
         romanArray: ["ii", "V", "I", "vi", "ii", "V", "I", "I"],
       },
       {
         id: "jazz2",
-        name: "Rhythm Changes Lite",
-        description: "I–VI–ii–V repeated for 8 steps (2 cycles).",
+        name: "Broadway Echoes",
+        description: "Classic show tune pattern repeated for 8 steps (2 complete cycles).",
         romanArray: ["I", "VI", "ii", "V", "I", "VI", "ii", "V"],
       },
       {
         id: "jazz3",
-        name: "Coltrane Circle",
-        description: "I–bIII–V–I–bIII–V–I–I",
+        name: "Giant Spirals",
+        description: "An unusual modal pattern with a spiral-like tonal quality.",
         romanArray: ["I", "bIII", "V", "I", "bIII", "V", "I", "I"],
       },
       {
         id: "jazz4",
-        name: "Descending ii–V",
-        description: "ii–V–I moving by whole steps",
+        name: "Falling Leaves",
+        description: "A descending pattern moving by whole steps with shifting tonality.",
         romanArray: ["ii", "V", "I", "bii", "bV", "bI", "ii", "V"],
       },
     ],
     blues: [
       {
         id: "blues1",
-        name: "12-Bar Blues Condensed",
-        description: "Classic blues form in 8 steps.",
+        name: "Roadhouse Special",
+        description: "Classic blues feeling condensed into 8 expressive steps.",
         romanArray: ["I7", "IV7", "I7", "I7", "IV7", "IV7", "I7", "V7"],
       },
       {
         id: "blues2",
-        name: "Turnaround Focus",
-        description: "I7–IV7–I7–V7–IV7–I7–V7–I7",
+        name: "Whiskey Ending",
+        description: "A blues pattern that emphasizes the classic ending turnaround.",
         romanArray: ["I7", "IV7", "I7", "V7", "IV7", "I7", "V7", "I7"],
       },
       {
         id: "blues3",
-        name: "Shuffled Blues",
-        description: "I7–I7–IV7–IV7–I7–V7–IV7–I7",
+        name: "Dusty Boots",
+        description: "A shuffled pattern with a dusty, road-worn feeling.",
         romanArray: ["I7", "I7", "IV7", "IV7", "I7", "V7", "IV7", "I7"],
       },
       {
         id: "blues4",
-        name: "Slow Blues Feel",
-        description: "I7 vamp with embellishment",
+        name: "Mississippi Sunset",
+        description: "A slow, expressive pattern with subtle embellishments.",
         romanArray: ["I7", "I7", "I7", "I7", "IV7", "IV7", "I7", "V7"],
       },
     ],
     latin: [
       {
         id: "latin1",
-        name: "Latin I–IV–V",
-        description: "I–IV–V progression with repeats",
+        name: "Tropical Waves",
+        description: "A flowing pattern with repeating waves of tension and release.",
         romanArray: ["I", "IV", "V", "I", "IV", "V", "I", "V"],
       },
       {
         id: "latin2",
-        name: "Bossa Nova",
-        description: "ii–V–I style jazz Latin progression",
+        name: "Rio Nights",
+        description: "A sophisticated jazz-influenced Latin pattern with smooth movement.",
         romanArray: ["ii", "V", "I", "vi", "ii", "V", "I", "I"],
       },
       {
         id: "latin3",
-        name: "Salsa Feel",
-        description: "Imaj7–IV7–V7–Imaj7 loop",
+        name: "Havana Sunset",
+        description: "A vibrant, colorful four-chord pattern that repeats with flair.",
         romanArray: ["I7", "IV7", "V7", "I7", "IV7", "V7", "I7", "V7"],
       },
       {
         id: "latin4",
-        name: "Son Clave Inspired",
-        description: "I–vi–IV–V–I–ii–V–I",
+        name: "Carnival Rhythms",
+        description: "A celebratory pattern with a distinctive rhythmic quality.",
         romanArray: ["I", "vi", "IV", "V", "I", "ii", "V", "I"],
       },
     ],
   }
-  
