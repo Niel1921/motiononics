@@ -17,18 +17,16 @@ export function buildEightChordsFromCell(
   keyName: string,
   romanPattern: string[]
 ): string[] {
-  const chordsInKey = getChordsForKey(keyName)
-  if (chordsInKey.length < 9) return []
+  const chordsInKey = getChordsForKey(keyName);
+  if (chordsInKey.length < 9) return [];
 
-  const rootChord = chordsInKey[cellIndex]
-  if (!rootChord) return []
-
-  const isMajor = keyName.includes("Major")
+  const isMajor = keyName.includes("Major");
   return romanPattern.map((symbol) => {
-    const offset = getOffsetFromMap(symbol, isMajor)
-    const target = (cellIndex + offset) % 9
-    return chordsInKey[target]?.name || rootChord.name
-  })
+    // don’t normalize to uppercase—respect the case of “vi” vs “VI”
+    const offset = getOffsetFromMap(symbol, isMajor);
+    const targetIndex = (cellIndex + offset) % chordsInKey.length;
+    return chordsInKey[targetIndex]?.name || chordsInKey[cellIndex].name;
+  });
 }
 
 /**
