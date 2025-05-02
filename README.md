@@ -25,7 +25,7 @@ Head to motiononics.com to have a go!
 ### /play-for-me (PlayForMePage)
 - Header  
 - Controls  
-  - CircleOfFifths 🎛  
+  - CircleOfFifths 
   - Genre select (Card, Button)  
   - Rhythm select (Card, Button)  
   - BPM slider  
@@ -33,11 +33,11 @@ Head to motiononics.com to have a go!
 - Visuals  
   - 3 × 3 Chord Grid (canvas)  
 - Hooks  
-  - useAudio 🎧  
-  - useGesture ✋  
+  - useAudio  
+  - useGesture 
 - Data ➜ chordPatterns ▸ rhythmPatterns ▸ keySignatures ▸ romanToOffset  
 - Utils ➜ musicHelpers ▸ constants ▸ utils  
-- Public samples 🎵 fist.wav • guitarnew.wav • impulse.wav  
+- Public samples fist.wav • guitarnew.wav • impulse.wav  
 - Exports  
   - jsPDF → sheet-music.pdf  
   - Audio Blob → recording.wav  
@@ -61,9 +61,9 @@ Head to motiononics.com to have a go!
 - Header  
 - Instrument switcher (Button group)  
 - 3D Visualisers  
-  - ThreePianoVisualizer 🎹  
-  - ThreeGuitarVisualizer 🎸  
-  - ThreeThereminVisualizer 🎻  
+  - ThreePianoVisualizer 
+  - ThreeGuitarVisualizer 
+  - ThreeThereminVisualizer 
 - CircleOfFifths  
 - Hooks: useAudio • useGesture  
 - Textures (public/textures/*)  

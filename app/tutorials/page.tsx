@@ -5,9 +5,8 @@ import Link from "next/link";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import Header from "@/components/ui/header"; // Our custom header with logo
+import Header from "@/components/ui/header"; 
 
-// Define animation variants for the cards.
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: (custom: number) => ({
@@ -42,7 +41,7 @@ export default function TutorialsPage() {
       <main className="grid grid-cols-1 gap-6 md:grid-cols-1 lg:grid-cols-2 mt-8 auto-rows-[1fr]">
         {[
           {
-            title: "Introduction",
+            title: "Learn the gestures",
             description:
               "Learn all of the gestures you'll need to play Motiononics.",
             link: "/tutorials/gesture-walkthrough",
