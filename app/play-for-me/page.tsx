@@ -31,6 +31,8 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+const MAX_CHORDS = 48;
+
 // -------------------- Main Page --------------------
 export default function PlayForMePage() {
   // Basic state
@@ -427,15 +429,24 @@ export default function PlayForMePage() {
   function startPlayingFromCell(cellIndex: number) {
     if (isPlaying || notePlayingRef.current) return;
 
+    // block if reached max
+    if (recording && recordedChords.length >= MAX_CHORDS) {
+      setErrorMessage(`You've reached the max of ${MAX_CHORDS} chords.`);
+      return;
+    }
+
     setCurrentChordCell(cellIndex);
     setIsPlaying(true);
 
-    // chord pattern
     const patternList = chordPatternsByGenre[selectedChordGenre];
-    const chosenChordPattern = patternList.find((p) => p.id === selectedChordPatternId) || patternList[0];
+    const chosenChordPattern =
+      patternList.find((p) => p.id === selectedChordPatternId) || patternList[0];
 
-    // build 8 spelled chords
-    const spelledChords = buildEightChordsFromCell(cellIndex, selectedKey, chosenChordPattern.romanArray);
+    const spelledChords = buildEightChordsFromCell(
+      cellIndex,
+      selectedKey,
+      chosenChordPattern.romanArray
+    );
     setCurrentChords(spelledChords);
     setCurrentBeatIndex(0);
 
@@ -444,44 +455,49 @@ export default function PlayForMePage() {
 
   // -------------------- playPattern --------------------
   function playPattern(chords: string[]) {
-    if (!chords || chords.length === 0) {
+    if (!chords.length) {
       setIsPlaying(false);
       return;
     }
-    // chosen rhythm
-    const rList = rhythmPatternsByGenre[selectedRhythmGenre];
-    const chosenRhythm = rList.find((r) => r.id === selectedRhythmPatternId) || rList[0];
 
-    const beatDurations = chosenRhythm.pattern.map((p) => (60 / bpm) * 1000 * p);
+    const rList = rhythmPatternsByGenre[selectedRhythmGenre];
+    const chosenRhythm =
+      rList.find((r) => r.id === selectedRhythmPatternId) || rList[0];
+    const beatDurations = chosenRhythm.pattern.map(
+      (p) => (60 / bpm) * 1000 * p
+    );
     const velocities = chosenRhythm.velocities;
 
-    // immediate chord
+    // play & record beat 0
     playChord(chords[0], beatDurations[0], velocities[0]);
     setCurrentBeatIndex(0);
+    if (recording) {
+      setRecordedChords((prev) => [...prev, chords[0]]);
+    }
 
     let currentBeat = 0;
-
     if (beatTimerRef.current) {
       clearTimeout(beatTimerRef.current);
       beatTimerRef.current = null;
     }
-    
 
     const doNext = () => {
       currentBeat++;
-      if (currentBeat >= 8) {
+      // stop after one 8-beat pass
+      if (currentBeat >= chords.length) {
         setIsPlaying(false);
         setCurrentChordCell(null);
         setNextChordCell(null);
         setCurrentBeatIndex(-1);
         return;
       }
-      setCurrentBeatIndex(currentBeat);
 
+      setCurrentBeatIndex(currentBeat);
       const chordToPlay = chords[currentBeat];
       const thisDur = beatDurations[currentBeat];
       const thisVel = velocities[currentBeat];
       playChord(chordToPlay, thisDur, thisVel);
+
       if (recording) {
         setRecordedChords((prev) => [...prev, chordToPlay]);
       }
@@ -516,7 +532,7 @@ export default function PlayForMePage() {
   
     let y = 40; // start a little below the top
     for (let line = 0; line < lines; line++) {
-      // draw a stave
+
       const stave = new Stave(10, y, width - 20);
       if (line === 0) stave.addClef("treble").addTimeSignature("4/4").addKeySignature(vfKey);
       stave.setContext(ctx).draw();
@@ -538,7 +554,7 @@ export default function PlayForMePage() {
           return `${name}/${octave}`;
         });
         const staveNote = new StaveNote({ keys, duration: "q" });
-        // chord name above
+
         const ann = new Annotation(chord)
           .setFont("Arial", 12)
           .setVerticalJustification(Annotation.VerticalJustify.TOP);
@@ -556,7 +572,7 @@ export default function PlayForMePage() {
       voice.addTickables(notes);
   
       // format & draw
-      new Formatter().joinVoices([voice]).format([voice], width - 100);
+      new Formatter().joinVoices([voice]).format([voice], width - 180);
       voice.draw(ctx, stave);
   
       y += lineHeight;
