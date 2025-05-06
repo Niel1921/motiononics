@@ -31,6 +31,8 @@ import {
 // pull in your audio hook
 import { useAudio } from "./hooks/useAudio";
 
+import { GoogleTagManager } from '@next/third-parties/google'
+
 
 // -------------------- Chord Grid Visualizer --------------------
 function ChordGridVisualizer({
@@ -642,6 +644,7 @@ export default function Page() {
   // ---------------------------------------------------------------------
   return (
     <>
+      <GoogleTagManager gtmId="G-HEBMK5ZZYG" />
       <Header />
       <div className="container mx-auto p-4">
         <div className="flex flex-row gap-4">
