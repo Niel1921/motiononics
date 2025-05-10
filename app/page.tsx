@@ -13,6 +13,7 @@ import Header from "@/components/ui/header";
 import { keySignatures } from "./data/keySignatures";
 import CircleOfFifths from "@/components/CircleOfFifths";
 import Image from "next/image";
+import { Analytics } from "@vercel/analytics/next"
 import {
     SAMPLE_URLS,
     NOTE_TO_SEMITONE,
@@ -416,45 +417,6 @@ export default function Page() {
     }
   }, [instrument, thereminWaveform, thereminVibrato]);
   
-
-  // ---------------------------------------------------------------------
-  // PROCESS "NONE" GESTURE => vertical swipe for guitar mode
-  // ---------------------------------------------------------------------
-  function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
-    // Only proceed if the back of the hand is detected.
-    const isBack = isBackOfHand(handLandmarks);
-    if (!isBack) {
-      lastNoneY = null;
-      return;
-    }
-    const pos = getHandPosition(handLandmarks);
-    console.log("pos.y =>", pos.y);
-    if (lastNoneY === null) {
-      lastNoneY = pos.y;
-      return;
-    }
-    const deltaY = pos.y - lastNoneY;
-    console.log("deltaY =>", deltaY);
-    if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE) {
-      console.log("Vertical swipe from", lastNoneY, "to", pos.y);
-      const oldIndex = getStringIndexFromY(lastNoneY);
-      const newIndex = getStringIndexFromY(pos.y);
-      const start = Math.min(oldIndex, newIndex);
-      const end = Math.max(oldIndex, newIndex);
-      if (audioCtxRef.current) {
-        for (let s = start; s <= end; s++) {
-                 const delay = (s - start) * 50;
-                 setTimeout(() => {
-
-                  playGuitarString(s, bpm, noteLength);
-
-                   guitarRef.current?.triggerString(s);
-                 }, delay);
-               }
-      }
-      lastNoneY = null;
-    }
-  }
 
   // ---------------------------------------------------------------------
   // MAIN GESTURE LOOP
