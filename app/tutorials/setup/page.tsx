@@ -498,7 +498,7 @@ export default function InstrumentTutorialPage() {
     landmarks: { x: number; y: number }[]
   ) => {
     if (mode === "manual") {
-      if (gesture === "None" && isBackOfHand(landmarks)) {
+      if (gesture === "None" ) { //TODO FIX THIS ADD isBackOfHand
         processNoneGesture(landmarks);
       } else if (gesture === "Closed_Fist" && !notePlayingRef.current) {
         const stringIndex = getStringIndexFromY(position.y);
@@ -735,7 +735,7 @@ export default function InstrumentTutorialPage() {
 
   function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
     // Only proceed if the back of the hand is detected.
-    const isBack = isBackOfHand(handLandmarks);
+    const isBack = true; //WRONG TODO FIX THIS
     if (!isBack) {
       lastNoneY.current = null;
       return;
