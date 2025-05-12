@@ -512,13 +512,15 @@ export default function Page() {
         const gesture = gestureArr[0];
         if (!gesture) return;
   
-        const lm = results.landmarks[i];
-        const pos = getHandPosition(lm);
-        updateHandPos(lm);
+        const landmarks = results.landmarks[i];
+        const handedLabel = results.handedness[i]?.[0]?.categoryName as "Left" | "Right";
+        const pos = getHandPosition(landmarks);
+        updateHandPos(landmarks);
   
         // consolidated guitar / piano / arpeggiator handlers
         if (instrument === "guitar") {
-          if (mode === "manual" && gesture.categoryName === "None" && isBackOfHand(lm)) {
+          if (mode === "manual" && gesture.categoryName === "None" && isBackOfHand(landmarks, handedLabel)
+          ) {
             const idx = getStringIndexFromY(pos.y);
             playGuitarString(idx, bpm, noteLength);
             guitarRef.current?.triggerString(idx);
@@ -536,7 +538,7 @@ export default function Page() {
               playNoteManual("Closed_Fist", pos);
             }
             else if (pianoInput === "finger" && gesture.categoryName === "None") {
-              detectFingerTap(lm);
+              detectFingerTap(landmarks);
             }
           }
           else if (mode === "autoChord" && gesture.categoryName === "Closed_Fist" && !notePlayingRef.current) {

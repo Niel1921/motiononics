@@ -1,9 +1,7 @@
-// lib/musicHelpers.ts
-
 import { NOTE_TO_SEMITONE } from "./constants";
 import { keySignatures } from "../app/data/keySignatures";
 
-// Snap a raw chromatic index into your selected key’s scale
+// Snap a raw chromatic index into the selected key’s scale
 export function snapChromaticToKey(chromatic:number, key:string):number {
   if (key==="None") return chromatic;
   const notes = keySignatures[key]?.notes;
@@ -17,7 +15,7 @@ export function snapChromaticToKey(chromatic:number, key:string):number {
   return scale[scale.length-1];
 }
 
-// Build your 3×3 chord grid for a key
+// Build a 3×3 chord grid for each key
 export function getChordsForKey(key:string) {
   if (!keySignatures[key] && key!=="None") return [];
   if (key==="None") key="C Major";
@@ -45,12 +43,20 @@ export function getStringIndexFromY(y:number):number {
 }
 
 // Is this the back of the hand? (cross-product z>0)
-export function isBackOfHand(lm:{x:number,y:number,z?:number}[]):boolean {
-  if (lm.length<18) return false;
-  const wrist=lm[0], idx=lm[5], pinky=lm[17];
-  const v1 = {x:idx.x-wrist.x, y:idx.y-wrist.y, z:(idx.z||0)-(wrist.z||0)};
-  const v2 = {x:pinky.x-wrist.x,y:pinky.y-wrist.y,z:(pinky.z||0)-(wrist.z||0)};
-  return v1.x*v2.y - v1.y*v2.x > 0;
+export function isBackOfHand(
+  lm: { x: number; y: number; z?: number }[],
+  handedness: "Left" | "Right"
+): boolean {
+  if (lm.length < 18) return false;
+
+  const wrist = lm[0];
+  const index = lm[5];
+  const pinky = lm[17];
+  const v1 = { x: index.x - wrist.x, y: index.y - wrist.y };
+  const v2 = { x: pinky.x - wrist.x,  y: pinky.y - wrist.y };
+  const crossZ = v1.x * v2.y - v1.y * v2.x;
+
+  return handedness === "Right" ? crossZ < 0 : crossZ > 0;
 }
 
 // Average hand position for canvas mapping
