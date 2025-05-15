@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import Header from "@/components/ui/header";
@@ -49,8 +48,8 @@ const tutorialSteps: Record<"piano" | "guitar" | "theremin", TutorialStep[]> = {
       description: "Make a closed fist gesture and move your hand horizontally. Left side plays low notes, right side plays high notes. Try covering the entire octave by moving from left to right.",
       gesture: "Closed_Fist",
       image: "/gestureimg/fistlogo.png",
-      targetPosition: { x: 0.5, y: 0.5 },
-      tip: "The vertical position of your hand controls the volume. Higher = louder, lower = softer.",
+      targetPosition: { x: 0, y: 0},
+      tip: "Play the note corresponding to the marker!",
       mode: "manual",
       pianoInput: "fist"
     },
@@ -70,33 +69,12 @@ const tutorialSteps: Record<"piano" | "guitar" | "theremin", TutorialStep[]> = {
       description: "Arpeggios play the notes of a chord in sequence. In arpeggiator mode, use the grid to trigger different arpeggios. Try the middle cell (position 4).",
       gesture: "Closed_Fist",
       image: "/textures/arpeggiatorimg.jpg",
-      targetPosition: { x: 0.5, y: 0.5 },
+      targetPosition: { x: 0.85, y: 0.85 },
       tip: "You can change arpeggio direction (up, down, up & down) and octave span in the controls panel.",
       mode: "arpeggiator"
-    },
-    {
-      id: "piano-4",
-      title: "Finger Tap Mode",
-      description: "Piano can also be played with individual finger movements. In finger tap mode, raise and lower each finger to play different notes. Try raising your index finger.",
-      gesture: "None",
-      image: "/gestureimg/finger-tap.png",
-      targetPosition: { x: 0.5, y: 0.5 },
-      tip: "Each finger corresponds to a different note in the scale: thumb, index, middle, ring, and pinky.",
-      mode: "manual",
-      pianoInput: "finger"
     }
   ],
   guitar: [
-    {
-      id: "guitar-1",
-      title: "Pluck Guitar Strings",
-      description: "In manual mode, make a closed fist to pluck a string. Your vertical hand position selects the string: top position = high E string, bottom position = low E string.",
-      gesture: "Closed_Fist",
-      image: "/gestureimg/guitar-fist-string.png",
-      targetPosition: { x: 0.5, y: 0.33 },
-      tip: "Try playing a melody by moving your hand to different string positions.",
-      mode: "manual"
-    },
     {
       id: "guitar-2",
       title: "Strum Multiple Strings",
@@ -158,16 +136,6 @@ const tutorialSteps: Record<"piano" | "guitar" | "theremin", TutorialStep[]> = {
       targetPosition: { x: 0.5, y: 0.5 },
       tip: "Vibrato adds expressiveness to theremin playing. Experiment with different vibrato rates for various moods.",
       waveform: "sine"
-    },
-    {
-      id: "theremin-4",
-      title: "Change Theremin Waveform",
-      description: "The theremin can produce different timbres. Use the waveform buttons to switch between sine (smooth), square (harsh), and other wave shapes. Try the square wave.",
-      gesture: "Open_Palm",
-      image: "/gestureimg/waveform.png",
-      targetPosition: { x: 0.5, y: 0.5 },
-      tip: "Each waveform has a distinctive character. Sine is pure and clean, square is buzzy, triangle and sawtooth are in between.",
-      waveform: "square"
     }
   ]
 };
@@ -213,24 +181,39 @@ export default function InstrumentTutorialPage() {
   const [handPosition, setHandPosition] = useState<{ x: number; y: number } | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [handVisible, setHandVisible] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(true);
+
 
   // Instrument state
   const [currentNotes, setCurrentNotes] = useState<number[]>([]);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
   const [bpm, setBpm] = useState<number>(120);
-  const [noteLength, setNoteLength] = useState<number>(1);
-  const [selectedKey, setSelectedKey] = useState<string>("C Major");
+  const [noteLength] = useState<number>(1);
+  const [selectedKey] = useState<string>("C Major");
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator">("manual");
   const [pianoInput, setPianoInput] = useState<"fist" | "finger">("fist");
-  const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
-  const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
+  const [arpeggioOctaves] = useState<number>(1);
+  const [arpeggioDirection] = useState<"up" | "down" | "upDown">("up");
+
+  const [lastPlayedChordCell, setLastPlayedChordCell] = useState<number | null>(null);
+  const [shownModeModals, setShownModeModals] = useState<Set<"piano" | "guitar" | "theremin">>(new Set());
+  const [modeCompleted, setModeCompleted] = useState<null | "piano" | "guitar" | "theremin">(null);
+  const [stringsPlayed, setStringsPlayed] = useState<boolean[]>([false, false, false, false, false, false]);
 
   // Theremin state
   const [thereminFrequency, setThereminFrequency] = useState<number>(440);
   const [thereminVolume, setThereminVolume] = useState<number>(0);
   const [thereminVibrato, setThereminVibrato] = useState<number>(2);
   const [thereminWaveform, setThereminWaveform] = useState<string>("sine");
+
+
+  // --- Theremin audio node refs ---
+  const thereminOscillatorRef = useRef<OscillatorNode | null>(null);
+  const thereminGainRef = useRef<GainNode | null>(null);
+  const thereminVibratoOscRef = useRef<OscillatorNode | null>(null);
+  const thereminVibratoGainRef = useRef<GainNode | null>(null);
+
+  const strummedAllStringsRef = useRef(false);
+  const [strummedAllStrings, setStrummedAllStrings] = useState(false);
 
   // Progress tracking
   const [overallProgress, setOverallProgress] = useState(0);
@@ -251,6 +234,25 @@ export default function InstrumentTutorialPage() {
     setLoading(false);
   }, [initAudio]);
 
+    // ---- NEW: Update overall progress ----
+    useEffect(() => {
+      const allStepIds = [
+        ...tutorialSteps.piano.map(s => s.id),
+        ...tutorialSteps.guitar.map(s => s.id),
+        ...tutorialSteps.theremin.map(s => s.id)
+      ];
+      const pct = (completedSteps.length / allStepIds.length) * 100;
+      setOverallProgress(pct);
+  
+      // Mark tutorial as completed
+      if (completedSteps.length === allStepIds.length && allStepIds.length > 0) {
+        setAllCompleted(true);
+      } else {
+        setAllCompleted(false);
+      }
+    }, [completedSteps]);
+  
+
   // Update mode and settings when changing steps
   useEffect(() => {
     if (currentStep) {
@@ -260,11 +262,45 @@ export default function InstrumentTutorialPage() {
       if (currentStep.pianoInput && selectedInstrument === "piano") {
         setPianoInput(currentStep.pianoInput);
       }
-      if (currentStep.waveform && selectedInstrument === "theremin") {
-        setThereminWaveform(currentStep.waveform);
-      }
+
     }
   }, [currentStep, selectedInstrument]);
+
+  // Only auto-set waveform when changing instrument, or when on FIRST step
+  useEffect(() => {
+    if (
+      selectedInstrument === "theremin" &&
+      currentStepIndex === 0 &&
+      currentStep.waveform
+    ) {
+      setThereminWaveform(currentStep.waveform);
+    }
+    // Do NOT set on other steps!
+  }, [selectedInstrument, currentStepIndex, currentStep]);
+
+  useEffect(() => {
+    if (selectedInstrument === "theremin") {
+      setupThereminNodes(thereminWaveform as OscillatorType);
+    } else {
+      // When switching away, stop theremin sound
+      thereminOscillatorRef.current?.stop();
+      thereminOscillatorRef.current = null;
+      thereminGainRef.current = null;
+      thereminVibratoOscRef.current?.stop();
+      thereminVibratoOscRef.current = null;
+      thereminVibratoGainRef.current = null;
+    }
+    // Cleanup when component unmounts
+    return () => {
+      thereminOscillatorRef.current?.stop();
+      thereminOscillatorRef.current = null;
+      thereminGainRef.current = null;
+      thereminVibratoOscRef.current?.stop();
+      thereminVibratoOscRef.current = null;
+      thereminVibratoGainRef.current = null;
+    };
+  }, [selectedInstrument, thereminWaveform]);
+  
 
   // Handle webcam setup/teardown
   useEffect(() => {
@@ -289,6 +325,21 @@ export default function InstrumentTutorialPage() {
       }
     };
   }, [webcamEnabled]);
+
+  useEffect(() => {
+    const modeSteps = tutorialSteps[selectedInstrument];
+    const completedCount = completedSteps.filter(id => id.startsWith(selectedInstrument)).length;
+  
+    // Only show if all steps done and NOT previously shown
+    if (
+      completedCount === modeSteps.length &&
+      modeSteps.length > 0 &&
+      !shownModeModals.has(selectedInstrument)
+    ) {
+      setModeCompleted(selectedInstrument);
+      setShownModeModals(prev => new Set([...Array.from(prev), selectedInstrument]));
+    }
+  }, [completedSteps, selectedInstrument, shownModeModals]);
 
   // Process webcam frames and recognize gestures
   useEffect(() => {
@@ -398,7 +449,7 @@ export default function InstrumentTutorialPage() {
         }
         
         // Draw target for the current step
-        if (!completedSteps.includes(currentStep.id) && showOverlay && ctx && canvasEl) {
+        if (!completedSteps.includes(currentStep.id) && ctx && canvasEl) {
           const targetX = (1 - currentStep.targetPosition.x) * canvasEl.width; // Mirror for correct display
           const targetY = currentStep.targetPosition.y * canvasEl.height;
           
@@ -450,7 +501,7 @@ export default function InstrumentTutorialPage() {
     completedSteps,
     selectedInstrument,
     mode,
-    showOverlay
+    
   ]);
 
   // Handle different gestures based on current instrument and mode
@@ -491,19 +542,28 @@ export default function InstrumentTutorialPage() {
     }
   };
 
-  // Guitar-specific gesture handling
+  
+
   const handleGuitarGesture = (
     gesture: string,
     position: { x: number; y: number },
     landmarks: { x: number; y: number }[]
   ) => {
+    // You can add real handedness detection here if you want!
+    const handedLabel: "Left" | "Right" = "Left";
+  
     if (mode === "manual") {
-      if (gesture === "None" ) { //TODO FIX THIS ADD isBackOfHand
-        processNoneGesture(landmarks);
-      } else if (gesture === "Closed_Fist" && !notePlayingRef.current) {
+      if (gesture === "None" && !notePlayingRef.current) {
         const stringIndex = getStringIndexFromY(position.y);
         playGuitarString(stringIndex, bpm, noteLength);
         guitarRef.current?.triggerString(stringIndex);
+        // Mark string as played
+        setStringsPlayed(prev => {
+          if (prev[stringIndex]) return prev; // already marked
+          const updated = [...prev];
+          updated[stringIndex] = true;
+          return updated;
+        });
       }
     } else if (mode === "autoChord" && gesture === "Closed_Fist" && !notePlayingRef.current) {
       playChordFromHandPosition(gesture, position);
@@ -512,38 +572,85 @@ export default function InstrumentTutorialPage() {
     }
   };
 
-  // Theremin-specific gesture handling
+
   const handleThereminGesture = (
     gesture: string,
     position: { x: number; y: number },
     landmarks: { x: number; y: number }[]
   ) => {
     const frequency = 220 + position.x * 440;
-    const volume = Math.max(0, Math.min(1, 1 - position.y));
-    
-    // Calculate vibrato from pinch distance (distance between thumb and index finger)
+    const volume = 0.5*(Math.max(0, Math.min(0.8, 0.5 - position.y*0.6)));
     const thumbPos = landmarks[4];
     const indexPos = landmarks[8];
     const pinchDistance = Math.hypot(thumbPos.x - indexPos.x, thumbPos.y - indexPos.y);
-    const vibrato = Math.max(1, Math.min(10, (1 - pinchDistance) * 10));
-    
+    const vibrato = Math.max(1, Math.min(10, (pinchDistance - 1) * 10));
+  
     setThereminFrequency(frequency);
     setThereminVolume(volume);
     setThereminVibrato(vibrato);
-    
-    // Control theremin sound (would need to be implemented with proper audio generation)
+  
+    // Update WebAudio nodes!
+    const ctx = audioCtxRef.current;
+    if (ctx && thereminOscillatorRef.current && thereminGainRef.current && thereminVibratoOscRef.current && thereminVibratoGainRef.current) {
+      const now = ctx.currentTime;
+      thereminOscillatorRef.current.frequency.setTargetAtTime(frequency, now, 0.03);
+      thereminGainRef.current.gain.setTargetAtTime(volume, now, 0.03);
+      thereminVibratoOscRef.current.frequency.setTargetAtTime(vibrato, now, 0.03);
+      thereminVibratoGainRef.current.gain.setTargetAtTime(10, now, 0.03); // Vibrato depth (adjust if needed)
+    }
   };
 
-  // Check if step is completed based on gesture and position
   const checkStepCompletion = (
     gesture: string,
     position: { x: number; y: number },
     landmarks: { x: number; y: number }[]
   ) => {
     if (!currentStep) return;
-    
-    // Gesture matching logic is already handled in the hold time effect
-    // This function can be expanded for more complex completion criteria
+    if (completedSteps.includes(currentStep.id)) return;
+  
+    // Only care about theremin
+    if (selectedInstrument === "theremin") {  
+      // THEREMIN 3: Vibrato by pinching
+      if (currentStep.id === "theremin-3" && landmarks.length > 8) {
+        // Check for thumb and index pinch
+        const thumb = landmarks[4];
+        const index = landmarks[8];
+        const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
+        // Require small pinch for vibrato
+        if (pinchDist < 0.06) {
+          setShowSuccess(true);
+          setTimeout(() => {
+            setShowSuccess(false);
+            setCompletedSteps((prev) =>
+              prev.includes(currentStep.id) ? prev : [...prev, currentStep.id]
+            );
+          }, 1200);
+        }
+        return;
+      }
+  
+      // THEREMIN 1 & 2: Position check (horizontal/vertical target)
+      if (
+        (currentStep.id === "theremin-1" || currentStep.id === "theremin-2") &&
+        gesture.toLowerCase().includes("open")
+      ) {
+        const dx = position.x - currentStep.targetPosition.x;
+        const dy = position.y - currentStep.targetPosition.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const threshold = 0.09;
+  
+        if (dist < threshold) {
+          setShowSuccess(true);
+          setTimeout(() => {
+            setShowSuccess(false);
+            setCompletedSteps((prev) =>
+              prev.includes(currentStep.id) ? prev : [...prev, currentStep.id]
+            );
+          }, 1200);
+        }
+        return;
+      }
+    }
   };
 
   // Audio functions from main implementation
@@ -579,6 +686,51 @@ export default function InstrumentTutorialPage() {
     setTimeout(() => { notePlayingRef.current = false; }, duration * 1000);
   }
 
+  function setupThereminNodes(waveform: OscillatorType = "sine") {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+  
+    // Clean up old nodes if present
+    thereminOscillatorRef.current?.disconnect();
+    thereminGainRef.current?.disconnect();
+    thereminVibratoOscRef.current?.disconnect();
+    thereminVibratoGainRef.current?.disconnect();
+  
+    // Create nodes
+    const osc = ctx.createOscillator();
+    osc.type = waveform;
+    osc.frequency.value = 440; // default
+  
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+  
+    // Vibrato: LFO modulates pitch
+    const vibratoOsc = ctx.createOscillator();
+    vibratoOsc.type = "sine";
+    vibratoOsc.frequency.value = 2;
+  
+    const vibratoGain = ctx.createGain();
+    vibratoGain.gain.value = 10; // Vibrato depth (Hz)
+  
+    // Connect vibrato
+    vibratoOsc.connect(vibratoGain);
+    vibratoGain.connect(osc.frequency);
+  
+    // Connect main chain
+    osc.connect(gain).connect(ctx.destination);
+  
+    // Start oscillators
+    osc.start();
+    vibratoOsc.start();
+  
+    // Save refs
+    thereminOscillatorRef.current = osc;
+    thereminGainRef.current = gain;
+    thereminVibratoOscRef.current = vibratoOsc;
+    thereminVibratoGainRef.current = vibratoGain;
+  }
+  
+
   function playChordFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
     if (gestureLabel !== "Closed_Fist") return;
     if (notePlayingRef.current) return;
@@ -586,21 +738,21 @@ export default function InstrumentTutorialPage() {
     const cellY = Math.floor(pos.y * 3);
     const cellIndex = cellX + cellY * 3;
     setCurrentChordCell(cellIndex);
+    setLastPlayedChordCell(cellIndex); // <--- ADD THIS LINE
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
     if (chordObj) playChord(chordObj.name);
   }
-
+  
   function playArpeggioFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
-    if (gestureLabel !== "Closed_Fist") return;
-    if (notePlayingRef.current) return;
     if (gestureLabel !== "Closed_Fist") return;
     if (notePlayingRef.current) return;
     const cellX = Math.floor(pos.x * 3);
     const cellY = Math.floor(pos.y * 3);
     const cellIndex = cellX + cellY * 3;
     setCurrentChordCell(cellIndex);
+    setLastPlayedChordCell(cellIndex); // <--- ADD THIS LINE
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
@@ -733,29 +885,34 @@ export default function InstrumentTutorialPage() {
     }, totalTime * 1000);
   }
 
-  function processNoneGesture(handLandmarks: { x: number; y: number }[]) {
-    // Only proceed if the back of the hand is detected.
-    const isBack = true; //WRONG TODO FIX THIS
+  function processNoneGesture(
+    handLandmarks: { x: number; y: number }[],
+    handedLabel: "Right" | "Left",
+    onStrum?: (start: number, end: number) => void
+  ) {    
+    // Actually check for back of hand
+    const isBack = isBackOfHand(handLandmarks, handedLabel);
     if (!isBack) {
       lastNoneY.current = null;
       return;
     }
-    
+  
     const pos = getHandPosition(handLandmarks);
-    
+  
     if (lastNoneY.current === null) {
       lastNoneY.current = pos.y;
       return;
     }
-    
+  
     const deltaY = pos.y - lastNoneY.current;
-    
+  
     if (Math.abs(deltaY) > 0.05) { // Threshold for swipe detection
       const oldIndex = getStringIndexFromY(lastNoneY.current);
       const newIndex = getStringIndexFromY(pos.y);
       const start = Math.min(oldIndex, newIndex);
       const end = Math.max(oldIndex, newIndex);
-      
+  
+      // Play all strings in the sweep range
       if (audioCtxRef.current) {
         for (let s = start; s <= end; s++) {
           const delay = (s - start) * 50;
@@ -765,10 +922,15 @@ export default function InstrumentTutorialPage() {
           }, delay);
         }
       }
-      
+  
+      // Call the callback after the strum
+      if (onStrum) onStrum(start, end);
+  
       lastNoneY.current = null;
     }
   }
+  
+  
 
   function detectFingerTap(landmarks: { x: number; y: number }[]) {
     [4, 8, 12, 16, 20].forEach((idx, fi) => {
@@ -811,18 +973,53 @@ export default function InstrumentTutorialPage() {
   };
 
   useEffect(() => {
-    if (!webcamEnabled || !currentStep || completedSteps.includes(currentStep.id)) return;
-    if (currentNotes.length === 0) return;
+    if (
+      selectedInstrument === "guitar" &&
+      currentStep.id === "guitar-2" &&
+      stringsPlayed.every(Boolean) &&
+      !completedSteps.includes(currentStep.id)
+    ) {
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setCompletedSteps(prev => [...prev, currentStep.id]);
+        setStringsPlayed([false, false, false, false, false, false]);
+      }, 3000);
+    }
+  }, [stringsPlayed, selectedInstrument, currentStep, completedSteps, currentSteps.length]);
+  
 
+  useEffect(() => {
+    if (!webcamEnabled || !currentStep || completedSteps.includes(currentStep.id)) return;
+  
+    if (
+      (currentStep.mode === "autoChord" || currentStep.mode === "arpeggiator")
+      && selectedInstrument !== "theremin"
+    ) {
+      // Calculate the required cell index for this step
+      const targetX = Math.floor(currentStep.targetPosition.x * 3);
+      const targetY = Math.floor(currentStep.targetPosition.y * 3);
+      const targetCellIndex = targetX + targetY * 3;
+      if (lastPlayedChordCell !== targetCellIndex) return;
+    } else {
+      if (currentNotes.length === 0) return;
+    }
+    
+  
     setShowSuccess(true);
     setTimeout(() => {
       setShowSuccess(false);
-      setCompletedSteps(prev => [...prev, currentStep.id]);
-      setCurrentStepIndex(i => Math.min(i + 1, currentSteps.length - 1));
+      setCompletedSteps(prev => prev.includes(currentStep.id) ? prev : [...prev, currentStep.id]);
+      strummedAllStringsRef.current = false;
+      setStrummedAllStrings(false);
     }, 1500);
-  }, [currentNotes, webcamEnabled, currentStep, completedSteps]);
-
-
+    
+  }, [
+    currentNotes, webcamEnabled, currentStep, completedSteps,
+    lastPlayedChordCell, selectedInstrument, currentStepIndex, currentSteps,
+    strummedAllStrings 
+  ]);
+  
   const currentChordName = 
     currentChordCell !== null ? getChordsForKey(selectedKey)[currentChordCell]?.name : null;
 
@@ -958,7 +1155,9 @@ export default function InstrumentTutorialPage() {
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="h-2 rounded-full bg-teal-500 transition-all duration-300"
-                          style={{ width: `${(currentStepIndex / currentSteps.length) * 100}%` }}
+                          style={{
+                            width: `${(completedSteps.filter(id => id.startsWith(selectedInstrument)).length / currentSteps.length) * 100}%`
+                          }}
                         />
                       </div>
                     </div>
@@ -1004,51 +1203,78 @@ export default function InstrumentTutorialPage() {
                       </div>
                     )}
                     
-                    {/* Show Overlay Toggle */}
-                    <div className="pt-4">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Show Position Guide
-                        </label>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={showOverlay}
-                            onChange={() => setShowOverlay(!showOverlay)} 
-                            className="sr-only peer" 
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
-                        </label>
-                      </div>
-                    </div>
                     
                     {/* Navigation Buttons */}
                     <div className="pt-4 flex justify-between">
                       <Button
                         variant="outline"
                         disabled={currentStepIndex === 0}
-                        onClick={() => {
-                          setCurrentStepIndex((prev) => Math.max(0, prev - 1));
-                        }}
+                        onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
                         className="text-teal-600 border-teal-200"
                       >
                         Previous
                       </Button>
-                      
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          if (currentStepIndex < currentSteps.length - 1) {
-                            setCurrentStepIndex((prev) => prev + 1);
-                          }
-                        }}
-                        className="text-teal-600 border-teal-200"
-                      >
-                        Skip Step
-                      </Button>
+
+                      {/* Show Next button ONLY after step is completed */}
+                      {completedSteps.includes(currentStep.id) ? (
+                        <Button
+                          variant="default"
+                          onClick={() => {
+                            if (currentStepIndex < currentSteps.length - 1) {
+                              setCurrentStepIndex((prev) => prev + 1);
+                            }
+                          }}
+                          className="bg-teal-600 text-white"
+                        >
+                          Next
+                        </Button>
+                      ) : (
+                        // Optionally, show nothing, or a disabled Next button
+                        <div style={{ width: 88 }} /> // keep spacing consistent, or remove if you want
+                      )}
                     </div>
+
                   </motion.div>
                 )}
+
+                <AnimatePresence>
+                  {modeCompleted && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                    >
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        className="bg-white rounded-xl p-8 max-w-md mx-4 shadow-2xl"
+                      >
+                        <div className="text-center">
+                          <div className="mx-auto w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mb-3">
+                            <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <h2 className="text-xl font-bold text-teal-800 mb-2">
+                            {modeCompleted.charAt(0).toUpperCase() + modeCompleted.slice(1)} Tutorial Complete!
+                          </h2>
+                          <p className="text-gray-600 mb-6">
+                            You've finished all {modeCompleted} steps. Try another instrument!
+                          </p>
+                          <Button
+                            className="bg-teal-600 hover:bg-teal-700 text-white w-full"
+                            onClick={() => setModeCompleted(null)}
+                          >
+                            Continue
+                          </Button>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
               </CardContent>
             </Card>
           </div>
@@ -1241,198 +1467,6 @@ export default function InstrumentTutorialPage() {
                   </Button>
                 </div>
               </div>
-            </Card>
-            
-            {/* Settings Panel */}
-            <Card className="mt-4 bg-white shadow-lg rounded-xl overflow-hidden border border-teal-100">
-              <CardHeader className="bg-teal-50 border-b border-teal-100">
-                <h2 className="text-lg font-semibold text-teal-800">Instrument Settings</h2>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Mode Selection */}
-                  {selectedInstrument !== "theremin" && (
-                    <div className="md:col-span-2 bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <h4 className="text-teal-800 font-medium mb-2">Mode</h4>
-                      <div className="grid grid-cols-3 gap-2">
-                        {["manual", "autoChord", "arpeggiator"].map((modeOption) => (
-                          <button
-                            key={modeOption}
-                            onClick={() => setMode(modeOption as "manual" | "autoChord" | "arpeggiator")}
-                            className={`
-                              py-2 px-1 rounded-md transition-all text-sm
-                              ${mode === modeOption 
-                                ? "bg-teal-600 text-white font-medium shadow-sm" 
-                                : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
-                            `}
-                          >
-                            {modeOption === "autoChord" ? "Auto Chord" : 
-                              modeOption.charAt(0).toUpperCase() + modeOption.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* BPM Control (except for theremin) */}
-                  {selectedInstrument !== "theremin" && (
-                    <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <h4 className="text-teal-800 font-medium mb-2">Tempo (BPM)</h4>
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="range"
-                          min={40}
-                          max={180}
-                          value={bpm}
-                          onChange={(e) => setBpm(Number(e.target.value))}
-                          className="w-full accent-teal-600"
-                        />
-                        <span className="text-teal-800 font-semibold bg-white px-3 py-1 rounded-md border border-teal-200 min-w-[3rem] text-center">
-                          {bpm}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Note Length (except for theremin) */}
-                  {selectedInstrument !== "theremin" && (
-                    <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <h4 className="text-teal-800 font-medium mb-2">Note Length</h4>
-                      <div className="grid grid-cols-5 gap-1">
-                        {[
-                          { value: 0.25, label: "16th" },
-                          { value: 0.5, label: "8th" },
-                          { value: 1, label: "1/4" },
-                          { value: 2, label: "1/2" },
-                          { value: 4, label: "Whole" }
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            onClick={() => setNoteLength(option.value)}
-                            className={`
-                              py-2 px-1 text-xs rounded-md transition-all
-                              ${noteLength === option.value 
-                                ? "bg-teal-600 text-white font-medium shadow-sm" 
-                                : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
-                            `}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Piano Input Mode */}
-                  {selectedInstrument === "piano" && mode === "manual" && (
-                    <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <h4 className="text-teal-800 font-medium mb-2">Piano Input</h4>
-                      <div className="flex gap-2">
-                        {(["fist", "finger"] as const).map((inputMode) => (
-                          <button
-                            key={inputMode}
-                            onClick={() => setPianoInput(inputMode)}
-                            className={`
-                              flex-1 py-2 rounded-md transition-all text-sm
-                              ${pianoInput === inputMode 
-                                ? "bg-teal-600 text-white font-medium shadow-sm" 
-                                : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
-                            `}
-                          >
-                            {inputMode === "fist" ? "Closed Fist" : "Finger Tap"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Arpeggiator Settings */}
-                  {mode === "arpeggiator" && (
-                    <>
-                      <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
-                        <h4 className="text-teal-800 font-medium mb-2">Octave Span</h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[1, 2].map((octave) => (
-                            <button
-                              key={octave}
-                              onClick={() => setArpeggioOctaves(octave)}
-                              className={`
-                                py-2 px-4 rounded-md transition-all text-sm
-                                ${arpeggioOctaves === octave 
-                                  ? "bg-teal-600 text-white font-medium shadow-sm" 
-                                  : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
-                              `}
-                            >
-                              {octave} {octave === 1 ? "Octave" : "Octaves"}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
-                        <h4 className="text-teal-800 font-medium mb-2">Direction</h4>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { value: "up", label: "Up", icon: "↑" },
-                            { value: "down", label: "Down", icon: "↓" },
-                            { value: "upDown", label: "Up & Down", icon: "↕" }
-                          ].map((option) => (
-                            <button
-                              key={option.value}
-                              onClick={() => setArpeggioDirection(option.value as "up" | "down" | "upDown")}
-                              className={`
-                                py-2 px-1 rounded-md transition-all flex flex-col items-center text-sm
-                                ${arpeggioDirection === option.value 
-                                  ? "bg-teal-600 text-white font-medium shadow-sm" 
-                                  : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
-                              `}
-                            >
-                              <span className="text-lg mb-1">{option.icon}</span>
-                              <span className="text-xs">{option.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  
-                  {/* Theremin Waveform */}
-                  {selectedInstrument === "theremin" && (
-                    <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <h4 className="text-teal-800 font-medium mb-2">Waveform</h4>
-                      <div className="grid grid-cols-4 gap-2">
-                        {["sine", "square", "sawtooth", "triangle"].map((waveform) => (
-                          <button
-                            key={waveform}
-                            onClick={() => setThereminWaveform(waveform)}
-                            className={`
-                              py-2 px-1 rounded-md transition-all text-sm
-                              ${thereminWaveform === waveform 
-                                ? "bg-teal-600 text-white font-medium shadow-sm" 
-                                : "bg-white text-teal-700 border border-teal-200 hover:bg-teal-100"}
-                            `}
-                          >
-                            {waveform.charAt(0).toUpperCase() + waveform.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Key Selection with Circle of Fifths */}
-                  {selectedInstrument !== "theremin" && (
-                    <div className="md:col-span-2 bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <h4 className="text-teal-800 font-medium mb-2">Key Signature</h4>
-                      <div className="w-full flex justify-center">
-                        <CircleOfFifths
-                          selectedKey={selectedKey === "None" ? "C Major" : selectedKey}
-                          onSelectKey={(keyName) => setSelectedKey(keyName)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
             </Card>
           </div>
         </div>
