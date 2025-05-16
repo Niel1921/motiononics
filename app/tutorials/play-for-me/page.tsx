@@ -94,9 +94,14 @@ export default function TutorialPage() {
                 </div>
                 <div className="flex items-center justify-center bg-gray-100 rounded-lg p-4">
                   <div className="text-center">
-                    <div className="bg-gray-200 h-64 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for overview image/animation */}
-                      <span className="text-gray-500">Overview Animation</span>
+                    <div className="mb-3">
+                      <Image 
+                        src="/tutorialimg/overview.png" 
+                        alt="Overview of the Play For Me interface" 
+                        width={500} 
+                        height={320} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       An overview of the Play For Me interface
@@ -141,66 +146,28 @@ export default function TutorialPage() {
                       <span className="font-medium">Test Hand Detection:</span> Move your hand in the frame 
                       and you should see it being tracked with purple outlines.
                     </li>
-                  </ol>
-                  
-                  <h3 className="text-xl font-semibold text-purple-700 mb-4">Understanding Hand Gestures</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  </ol>                
+                </div>
+                <div>
+                <h3 className="text-xl font-semibold text-purple-700 mb-4">Understanding Hand Gestures</h3>
+                  <div className="grid grid-cols-1 gap-4 mb-6">
                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
                       <h4 className="font-semibold text-purple-700 mb-2">Closed Fist</h4>
                       <p className="text-gray-700 mb-2">
                         Making a closed fist over a chord cell will select it as the root chord and 
                         start playing the 8-chord progression.
                       </p>
-                      <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center">
-                        {/* Placeholder for fist gesture image */}
-                        <span className="text-gray-500">Fist Gesture Image</span>
+                      <div className="rounded-lg flex items-center justify-center">
+                        <Image 
+                          src="/gestureimg/fistlogo.png" 
+                          alt="Closed fist gesture demonstration" 
+                          width={210} 
+                          height={180} 
+                          className="rounded-lg"
+                        />
                       </div>
                     </div>
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                      <h4 className="font-semibold text-purple-700 mb-2">Hand Position</h4>
-                      <p className="text-gray-700 mb-2">
-                        Moving your hand over different cells in the grid will highlight them, 
-                        showing which chord will be selected.
-                      </p>
-                      <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center">
-                        {/* Placeholder for hand position image */}
-                        <span className="text-gray-500">Hand Position Image</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                    <h4 className="font-semibold text-purple-700 mb-3">The Gesture Control Panel</h4>
-                    <div className="bg-gray-200 h-64 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for gesture control panel image */}
-                      <span className="text-gray-500">Gesture Control Panel Image</span>
-                    </div>
-                    <p className="text-sm text-gray-600 italic">
-                      The Gesture Control panel with webcam feed and chord grid overlay
-                    </p>
-                  </div>
-                  
-                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                    <h4 className="font-semibold text-purple-700 mb-2">Troubleshooting Tips:</h4>
-                    <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                      <li>
-                        <span className="font-medium">Lighting:</span> Ensure your hand is well-lit and 
-                        there's good contrast with the background.
-                      </li>
-                      <li>
-                        <span className="font-medium">Hand Position:</span> Keep your hand within the frame 
-                        and at a moderate distance from the camera.
-                      </li>
-                      <li>
-                        <span className="font-medium">Clear View:</span> Remove any objects between your 
-                        hand and the camera for better detection.
-                      </li>
-                      <li>
-                        <span className="font-medium">Gesture Clarity:</span> Make deliberate, clear gestures 
-                        rather than quick or partial ones.
-                      </li>
-                    </ul>
+
                   </div>
                 </div>
               </div>
@@ -230,9 +197,14 @@ export default function TutorialPage() {
                     represents a different chord in the key.
                   </p>
                   <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                    <div className="bg-gray-200 h-64 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for chord grid image */}
-                      <span className="text-gray-500">Chord Grid Image</span>
+                    <div className="mb-3">
+                      <Image 
+                        src="/tutorialimg/grid.png" 
+                        alt="Chord grid with Roman numeral notation" 
+                        width={480} 
+                        height={320} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       The chord grid with Roman numeral notation and chord names
@@ -259,9 +231,14 @@ export default function TutorialPage() {
                   
                   <div className="bg-gray-100 rounded-lg p-4 mb-6">
                     <h4 className="font-semibold text-purple-700 mb-2">Circle of Fifths</h4>
-                    <div className="bg-gray-200 h-48 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for Circle of Fifths image */}
-                      <span className="text-gray-500">Circle of Fifths Image</span>
+                    <div className="mb-3 justifyitems-center">
+                      <Image 
+                        src="/tutorialimg/circleof5ths.png" 
+                        alt="Circle of Fifths key selector" 
+                        width={380} 
+                        height={240} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       The Circle of Fifths selector helps you choose a musical key
@@ -276,10 +253,6 @@ export default function TutorialPage() {
                       </li>
                       <li>
                         <span className="font-medium">Minor Keys:</span> Often sound more melancholic, serious, or dramatic
-                      </li>
-                      <li>
-                        <span className="font-medium">Roman Numerals:</span> Represent the chord's function in the key 
-                        (I is the tonic, V is the dominant, etc.)
                       </li>
                       <li>
                         <span className="font-medium">Uppercase (I):</span> Major chord
@@ -320,7 +293,6 @@ export default function TutorialPage() {
                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
                       <h4 className="font-semibold text-purple-700 mb-2">Piano</h4>
                       <div className="bg-white h-44 w-full rounded-lg flex items-center justify-center">
-                        {/* Placeholder for piano image */}
                         <Image
                           src={`/instrumentimg/pianoicon.png`}
                           alt={"Piano Icon"}
@@ -333,7 +305,6 @@ export default function TutorialPage() {
                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
                       <h4 className="font-semibold text-purple-700 mb-2">Guitar</h4>
                       <div className="bg-white h-44 w-full rounded-lg flex items-center justify-center">
-                        {/* Placeholder for guitar image */}
                         <Image
                           src={`/instrumentimg/guitaricon.png`}
                           alt={"Guitar Icon"}
@@ -344,17 +315,6 @@ export default function TutorialPage() {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="bg-gray-100 rounded-lg p-4">
-                    <h4 className="font-semibold text-purple-700 mb-2">Instrument Controls</h4>
-                    <div className="bg-gray-200 h-36 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for instrument controls image */}
-                      <span className="text-gray-500">Instrument Selection UI</span>
-                    </div>
-                    <p className="text-sm text-gray-600 italic">
-                      Click on the instrument icon to select it for your progression
-                    </p>
-                  </div>
                 </div>
                 
                 <div>
@@ -364,36 +324,20 @@ export default function TutorialPage() {
                     Different tempos can dramatically change the feel of the same chord progression.
                   </p>
                   
-                  <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                    <h4 className="font-semibold text-purple-700 mb-2">Tempo Slider</h4>
-                    <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for tempo slider image */}
-                      <span className="text-gray-500">Tempo Slider Image</span>
+                  <div className="bg-gray-100 rounded-lg p-4 mt-10 mb-6">
+                    <h4 className="font-semibold text-purple-700 mb-6">Tempo Slider</h4>
+                    <div className="mb-3">
+                      <Image 
+                        src="/tutorialimg/bpmslider.png" 
+                        alt="Tempo slider control" 
+                        width={480} 
+                        height={120} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       Drag the slider to adjust the speed of your progression
                     </p>
-                  </div>
-                  
-                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                    <h4 className="font-semibold text-purple-700 mb-2">Tempo Guidelines:</h4>
-                    <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                      <li>
-                        <span className="font-medium">40-60 BPM:</span> Very slow, ballad-like feel
-                      </li>
-                      <li>
-                        <span className="font-medium">60-80 BPM:</span> Relaxed, chill vibe
-                      </li>
-                      <li>
-                        <span className="font-medium">80-100 BPM:</span> Moderate, walking pace
-                      </li>
-                      <li>
-                        <span className="font-medium">100-120 BPM:</span> Energetic, danceable
-                      </li>
-                      <li>
-                        <span className="font-medium">120+ BPM:</span> Fast, exciting, intense
-                      </li>
-                    </ul>
                   </div>
                 </div>
               </div>
@@ -423,22 +367,17 @@ export default function TutorialPage() {
                     root chord. They're organized by music genre.
                   </p>
                   
-                  <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                    <h4 className="font-semibold text-purple-700 mb-2">Genre Selection</h4>
-                    <div className="bg-gray-200 h-16 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for genre buttons image */}
-                      <span className="text-gray-500">Genre Buttons Image</span>
-                    </div>
-                    <p className="text-sm text-gray-600 italic">
-                      Select a music genre to see chord patterns typical for that style
-                    </p>
-                  </div>
                   
                   <div className="bg-gray-100 rounded-lg p-4 mb-6">
                     <h4 className="font-semibold text-purple-700 mb-2">Pattern Selection</h4>
-                    <div className="bg-gray-200 h-48 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for pattern selection image */}
-                      <span className="text-gray-500">Pattern Selection Image</span>
+                    <div className="mb-3">
+                      <Image 
+                        src="/tutorialimg/chordgenre.png" 
+                        alt="Chord pattern selection interface" 
+                        width={480} 
+                        height={240} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       Choose a specific 8-chord pattern within your selected genre
@@ -474,22 +413,17 @@ export default function TutorialPage() {
                     even timing, syncopation, or other rhythmic features.
                   </p>
                   
-                  <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                    <h4 className="font-semibold text-purple-700 mb-2">Rhythm Genre Selection</h4>
-                    <div className="bg-gray-200 h-16 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for rhythm genre buttons image */}
-                      <span className="text-gray-500">Rhythm Genre Buttons Image</span>
-                    </div>
-                    <p className="text-sm text-gray-600 italic">
-                      Select a rhythm style typical of a specific music genre
-                    </p>
-                  </div>
                   
                   <div className="bg-gray-100 rounded-lg p-4 mb-6">
                     <h4 className="font-semibold text-purple-700 mb-2">Rhythm Pattern Selection</h4>
-                    <div className="bg-gray-200 h-48 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for rhythm pattern selection image */}
-                      <span className="text-gray-500">Rhythm Pattern Selection Image</span>
+                    <div className="mb-3">
+                      <Image 
+                        src="/tutorialimg/rhythmgenre.png" 
+                        alt="Rhythm pattern selection interface" 
+                        width={480} 
+                        height={240} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       Choose a specific rhythm pattern within your selected genre
@@ -543,9 +477,14 @@ export default function TutorialPage() {
                   
                   <div className="bg-gray-100 rounded-lg p-4 mb-6">
                     <h4 className="font-semibold text-purple-700 mb-2">Recording Controls</h4>
-                    <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for recording controls image */}
-                      <span className="text-gray-500">Recording Controls Image</span>
+                    <div className="mb-3">
+                      <Image 
+                        src="/tutorialimg/recordstart.png" 
+                        alt="Recording control buttons" 
+                        width={480} 
+                        height={120} 
+                        className="rounded-lg"
+                      />
                     </div>
                     <p className="text-sm text-gray-600 italic">
                       Recording controls let you start, stop, and manage your recordings
@@ -580,53 +519,37 @@ export default function TutorialPage() {
                     After recording, you can download your creation in several formats.
                   </p>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                      <h4 className="font-semibold text-purple-700 mb-2">WAV Audio</h4>
-                      <p className="text-gray-700 mb-3">
-                        Download the audio recording as a high-quality WAV file that you can play in 
-                        any media player or import into music software.
-                      </p>
-                      <div className="bg-gray-200 h-12 w-full rounded-lg flex items-center justify-center">
-                        {/* Placeholder for WAV button image */}
-                        <span className="text-gray-500">Download WAV Button</span>
-                      </div>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                      <h4 className="font-semibold text-purple-700 mb-2">Chord Text File</h4>
-                      <p className="text-gray-700 mb-3">
-                        Save the sequence of chord names as a text file that you can reference 
-                        later when practicing on an instrument.
-                      </p>
-                      <div className="bg-gray-200 h-12 w-full rounded-lg flex items-center justify-center">
-                        {/* Placeholder for TXT button image */}
-                        <span className="text-gray-500">Download TXT Button</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 mb-6">
-                    <h4 className="font-semibold text-purple-700 mb-2">Chord Sheet Music</h4>
-                    <p className="text-gray-700 mb-3">
-                      Generate a PDF with musical notation of your chord progression. This is perfect 
-                      for musicians who read sheet music or want to share their progression with others.
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 mb-2">
+                    <h4 className="font-semibold text-purple-700 mb-2">Download Options</h4>
+                    <p className="text-gray-700 mb-10">
+                      Generate a PDF with musical notation of your chord progression, download the chords as a Text file, or download the audio file as a WAV file!
                     </p>
-                    <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center mb-2">
-                      {/* Placeholder for Sheet Music button image */}
-                      <span className="text-gray-500">Download Chord Sheet Button</span>
+                    <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center mb-6">
+                    <Image 
+                      src="/tutorialimg/downloadbutton.png" 
+                      alt="Download Chord Sheet Button"
+                      width={480} 
+                      height={120} 
+                      className="object-cover"
+                    />
                     </div>
                     <p className="text-sm text-gray-600 italic">
-                      Example of a generated chord sheet with notation
+                      Example of the downloading options
                     </p>
                   </div>
                   
                   <div className="bg-gray-100 rounded-lg p-4">
-                    <h4 className="font-semibold text-purple-700 mb-2">Audio Player</h4>
+                    <h4 className="font-semibold text-purple-700 mb-8">Audio Player</h4>
                     <div className="bg-gray-200 h-20 w-full rounded-lg flex items-center justify-center mb-3">
-                      {/* Placeholder for audio player image */}
-                      <span className="text-gray-500">Audio Player Interface</span>
+                    <Image 
+                      src="/tutorialimg/playback.png" 
+                      alt="Audio Player Interface"
+                      width={380} 
+                      height={120} 
+                      className="object-cover"
+                    />
                     </div>
-                    <p className="text-sm text-gray-600 italic">
+                    <p className="text-sm text-gray-600 mt-4 italic">
                       Preview your recording before downloading it
                     </p>
                   </div>
@@ -636,126 +559,6 @@ export default function TutorialPage() {
           </Card>
         </motion.div>
 
-        {/* Advanced Tips Section */}
-        <motion.div
-          custom={6}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={sectionVariants}
-          className="mb-12"
-        >
-          <Card className="bg-white shadow-md overflow-hidden">
-            <CardHeader className="bg-purple-50 border-b border-purple-100">
-              <h2 className="text-2xl font-bold text-purple-800">Advanced Tips & Creative Ideas</h2>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Combining Genres</h3>
-                  <p className="text-gray-700 mb-3">
-                    Try mixing chord patterns from one genre with rhythm patterns from another for unique sounds.
-                  </p>
-                  <div className="bg-gray-200 h-24 w-full rounded-lg flex items-center justify-center mb-3">
-                    {/* Placeholder for genre mixing image */}
-                    <span className="text-gray-500">Genre Mixing Example</span>
-                  </div>
-                  <p className="text-sm text-gray-700">
-                    For example: Jazz chord patterns with Latin rhythms can create an interesting fusion sound.
-                  </p>
-                </div>
-                
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Key Modulation</h3>
-                  <p className="text-gray-700 mb-3">
-                    Create more complex compositions by changing keys mid-recording.
-                  </p>
-                  <ol className="list-decimal pl-5 space-y-2 text-gray-700 mb-3">
-                    <li>Record a progression in your first key</li>
-                    <li>Stop recording but don't reset</li>
-                    <li>Change to a related key (e.g., C Major → G Major)</li>
-                    <li>Start recording again to continue in the new key</li>
-                  </ol>
-                  <p className="text-sm text-gray-700">
-                    Common key changes: Move up a perfect 5th, or to the relative minor/major
-                  </p>
-                </div>
-                
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                  <h3 className="text-lg font-semibold text-purple-700 mb-3">Songwriting Structure</h3>
-                  <p className="text-gray-700 mb-3">
-                    Use different chord patterns to create song sections.
-                  </p>
-                  <div className="flex flex-col space-y-2 mb-3">
-                    <div className="bg-gray-200 p-2 rounded text-center text-gray-700">
-                      Verse: Pop pattern, moderate tempo
-                    </div>
-                    <div className="bg-gray-200 p-2 rounded text-center text-gray-700">
-                      Chorus: Rock pattern, faster tempo
-                    </div>
-                    <div className="bg-gray-200 p-2 rounded text-center text-gray-700">
-                      Bridge: Jazz pattern, different key
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-700">
-                    Record each section separately and combine them in audio editing software
-                  </p>
-                </div>
-              </div>
-              
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gradient-to-br from-purple-100 to-purple-200 p-5 rounded-lg border border-purple-300">
-                  <h3 className="text-xl font-semibold text-purple-800 mb-3">Creative Exercise Ideas</h3>
-                  <ul className="list-disc pl-5 space-y-3 text-gray-700">
-                    <li>
-                      <span className="font-medium">Mood Exploration:</span> Try creating chord progressions that 
-                      express different emotions by experimenting with major/minor keys and tempos
-                    </li>
-                    <li>
-                      <span className="font-medium">Genre Challenge:</span> Attempt to recreate the feel of your 
-                      favorite song using the chord and rhythm patterns available
-                    </li>
-                    <li>
-                      <span className="font-medium">Storytelling:</span> Create a musical journey by recording a 
-                      series of progressions that evolve from calm to intense and back
-                    </li>
-                    <li>
-                      <span className="font-medium">Collaboration:</span> Record progressions and share them with 
-                      friends who can add melodies or lyrics
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="bg-gradient-to-br from-purple-100 to-purple-200 p-5 rounded-lg border border-purple-300">
-                  <h3 className="text-xl font-semibold text-purple-800 mb-3">Troubleshooting</h3>
-                  <div className="space-y-3">
-                    <div className="bg-white p-3 rounded-md">
-                      <h4 className="font-semibold text-purple-700">No sound when playing chords?</h4>
-                      <p className="text-sm text-gray-700">
-                        Make sure your device volume is up and you've interacted with the page 
-                        (clicked somewhere) to enable audio playback.
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-md">
-                      <h4 className="font-semibold text-purple-700">Hand gestures not recognized?</h4>
-                      <p className="text-sm text-gray-700">
-                        Ensure good lighting, a clear background, and that your hand is fully visible 
-                        in the camera frame.
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-md">
-                      <h4 className="font-semibold text-purple-700">Recording issues?</h4>
-                      <p className="text-sm text-gray-700">
-                        Make sure you've allowed microphone permissions in your browser and that 
-                        the camera is enabled before starting recording.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
 
         {/* Musical Examples Section */}
         <motion.div
