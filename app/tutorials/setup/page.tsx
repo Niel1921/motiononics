@@ -39,6 +39,11 @@ interface TutorialStep {
   waveform?: string;
 }
 
+const sfxPaths = {
+  step: "/sounds/step-complete.wav",
+  tutorial: "/sounds/tutorial-complete.wav",
+};
+
 // Tutorial step definitions with detailed instructions for each instrument
 const tutorialSteps: Record<"piano" | "guitar" | "theremin", TutorialStep[]> = {
   piano: [
@@ -158,7 +163,9 @@ export default function InstrumentTutorialPage() {
   const lastNoneY = useRef<number | null>(null);
   const fingerPressedRef = useRef<Record<number, boolean>>({});
   const gestureRecognizer = useGesture();
-  
+  const audioElementsRef = useRef<Record<string, HTMLAudioElement>>({});
+  const prevAllCompleted = useRef(false);
+
   // Audio setup
   const {
     initAudio,
@@ -214,6 +221,10 @@ export default function InstrumentTutorialPage() {
 
   const strummedAllStringsRef = useRef(false);
   const [strummedAllStrings, setStrummedAllStrings] = useState(false);
+
+  // At the top of your file (inside the component or above it)
+  const stepSfxPath = "/samples/success.wav";
+  const stepAudioRef = typeof window !== "undefined" ? new Audio(stepSfxPath) : null;
 
   // Progress tracking
   const [overallProgress, setOverallProgress] = useState(0);
@@ -1215,11 +1226,17 @@ export default function InstrumentTutorialPage() {
                         Previous
                       </Button>
 
-                      {/* Show Next button ONLY after step is completed */}
+                      {/* Show Next button after step is completed */}
                       {completedSteps.includes(currentStep.id) ? (
                         <Button
                           variant="default"
                           onClick={() => {
+                            // ---- PLAY SOUND HERE ----
+                            if (stepAudioRef) {
+                              stepAudioRef.currentTime = 0;
+                              stepAudioRef.volume = 0.4;
+                              stepAudioRef.play().catch(() => {});
+                            }
                             if (currentStepIndex < currentSteps.length - 1) {
                               setCurrentStepIndex((prev) => prev + 1);
                             }
@@ -1230,7 +1247,7 @@ export default function InstrumentTutorialPage() {
                         </Button>
                       ) : (
                         // Optionally, show nothing, or a disabled Next button
-                        <div style={{ width: 88 }} /> // keep spacing consistent, or remove if you want
+                        <div style={{ width: 88 }} />
                       )}
                     </div>
 
@@ -1439,33 +1456,7 @@ export default function InstrumentTutorialPage() {
                     onWaveformChange={setThereminWaveform}
                   />
                 )}
-                
-                {/* Test Sound Button */}
-                <div className="absolute bottom-2 right-2 flex space-x-2">
-                  <Button
-                    variant="outline"
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                    onClick={() => {
-                      if (audioCtxRef.current?.state === "suspended") {
-                        audioCtxRef.current.resume();
-                      }
-                      
-                      // Test sound based on current instrument
-                      if (selectedInstrument === "guitar") {
-                        playGuitarString(2, bpm, noteLength);
-                        guitarRef.current?.triggerString(2);
-                      } else if (selectedInstrument === "piano") {
-                        playNoteManual("Closed_Fist", { x: 0.5, y: 0.5 });
-                      } else if (selectedInstrument === "theremin") {
-                        // Would trigger theremin sound test
-                        setThereminVolume(0.5);
-                        setTimeout(() => setThereminVolume(0), 1000);
-                      }
-                    }}
-                  >
-                    Test Sound
-                  </Button>
-                </div>
+
               </div>
             </Card>
           </div>
