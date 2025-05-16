@@ -7,6 +7,7 @@ import Image from "next/image"; // Next.js Image component
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import Header from "@/components/ui/header";
+import { isBackOfHand } from "@/lib/musicHelpers";
 
 // Import Mediapipe tasks
 import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
@@ -19,43 +20,42 @@ const pianoNotes = {
   C5: "/samples/successfinal.mp3",
 };
 
-
 const gestureList = [
   {
-    name: "Closed_Fist", // must match gesture.categoryName from Mediapipe
+    name: "Closed_Fist", // still recognized as a gesture by Mediapipe
     displayName: "Closed Fist",
     image: "/gestureimg/fistlogo.png",
     description: "Make a closed fist with your hand.",
     note: "C4",
     overlayImage: "/gestureimg/fist-overlay.png",
-    color: "#3b82f6" // blue
+    color: "#3b82f6"
   },
   {
-    name: "Open_Palm",
-    displayName: "Open Hand",
+    name: "Open_Palm", // still recognized
+    displayName: "Open Palm",
     image: "/gestureimg/openhandlogo.jpg",
     description: "Hold your hand wide open, with fingers spread.",
     note: "E4",
     overlayImage: "/gestureimg/openhand-overlay.png",
-    color: "#10b981" // green
+    color: "#10b981"
   },
   {
-    name: "Thumb_Up",
-    displayName: "Thumbs Up",
-    image: "/gestureimg/thumbuplogo.png",
-    description: "Show a thumbs up gesture with your hand.",
+    name: "Back_Of_Hand", // **custom detection**
+    displayName: "Back of Hand",
+    image: "/gestureimg/backofhand.png",
+    description: "Show the back of your hand to the camera (palm away).",
     note: "G4",
-    overlayImage: "/gestureimg/thumbup-overlay.png",
-    color: "#f59e0b" // amber
+    overlayImage: "/gestureimg/backofhand-overlay.png",
+    color: "#f59e0b"
   },
   {
-    name: "Victory",
-    displayName: "Victory (V)",
-    image: "/gestureimg/victorylogo.jpg",
-    description: "Make a V shape with your index and middle fingers.",
+    name: "Pinch", // **custom detection**
+    displayName: "Pinch",
+    image: "/gestureimg/pinchlogo.png",
+    description: "Pinch your thumb and index finger together.",
     note: "C5",
-    overlayImage: "/gestureimg/victory-overlay.png",
-    color: "#8b5cf6" // purple
+    overlayImage: "/gestureimg/pinch-overlay.png",
+    color: "#8b5cf6"
   },
 ];
 
@@ -198,7 +198,6 @@ export default function GestureWalkthroughWithMediapipe() {
     };
   }, [webcamEnabled]);
 
-  // Main Mediapipe loop: analyze frames and update the recognized gesture
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
     
@@ -233,17 +232,54 @@ export default function GestureWalkthroughWithMediapipe() {
           
           // Update hand visibility
           setHandVisible(results?.landmarks && results.landmarks.length > 0);
-          
-          if (results?.gestures && results.gestures.length > 0) {
-            const [firstHandGestures] = results.gestures;
-            if (firstHandGestures && firstHandGestures.length > 0) {
-              const topGesture = firstHandGestures[0];
-              setRecognizedGesture(topGesture.categoryName);
+
+          // --- Custom gesture logic below ---
+          let customGesture = "";
+          if (results?.landmarks && results.landmarks.length > 0) {
+            const lms = results.landmarks[0];
+
+            // Get handedness as "Right" | "Left" or fallback
+            let handed: "Right" | "Left" = "Right";
+            // Corrected lines:
+            if (results.handedness && results.handedness[0] && 
+              Array.isArray(results.handedness[0]) && 
+              results.handedness[0][0] && 
+              'categoryName' in results.handedness[0][0]) {
+            const label = results.handedness[0][0].categoryName;
+            handed = label === "Left" ? "Left" : "Right";
             }
-          } else {
-            setRecognizedGesture("");
+
+            
+
+            // Custom: back of hand
+            if (isBackOfHand(lms, handed)) {
+              customGesture = "Back_Of_Hand";
+            } else {
+              // Custom: pinch (thumb tip to index tip distance)
+              const thumb = lms[4];
+              const index = lms[8];
+              if (thumb && index) {
+                const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
+                if (pinchDist < 0.06) {
+                  customGesture = "Pinch";
+                }
+              }
+            }
           }
-          
+
+
+          // If not custom, use Mediapipe gesture
+          if (!customGesture) {
+            if (results?.gestures && results.gestures.length > 0) {
+              const [firstHandGestures] = results.gestures;
+              if (firstHandGestures && firstHandGestures.length > 0) {
+                customGesture = firstHandGestures[0].categoryName;
+              }
+            }
+          }
+
+          setRecognizedGesture(customGesture);
+
           // Draw hand landmarks with improved visualization
           if (results?.landmarks) {
             ctx.save();

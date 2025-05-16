@@ -25,8 +25,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+
     <html lang="en">
-            <GoogleTagManager gtmId="G-HEBMK5ZZYG" />
+
+    <head>
+      <script
+          dangerouslySetInnerHTML={{
+            __html:` 
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-HEBMK5ZZYG');`
+    
+          }}
+        />
+    </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
