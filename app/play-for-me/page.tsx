@@ -728,8 +728,7 @@ export default function PlayForMePage() {
             Play For Me
           </h1>
           <p className="text-xl text-purple-600 max-w-3xl mx-auto">
-            Now with runtime fallback for uppercase vs. lowercase numerals in minor keys.
-            Choose your chord cell to transpose the 8-chord pattern to that chord as “I!”
+            Choose your chord to start the 8-chord pattern for that chord as “I!”
           </p>
         </div>
   
