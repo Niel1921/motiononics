@@ -163,7 +163,6 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
             // Decrement timer
             vibrationTimers.current[i] = Math.max(0, timer - dt);
 
-            // Let's do a simple sideways offset
             const amplitude = 0.01; // how wide the wave is
             const freq = 20;       // how fast it shakes
             const phase = (timer * freq) % (2 * Math.PI);

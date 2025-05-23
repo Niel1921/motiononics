@@ -725,7 +725,7 @@ export default function PlayForMePage() {
       >
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold text-purple-800 mb-3">
-            Play For Me (8-Beats + Minor Fix)
+            Play For Me
           </h1>
           <p className="text-xl text-purple-600 max-w-3xl mx-auto">
             Now with runtime fallback for uppercase vs. lowercase numerals in minor keys.
