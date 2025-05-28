@@ -4,10 +4,10 @@ import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 
 export type ThreeThereminVisualizerProps = {
-  frequency: number; // e.g., between 200 and 600 Hz
-  volume: number;    // normalized between 0 and 1
-  vibrato: number;   // vibrato rate in Hz (e.g., 0 to 10 Hz)
-  waveform: string;  // "sine", "square", "sawtooth", "triangle", etc.
+  frequency: number;
+  volume: number;
+  vibrato: number;
+  waveform: string;
   onWaveformChange?: (value: string) => void;
 };
 
@@ -22,7 +22,7 @@ export default function ThreeThereminVisualizer({
   const requestRef = useRef<number>(0);
 
   useEffect(() => {
-    // Helper to generate waveform values
+    // Waveform visuals drawer
     const waveformFunc = (type: string, phase: number) => {
       switch (type) {
         case "sine":
@@ -30,10 +30,10 @@ export default function ThreeThereminVisualizer({
         case "square":
           return Math.sign(Math.sin(phase));
         case "sawtooth":
-          // normalized sawtooth from -1 to +1
+          // Simplified sawtooth from -1 to +1
           return 2 * (phase / (2 * Math.PI) - Math.floor(phase / (2 * Math.PI) + 0.5));
         case "triangle":
-          // triangle via arcsin of sine
+          // Triangle wave made through arcsin of sine
           return (2 / Math.PI) * Math.asin(Math.sin(phase));
         default:
           return 0;
@@ -78,7 +78,6 @@ export default function ThreeThereminVisualizer({
     // Line to visualize waveform
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
     const points: THREE.Vector3[] = [];
-    // initial sampling of waveform over x∈[-10,10]
     for (let x = -10; x <= 10; x += 0.5) {
       const phase = ((x + 10) / 20) * 2 * Math.PI;
       points.push(new THREE.Vector3(x, waveformFunc(waveform, phase), 0));
@@ -104,22 +103,18 @@ export default function ThreeThereminVisualizer({
       const maxFreq = 600;
       const xPos = ((frequency - minFreq) / (maxFreq - minFreq)) * 20 - 10;
 
-      // Vibrato-based wobble
+      // Vibrato-based wobble on sphere
       const t = performance.now() * 0.005 * vibrato;
       const vibAmt = vibrato * 0.2;
       const vibratoX = Math.sin(t) * vibAmt;
-      const vibratoY = Math.cos(t) * vibAmt * 0.5; // half amplitude vertically
-
-      // Apply to sphere
+      const vibratoY = Math.cos(t) * vibAmt * 0.5; 
       sphere.position.x = xPos + vibratoX;
       sphere.position.y = vibratoY;
 
       // Map volume to sphere scale
       const newScale = 0.5 + volume * 3;
       sphere.scale.set(newScale, newScale, newScale);
-
-      // Speed up waveform scroll
-      scrollPhase += vibrato * 0.005; // faster than before
+      scrollPhase += vibrato * 0.005; 
 
       // Update waveform line
       const positions = (waveformLine.geometry as THREE.BufferGeometry)
@@ -135,7 +130,7 @@ export default function ThreeThereminVisualizer({
     };
     animate();
 
-    // Cleanup
+    // Cleanup on unmount
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       if (mountRef.current) mountRef.current.removeChild(renderer.domElement);
@@ -146,7 +141,7 @@ export default function ThreeThereminVisualizer({
     };
   }, [frequency, volume, vibrato, waveform]);
 
-  // Helper for knob rotation
+  // Function to compute rotation for the knob markers
   const computeRotation = (value: number, min: number, max: number) =>
     ((value - min) / (max - min)) * 270 - 135;
 
@@ -174,6 +169,7 @@ export default function ThreeThereminVisualizer({
           </div>
           <span className="mt-2">Pitch: {frequency.toFixed(0)} Hz</span>
         </div>
+        
         {/* Volume Knob */}
         <div className="knob-container flex flex-col items-center">
           <div className="knob-display relative w-20 h-20">
@@ -194,6 +190,7 @@ export default function ThreeThereminVisualizer({
           </div>
           <span className="mt-2">Volume: {(volume * 180).toFixed(0)}%</span>
         </div>
+
         {/* Vibrato Knob */}
         <div className="knob-container flex flex-col items-center">
           <div className="knob-display relative w-20 h-20">
@@ -214,6 +211,7 @@ export default function ThreeThereminVisualizer({
           </div>
           <span className="mt-2">Vibrato: {vibrato.toFixed(1)} Hz</span>
         </div>
+
         {/* Waveform Dropdown */}
         <div className="flex flex-col items-center">
           <label className="mb-1 text-white">Waveform</label>
@@ -231,6 +229,7 @@ export default function ThreeThereminVisualizer({
           </select>
         </div>
       </div>
+
       {/* Instructions */}
       <div className="mt-6 p-4 bg-gray-800 text-white rounded max-w-lg mx-auto">
         <h3 className="text-xl font-bold mb-2">How to Use</h3>
@@ -252,6 +251,7 @@ export default function ThreeThereminVisualizer({
           shape.
         </p>
       </div>
+      {/* Custon knob parameters */}
       <style jsx>{`
         .knob-container {
           display: flex;

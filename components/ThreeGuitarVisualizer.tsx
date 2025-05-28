@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useImperativeHandle, forwardRef } from "react
 import * as THREE from "three";
 
 export interface ThreeGuitarVisualizerHandle {
-  /** Called by parent when user triggers a particular string (0..5). */
+  // Called by parent when user triggers a string
   triggerString: (stringIndex: number) => void;
 }
 
@@ -12,28 +12,26 @@ interface ThreeGuitarVisualizerProps {
   currentChord: string | null;
 }
 
-/**
- * A forwardRef so the parent can call methods like .triggerString(index).
- */
 const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuitarVisualizerProps>(
   function ThreeGuitarVisualizer({ currentChord }, ref) {
     const mountRef = useRef<HTMLDivElement | null>(null);
     const requestRef = useRef<number>(0);
 
-    // We'll store references to each string line so we can animate them
     const stringLinesRef = useRef<THREE.Line[]>([]);
-    // For each string, track how long it's "vibrating"
+
+    // For each string, track how long it's vibrating
     const vibrationTimers = useRef<number[]>([0, 0, 0, 0, 0, 0]);
 
     useImperativeHandle(ref, () => ({
       triggerString(stringIndex: number) {
-        // Start or reset the vibration timer for that string
-        vibrationTimers.current[stringIndex] = 0.3; // 0.3 seconds of vibration
+        // Start or reset the vibration timer for that string (0.3 seconds)
+        vibrationTimers.current[stringIndex] = 0.3; 
       },
     }));
 
     useEffect(() => {
-      // Scene, Camera, Renderer
+
+      // Set up Three.js scene with lighting, camera, and renderer
       const scene = new THREE.Scene();
       const textureLoader = new THREE.TextureLoader();
 
@@ -46,7 +44,6 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
       renderer.shadowMap.enabled = true;
       mountRef.current?.appendChild(renderer.domElement);
 
-      // Basic Lights
       scene.add(new THREE.AmbientLight(0xffffff, 0.7));
       const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
       dirLight.position.set(0, 10, 10);
@@ -56,7 +53,7 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
       // Create a group for the guitar
       const guitarGroup = new THREE.Group();
 
-      // Guitar body shape
+      // Guitar body shape with bezier curves
       const guitarShape = new THREE.Shape();
       guitarShape.moveTo(0, -2.8);
       guitarShape.bezierCurveTo(-1.8, -2.8, -2.1, -1.2, -1.3, -0.8);
@@ -67,12 +64,14 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
       guitarShape.bezierCurveTo(2.1, -1.2, 1.8, -2.8, 0, -2.8);
       guitarShape.closePath();
 
+      // Add depth to the guitar body shape/strings
       const extrudeSettings: THREE.ExtrudeGeometryOptions = {
         depth: 1.3,
         bevelEnabled: false,
       };
       const guitarBodyGeo = new THREE.ExtrudeGeometry(guitarShape, extrudeSettings);
 
+      // Apply guitar texture
       const guitarTexture = textureLoader.load("/textures/guitarwood.jpg");
       guitarTexture.wrapS = THREE.RepeatWrapping;
       guitarTexture.wrapT = THREE.RepeatWrapping;
@@ -104,17 +103,14 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
 
       //Neck 
       const neckLength = 5;
-    const neckGeo = new THREE.BoxGeometry(0.9, 0.04, neckLength);
-    const neckMat = new THREE.MeshPhongMaterial({ color: 0x654321 });
-    const neckMesh = new THREE.Mesh(neckGeo, neckMat);
-    neckMesh.rotation.x = -Math.PI ;
-
-    // The guitar’s top is y=1.3. Place neck slightly above (1.31).
-    // Move it behind the guitar shape on z axis.
-    neckMesh.position.set(0, 1.31, -4);
-    neckMesh.castShadow = true;
-    neckMesh.receiveShadow = true;
-    guitarGroup.add(neckMesh);
+      const neckGeo = new THREE.BoxGeometry(0.9, 0.04, neckLength);
+      const neckMat = new THREE.MeshPhongMaterial({ color: 0x654321 });
+      const neckMesh = new THREE.Mesh(neckGeo, neckMat);
+      neckMesh.rotation.x = -Math.PI ;
+      neckMesh.position.set(0, 1.31, -4);
+      neckMesh.castShadow = true;
+      neckMesh.receiveShadow = true;
+      guitarGroup.add(neckMesh);
 
       // Strings
       const numStrings = 6;
@@ -124,8 +120,8 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
         const x = startX + (i * totalWidth) / (numStrings - 1);
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array([
-          x, 1.35, 1.2,   // near bridge
-          x, 1.35, -5.0,  // up the neck
+          x, 1.35, 1.2,
+          x, 1.35, -5.0,
         ]);
         geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
         const material = new THREE.LineBasicMaterial({ color: 0xffffff });
@@ -163,14 +159,12 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
             // Decrement timer
             vibrationTimers.current[i] = Math.max(0, timer - dt);
 
-            const amplitude = 0.01; // how wide the wave is
-            const freq = 20;       // how fast it shakes
+            const amplitude = 0.01; 
+            const freq = 20;
             const phase = (timer * freq) % (2 * Math.PI);
-
-            // We can shift the x or y positions in the geometry
             const positions = (line.geometry as THREE.BufferGeometry).attributes.position;
-            // Original positions: [x,1.35,1.2, x,1.35,-5.0]
-            // We'll do a small offset in x for each point
+
+            // Small offset in x for each point should be applied
             const x0 = positions.getX(0);
             const x1 = positions.getX(1);
 
@@ -185,7 +179,7 @@ const ThreeGuitarVisualizer = forwardRef<ThreeGuitarVisualizerHandle, ThreeGuita
       };
       animate();
 
-      // Cleanup
+      // Cleanup scene on unmount
       return () => {
         if (requestRef.current) cancelAnimationFrame(requestRef.current);
         mountRef.current?.removeChild(renderer.domElement);

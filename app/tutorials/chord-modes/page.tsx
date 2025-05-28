@@ -25,7 +25,7 @@ const sectionVariants = {
   },
 };
 
-// Updated sampleProgressions object (if needed)
+// Sample progressions
 const sampleProgressions: Record<string, Array<{ name: string, chords: string, description: string }>> = {
   "C Major": [
     { name: "I-IV-V", chords: "C - F - G", description: "The most common progression in pop and rock" },
@@ -187,13 +187,13 @@ function getChordsForKey(keyName: string) {
   if (keyName.includes("Major")) {
     const sig = keySignatures[keyName];
     chords = [
-      sig.notes[0] + "maj", // I
-      sig.notes[1] + "min", // ii
-      sig.notes[2] + "min", // iii
-      sig.notes[3] + "maj", // IV
-      sig.notes[4] + "maj", // V
-      sig.notes[5] + "min", // vi
-      sig.notes[6] + "dim", // vii°
+      sig.notes[0] + "maj",
+      sig.notes[1] + "min",
+      sig.notes[2] + "min", 
+      sig.notes[3] + "maj",
+      sig.notes[4] + "maj",
+      sig.notes[5] + "min", 
+      sig.notes[6] + "dim",
       sig.notes[2] + "maj", 
       sig.notes[1] + "maj",
     ];
@@ -201,15 +201,14 @@ function getChordsForKey(keyName: string) {
   } else if (keyName.includes("Minor")) {
     const sig = keySignatures[keyName];
     chords = [
-      sig.notes[2] + "maj", // III
-      sig.notes[4] + "min", // v
-      sig.notes[5] + "maj", // VI
-      sig.notes[1] + "dim", // ii°
-      sig.notes[0] + "min", // i
-      sig.notes[4] + "maj", // V
-      sig.notes[6] + "dim", // vii°
-      // Fixed: secDom property doesn't exist on KeySignature
-      sig.notes[2] + "maj", // Use a fallback value instead
+      sig.notes[2] + "maj",
+      sig.notes[4] + "min",
+      sig.notes[5] + "maj", 
+      sig.notes[1] + "dim",
+      sig.notes[0] + "min",
+      sig.notes[4] + "maj",
+      sig.notes[6] + "dim",
+      sig.notes[2] + "maj",
       sig.notes[1] + "maj",
     ];
     roman = ["III", "v", "VI", "ii°", "i", "V", "vii°", "V/VI", "V/v"];
@@ -219,14 +218,14 @@ function getChordsForKey(keyName: string) {
 }
 
 export default function ChordModesPage() {
-  // State for selected key and section navigation
+
   const [selectedKey, setSelectedKey] = useState("C Major");
   const [activeSection, setActiveSection] = useState<string | null>(null);
   
   // Floating Circle of Fifths state
   const [showFloatingCircle, setShowFloatingCircle] = useState(false);
   
-  // MediaPipe state
+  // MediaPipe states
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
   const [webcamEnabled, setWebcamEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -252,7 +251,7 @@ export default function ChordModesPage() {
     setSelectedKey(newKey);
   };
   
-  // Scroll listener to show/hide floating Circle of Fifths
+  // Scroll listener to show/hide floating Circle of Fifths halfway through
   useEffect(() => {
     const handleScroll = () => {
       const circleSection = document.getElementById("circle");
@@ -265,7 +264,7 @@ export default function ChordModesPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // Initialize audio context
+  // Initialise audio context
   const initAudio = useCallback(async () => {
     try {
       if (!audioContextRef.current || audioContextRef.current.state === "closed") {
@@ -275,7 +274,7 @@ export default function ChordModesPage() {
       const audioCtx = audioContextRef.current;
       const samples: Record<string, AudioBuffer> = {};
       
-      // Load sample for piano (used for chords)
+      // Load sample for piano
       try {
         const response = await fetch("/samples/fist.wav");
         if (!response.ok) {
@@ -290,7 +289,7 @@ export default function ChordModesPage() {
       
       samplesRef.current = samples;
       
-      // Load impulse response for reverb
+      // Load reverb response
       try {
         const irResponse = await fetch("/samples/impulse.wav");
         if (irResponse.ok) {
@@ -307,7 +306,7 @@ export default function ChordModesPage() {
     }
   }, []);
   
-  // Initialize MediaPipe gesture recognizer
+  // Initialise gesture recognizer
   const initGestureRecognizer = useCallback(async () => {
     try {
       setLoading(true);
@@ -330,7 +329,7 @@ export default function ChordModesPage() {
     }
   }, []);
   
-  // Initialize on component mount
+  // Initialise on component mount
   useEffect(() => {
     initGestureRecognizer();
     initAudio();
@@ -387,7 +386,6 @@ export default function ChordModesPage() {
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
     
-    
     async function processFrame() {
       if (videoEl!.readyState >= videoEl!.HAVE_ENOUGH_DATA && ctx) {
         ctx.save();
@@ -395,13 +393,11 @@ export default function ChordModesPage() {
         ctx.translate(canvasEl!.width, 0);
         ctx.scale(-1, 1);
         
-        // Draw video frame - Fix null check with non-null assertion operator
+        // Draw video frame 
         ctx.drawImage(videoEl!, 0, 0, canvasEl!.width, canvasEl!.height);
         
-        // Process with MediaPipe
         const timestamp = performance.now();
         try {
-          // Fix null check with non-null assertion operator
           const results = await gestureRecognizer!.recognizeForVideo(videoEl!, timestamp);
           
           // Update hand visibility
@@ -433,25 +429,25 @@ export default function ChordModesPage() {
             setHandPosition(null);
           }
           
-          // Draw hand landmarks with improved visualization
+          // Draw hand landmarks
           if (results?.landmarks) {
             ctx.save();
             
-            const currentColor = "#14b8a6"; // Teal color
+            const currentColor = "#14b8a6"; 
             
             results.landmarks.forEach((lmArr) => {
-              // Draw connections between landmarks for better hand visualization
+              // Draw connections between landmarks
               ctx.strokeStyle = currentColor;
               ctx.lineWidth = 3;
               
-              // Finger connections (simplified)
+              // Finger connections
               const connections = [
-                [0, 1, 2, 3, 4], // thumb
-                [0, 5, 6, 7, 8], // index
-                [9, 10, 11, 12], // middle
-                [13, 14, 15, 16], // ring
-                [17, 18, 19, 20], // pinky
-                [0, 5, 9, 13, 17] // palm
+                [0, 1, 2, 3, 4], 
+                [0, 5, 6, 7, 8],
+                [9, 10, 11, 12],
+                [13, 14, 15, 16],
+                [17, 18, 19, 20],
+                [0, 5, 9, 13, 17]
               ];
               
               connections.forEach(conn => {
@@ -487,7 +483,7 @@ export default function ChordModesPage() {
         
         ctx.restore();
         
-        // Draw chord grid overlay - Fix null check
+        // Draw chord grid overlay
         if (ctx) {
           drawChordGrid(ctx, canvasEl!.width, canvasEl!.height);
         }
@@ -500,7 +496,7 @@ export default function ChordModesPage() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [gestureRecognizer, webcamEnabled]);
   
-  // Draw the chord grid overlay on the canvas
+  // Draw the chord grid overlay
   const drawChordGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const cellWidth = width / 3;
     const cellHeight = height / 3;
@@ -509,18 +505,14 @@ export default function ChordModesPage() {
     ctx.save();
     
     // Draw grid lines
-    ctx.strokeStyle = "rgba(20, 184, 166, 0.5)"; // Teal with transparency
+    ctx.strokeStyle = "rgba(20, 184, 166, 0.5)";
     ctx.lineWidth = 2;
-    
-    // Vertical lines
     for (let i = 1; i < 3; i++) {
       ctx.beginPath();
       ctx.moveTo(i * cellWidth, 0);
       ctx.lineTo(i * cellWidth, height);
       ctx.stroke();
     }
-    
-    // Horizontal lines
     for (let i = 1; i < 3; i++) {
       ctx.beginPath();
       ctx.moveTo(0, i * cellHeight);
@@ -546,14 +538,12 @@ export default function ChordModesPage() {
             ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
           }
           
-          // Draw chord name
+          // Chord name
           ctx.fillText(
             chord.name,
             x * cellWidth + cellWidth / 2,
             y * cellHeight + cellHeight / 2 - 12
           );
-          
-          // Draw roman numeral below
           ctx.font = "16px Arial";
           ctx.fillText(
             chord.roman,
@@ -593,8 +583,6 @@ export default function ChordModesPage() {
   const playChord = (chordName: string) => {
     const audioCtx = audioContextRef.current;
     if (!audioCtx || notePlayingRef.current) return;
-    
-    // Prevent rapid triggering
     notePlayingRef.current = true;
     setTimeout(() => {
       notePlayingRef.current = false;
@@ -603,21 +591,16 @@ export default function ChordModesPage() {
     const sampleBuffer = samplesRef.current["piano"];
     if (!sampleBuffer) return;
     
-    // Simple chord definition (root + major/minor third + fifth)
     const notes = getNotesForChord(chordName);
     
     // Play each note in the chord
     notes.forEach((semitones, i) => {
       const source = audioCtx.createBufferSource();
       source.buffer = sampleBuffer;
-      
-      // Adjust playback rate to get the right pitch
       source.playbackRate.value = Math.pow(2, semitones / 12);
       
       const gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.5 / notes.length; // Reduce volume for chord
-      
-      // Add slight delay to notes after the first for arpeggiated feel
+      gainNode.gain.value = 0.5 / notes.length;
       const startTime = audioCtx.currentTime + (i * 0.02);
       
       source.connect(gainNode);
@@ -635,12 +618,12 @@ export default function ChordModesPage() {
   
   // Calculate semitone offsets for a chord
   const getNotesForChord = (chordName: string): number[] => {
-    // Parse chord: assumes format like "C", "Am", "G7", etc.
+
     const root = chordName.charAt(0);
     const isMinor = chordName.includes("m") && !chordName.includes("maj");
     const hasSeventh = chordName.includes("7");
     
-    // Root note positions relative to C
+    // Root note positions
     const rootOffsets: Record<string, number> = {
       'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
       'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 
@@ -650,15 +633,13 @@ export default function ChordModesPage() {
     const rootOffset = rootOffsets[root] || 0;
     
     // Build chord based on quality
-    let notes = [0]; // Root
-    notes.push(isMinor ? 3 : 4); // Third (minor or major)
-    notes.push(7); // Perfect fifth
+    let notes = [0]; 
+    notes.push(isMinor ? 3 : 4); 
+    notes.push(7); 
     
     if (hasSeventh) {
-      notes.push(isMinor ? 10 : 11); // Seventh (minor or major)
+      notes.push(isMinor ? 10 : 11);
     }
-    
-    // Transpose all notes by root offset
     return notes.map(note => note + rootOffset);
   };
 

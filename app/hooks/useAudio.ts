@@ -1,4 +1,3 @@
-// hooks/useAudio.ts
 import { useRef, useCallback } from "react";
 import { SAMPLE_URLS, GUITAR_STRING_MAPPING } from "@/lib/constants";
 
@@ -8,12 +7,12 @@ export function useAudio() {
   const convolverRef = useRef<ConvolverNode|null>(null);
   const playing      = useRef<Record<number,boolean>>({});
 
+  // Initialise audio
   const initAudio = useCallback(async ()=>{
     if (!audioCtxRef.current) {
-         // TS: AudioContext exists, webkitAudioContext may not be typed
-         const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
-         audioCtxRef.current = new Ctor();
-       }
+      const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
+      audioCtxRef.current = new Ctor();
+    }
     const ctx = audioCtxRef.current!;
     for (const [key,url] of Object.entries(SAMPLE_URLS)) {
       const r = await fetch(url);
@@ -21,7 +20,6 @@ export function useAudio() {
       const buf = await r.arrayBuffer();
       samplesRef.current[key] = await ctx.decodeAudioData(buf);
     }
-    // optional reverb
     try {
       const r = await fetch("/samples/impulse.wav");
       if (r.ok) {
@@ -33,6 +31,7 @@ export function useAudio() {
     } catch {}
   }, []);
 
+  // Play a guitar string sound with specific mapping
   function playGuitarString(
     idx: number,
     bpm: number,
@@ -43,7 +42,6 @@ export function useAudio() {
     const samples = samplesRef.current;
     if (!samples["None"]) return;
 
-    // clamp idx into [0 .. GUITAR_STRING_MAPPING.length-1]
     const safeIdx = Math.min(
       Math.max(idx, 0),
       GUITAR_STRING_MAPPING.length - 1

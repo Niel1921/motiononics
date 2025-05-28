@@ -1,4 +1,4 @@
-// lib/constants.ts
+
 export const SAMPLE_URLS = {
     Closed_Fist: "/samples/fist.wav",
     None:       "/samples/guitarnew.wav",

@@ -1,7 +1,7 @@
 import { NOTE_TO_SEMITONE } from "./constants";
 import { keySignatures } from "../app/data/keySignatures";
 
-// Snap a raw chromatic index into the selected key’s scale
+// Snap a chromatic index into the selected key’s scale
 export function snapChromaticToKey(chromatic:number, key:string):number {
   if (key==="None") return chromatic;
   const notes = keySignatures[key]?.notes;
@@ -35,14 +35,14 @@ export function getChordsForKey(key:string) {
   return chords.map((c,i)=>({name:c,roman:roman[i]}));
 }
 
-// Map a normalized Y (0–1) → guitar string index (0–5)
+// Map a Y value (0–1) to the guitar string index (0–5)
 export function getStringIndexFromY(y:number):number {
   const top=0.25, bottom=top+0.5;
   const c = Math.min(Math.max(y,top),bottom);
   return Math.floor(((c-top)/(bottom-top))*6);
 }
 
-// Is this the back of the hand? (cross-product z>0)
+// Is this the back of the hand? (cross-product z > 0)
 export function isBackOfHand(
   lm: { x: number; y: number; z?: number }[],
   handedness: "Left" | "Right"

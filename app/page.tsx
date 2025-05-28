@@ -13,14 +13,9 @@ import Header from "@/components/ui/header";
 import { keySignatures } from "./data/keySignatures";
 import CircleOfFifths from "@/components/CircleOfFifths";
 import Image from "next/image";
-import { Analytics } from "@vercel/analytics/next"
 import {
-    SAMPLE_URLS,
     NOTE_TO_SEMITONE,
-    MIN_SWIPE_DISTANCE,
-    GUITAR_STRING_MAPPING,
   } from "@/lib/constants";
-  
 import {
   snapChromaticToKey,
   getChordsForKey,
@@ -28,14 +23,13 @@ import {
   isBackOfHand,
   getHandPosition,
 } from "@/lib/musicHelpers";
-
-// pull in your audio hook
 import { useAudio } from "./hooks/useAudio";
-
 import { GoogleTagManager } from '@next/third-parties/google'
 
 
-// -------------------- Chord Grid Visualizer --------------------
+//  --------------------------------------------------------------------
+// | 3*3 Chord Grid Visuals                                             |
+//  --------------------------------------------------------------------
 function ChordGridVisualizer({
   chords,
   currentCell,
@@ -63,42 +57,50 @@ let lastNoneY: number | null = null;
 
 
 
-// -------------------- Page Component --------------------
 export default function Page() {
+
+
+  //  --------------------------------------------------------------------
+  // | Constants Defenitions for all states                               |
+  //  --------------------------------------------------------------------
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // guitarRef remains for visualization if needed.
-  const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null);
+  const [webcamEnabled, setWebcamEnabled] = useState(false);
+
   const gestureRecognizer = useGesture();
+  const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
   const notePlayingRef  = useRef<boolean>(false);  
 
-  const [webcamEnabled, setWebcamEnabled] = useState(false);
   const [bpm, setBpm] = useState<number>(120);
   const [noteLength, setNoteLength] = useState<number>(1);
   const [selectedKey, setSelectedKey] = useState<string>("None");
+
   const [instrument, setInstrument] = useState<"piano" | "guitar" | "theremin">("piano");
   const [mode, setMode] = useState<"manual" | "autoChord" | "arpeggiator" >("manual");
+
   const [arpeggioOctaves, setArpeggioOctaves] = useState<number>(1);
   const [arpeggioDirection, setArpeggioDirection] = useState<"up" | "down" | "upDown">("up");
+
+  const [pianoInput, setPianoInput] = useState<"fist"|"finger">("fist");
+  const fingerPressedRef = useRef<Record<number, boolean>>({});
+
+  const guitarRef = useRef<ThreeGuitarVisualizerHandle>(null); //Guitar visualiser handing
   const [currentNotes, setCurrentNotes] = useState<number[]>([]);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
-  const [handPos, setHandPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Theremin parameters (omitted for brevity)
   const [thereminFrequency, setThereminFrequency] = useState<number>(440);
   const [thereminVolume, setThereminVolume] = useState<number>(0);
   const [thereminVibrato, setThereminVibrato] = useState<number>(2);
   const [thereminWaveform, setThereminWaveform] = useState<string>("square");
 
+  // Calculate which semitones are available based on the selected key
   const availableSemitones = React.useMemo(() => {
     if (selectedKey === "None") return Array.from({length:12}, (_,i)=>i);
     return keySignatures[selectedKey].notes
       .map(n => NOTE_TO_SEMITONE[n]);
   }, [selectedKey]);
 
-  const [pianoInput, setPianoInput] = useState<"fist"|"finger">("fist");
-  const fingerPressedRef = useRef<Record<number, boolean>>({});
-
+  // Initialise audio context and samples form audio helper
   const {
     initAudio,
     playGuitarString,
@@ -112,16 +114,16 @@ export default function Page() {
   }, [initAudio]);
 
 
-  // right after your `const [instrument, …] = useState…`
+  // Theremin needs bigger size due to "how to" box below
   const visualizerSizes: Record<"theremin" | "guitar" | "piano", string> = {
     theremin: "w-[640px] h-[790px]", 
     guitar:   "w-[640px] h-[280px]",    
     piano:    "w-[640px] h-[280px]",    
   };
 
-  // ---------------------------------------------------------------------
-  // CAMERA
-  // ---------------------------------------------------------------------
+  //  --------------------------------------------------------------------
+  // | WEBCAM RECOGNITION SETUP                                           |
+  //  --------------------------------------------------------------------
   useEffect(() => {
     if (!webcamEnabled) return;
     const videoEl = videoRef.current;
@@ -144,15 +146,14 @@ export default function Page() {
     };
   }, [webcamEnabled]);
 
-
   function updateHandPos(landmarks: { x: number; y: number }[]) {
     const pos = getHandPosition(landmarks);
     setHandPos(pos);
   }
 
-  // ---------------------------------------------------------------------
-  // Audio / chord / note helper functions 
-  // ---------------------------------------------------------------------
+  //  --------------------------------------------------------------------
+  // |  FUNCTION TO PLAY SINGULAR NOTE (USED FOR ALL GUITAR/PIANO MODES)  |
+  //  --------------------------------------------------------------------
   function playNoteManual(
     gestureLabel: string,
     handPosition: { x: number; y: number }
@@ -187,7 +188,10 @@ export default function Page() {
     notePlayingRef.current = true;
     setTimeout(() => { notePlayingRef.current = false; }, duration * 1000);
   }
-
+  
+  //  --------------------------------------------------------------------
+  // | CHORD RECOGNITION FUNCTION FOR PIANO/GUITAR                        |
+  //  --------------------------------------------------------------------  
   function playChordFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
     if (gestureLabel !== "Closed_Fist") return;
     if (notePlayingRef.current) return;
@@ -201,6 +205,9 @@ export default function Page() {
     if (chordObj) playChord(chordObj.name);
   }
 
+  //  --------------------------------------------------------------------
+  // | ARPEGGIO RECOGNITION FUNCTION FOR PIANO/GUITAR                     |
+  //  --------------------------------------------------------------------
   function playArpeggioFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
     if (gestureLabel !== "Closed_Fist") return;
     if (notePlayingRef.current) return;
@@ -215,16 +222,17 @@ export default function Page() {
       playArpeggio(chordObj.name, (60 / bpm) * noteLength, arpeggioOctaves, arpeggioDirection);
   }
 
+  //  --------------------------------------------------------------------
+  // | CHORD PLAYBACK FUNCTION FOR PIANO/GUITAR                           |
+  //  --------------------------------------------------------------------
+
   function playChord(chordLabel: string) {
     const audioCtx = audioCtxRef.current;
     if (!audioCtx) return;
     if (notePlayingRef.current) return;
   
     const duration = (60 / bpm) * noteLength;
-    const noteToSemitone: Record<string, number> = {
-      C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6,
-      G: 7, "G#": 8, A: 9, "A#": 10, B: 11,
-    };
+    const noteToSemitone: Record<string, number> = {C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,};
     
     const match = chordLabel.match(/^[A-G]#?/);
     if (!match) return;
@@ -246,7 +254,7 @@ export default function Page() {
       if (!source.buffer) return;
   
       let semitoneOffset = (noteToSemitone[root] ?? 0) + interval;
-     // if guitar, shift sample down into C3
+      // if guitar, shift sample down into C3
       if (instrument === "guitar") semitoneOffset += -16;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
       const gainNode = audioCtx.createGain();
@@ -269,29 +277,20 @@ export default function Page() {
       notePlayingRef.current = false;
     }, duration * 1000);
   }
-  
 
+  
+  //  --------------------------------------------------------------------
+  // | ARPEGGIO PLAYBACK FUNCTION FOR PIANO/GUITAR                        |
+  //  --------------------------------------------------------------------
   function playArpeggio(chordLabel: string, duration: number, octaves: number, direction: "up" | "down" | "upDown") {
     const audioCtx = audioCtxRef.current;
     if (!audioCtx) return;
     if (notePlayingRef.current) return;
     notePlayingRef.current = true;
 
-    const noteToSemitone: Record<string, number> = {
-      C: 0,
-      "C#": 1,
-      D: 2,
-      "D#": 3,
-      E: 4,
-      F: 5,
-      "F#": 6,
-      G: 7,
-      "G#": 8,
-      A: 9,
-      "A#": 10,
-      B: 11,
-    };
+    const noteToSemitone: Record<string, number> = {C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11,};
     const match = chordLabel.match(/^[A-G]#?/);
+
     if (!match) return;
     const root = match[0];
     const chordType = chordLabel.replace(root, "");
@@ -300,6 +299,8 @@ export default function Page() {
     else if (chordType === "min") intervals = [0, 3, 7];
     else if (chordType === "dim") intervals = [0, 3, 6];
     let pattern: number[] = [];
+
+    //Set and define Direction of the arpeggio
     if (direction === "up") {
       pattern = [...intervals];
       if (octaves === 2) pattern = pattern.concat(intervals.map((i) => i + 12));
@@ -314,17 +315,21 @@ export default function Page() {
       pattern = up.concat(down);
     }
 
-    const noteDuration = duration;      // seconds per note
+    const noteDuration = duration; // seconds per note
     const totalTime = noteDuration * pattern.length;    pattern.forEach((intervalVal, i) => {
     const source = audioCtx.createBufferSource();
     const sampleKey = instrument === "guitar" ? "None" : "Closed_Fist";
     source.buffer = samplesRef.current[sampleKey];
     if (!source.buffer) return;
-    const semitoneOffset = (noteToSemitone[root] ?? 0) + intervalVal;
+    let semitoneOffset = (noteToSemitone[root] ?? 0) + intervalVal;
+    if (instrument === "guitar") semitoneOffset += -16;
+
     source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 0.2;
     source.connect(gainNode);
+
+    //Play notes and set the visualiser notes
     setTimeout(() => {
       setCurrentNotes([(noteToSemitone[root] + intervalVal) % 12]);
     }, i * noteDuration * 1000);
@@ -343,9 +348,9 @@ export default function Page() {
     }, totalTime * 1000);
   }
 
-  // ---------------------------------------------------------------------
-  // THEREMIN
-  // ---------------------------------------------------------------------
+  //  --------------------------------------------------------------------
+  // | THEREMIN                                                           |
+  //  --------------------------------------------------------------------
   const thereminOscillatorRef = useRef<OscillatorNode | null>(null);
   const thereminGainRef = useRef<GainNode | null>(null);
   const thereminFilterRef = useRef<BiquadFilterNode | null>(null);
@@ -360,17 +365,16 @@ export default function Page() {
       if (!thereminOscillatorRef.current) {
         console.log("Creating theremin oscillator...");
         const mainOsc = audioCtx.createOscillator();
-        // Use the current waveform state:
+        // Set Waveform and Filter
         mainOsc.type = thereminWaveform as OscillatorType;
-  
         const filter = audioCtx.createBiquadFilter();
         filter.type = "lowpass";
         filter.frequency.value = 1200;
-  
         const mainGain = audioCtx.createGain();
         mainGain.gain.value = 0;
   
         if (convolverRef.current) {
+          //Add Reverb
           mainOsc.connect(filter);
           filter.connect(mainGain);
           mainGain.connect(convolverRef.current);
@@ -398,11 +402,10 @@ export default function Page() {
         thereminVibratoOscRef.current = vibratoOsc;
         thereminVibratoGainRef.current = vibratoGain;
       } else {
-        // If the oscillator already exists, update its type based on the latest waveform value.
         thereminOscillatorRef.current.type = thereminWaveform as OscillatorType;
       }
     } else {
-      // Tear down theremin nodes if not in theremin mode.
+      //Stop theremin if switching to another instrument
       if (thereminOscillatorRef.current) {
         thereminOscillatorRef.current.stop();
         thereminOscillatorRef.current = null;
@@ -418,9 +421,9 @@ export default function Page() {
   }, [instrument, thereminWaveform, thereminVibrato]);
   
 
-  // ---------------------------------------------------------------------
-  // MAIN GESTURE LOOP
-  // ---------------------------------------------------------------------
+  //  --------------------------------------------------------------------
+  // |  MAIN GESTURE LOOP                                                 |
+  //  --------------------------------------------------------------------
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
     const videoEl = videoRef.current;
@@ -466,7 +469,7 @@ export default function Page() {
       animationFrameId = requestAnimationFrame(processFrame);
     };
   
-    // --- Theremin logic extracted ---
+    // Theremin
     const handleThereminFrame = (results: any) => {
       const { landmarks, handedness } = results;
       if (!landmarks || !handedness) return;
@@ -504,7 +507,7 @@ export default function Page() {
       setThereminVibrato(vib);
     };
   
-    // --- Other instruments logic extracted ---
+
     const handleInstrumentFrame = (results: any) => {
       if (!results?.gestures || !results.landmarks) return;
   
@@ -517,7 +520,7 @@ export default function Page() {
         const pos = getHandPosition(landmarks);
         updateHandPos(landmarks);
   
-        // consolidated guitar / piano / arpeggiator handlers
+        // Mode checking for audio (non theremin ones)
         if (instrument === "guitar") {
           if (mode === "manual" && gesture.categoryName === "None" && isBackOfHand(landmarks, handedLabel)
           ) {
@@ -551,7 +554,7 @@ export default function Page() {
       });
     };
   
-    // --- draw landmark dots ---
+    // Draw blue dots on hands
     const drawLandmarks = (allLandmarks: any[][] | null) => {
       if (!allLandmarks) return;
       allLandmarks.forEach(arr =>
@@ -564,7 +567,7 @@ export default function Page() {
       );
     };
   
-    // --- separated helper for finger-tap piano input ---
+    // Finger Tap Gesture detection
     const detectFingerTap = (lms: any[]) => {
       [4,8,12,16,20].forEach((idx, fi) => {
         const y = lms[idx].y;
@@ -597,15 +600,10 @@ export default function Page() {
     arpeggioDirection,
   ]);
   
-  // ---------------------------------------------------------------------
-  // Current chord cell => highlight
-  // ---------------------------------------------------------------------
+  //Value to highlight current chord cell
   const currentChordName =
     currentChordCell !== null ? getChordsForKey(selectedKey)[currentChordCell]?.name : null;
 
-  // ---------------------------------------------------------------------
-  // RENDER
-  // ---------------------------------------------------------------------
   return (
     <>
       <GoogleTagManager gtmId="G-HEBMK5ZZYG" />
@@ -772,8 +770,6 @@ export default function Page() {
                 <h3 className="text-lg font-semibold text-teal-800">Controls</h3>
               </CardHeader>
               <CardContent>
-                
-                  
                   <div className="mb-4">
                    <h3 className="text-lg font-semibold text-teal-700 mb-2">Instrument</h3>
                    <div className="flex gap-4">
@@ -839,7 +835,7 @@ export default function Page() {
                     </div>
                     )}
                 
-                {/* Improved Controls Section with Animations */}
+                {/* Controls Section */}
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-teal-700 mb-3">Playback Settings</h3>
                     
@@ -912,7 +908,7 @@ export default function Page() {
                     </AnimatePresence>
 
 
-                    {/* Arpeggiator Settings (conditionally rendered) */}
+                    {/* Arpeggiator Settings */}
                     <AnimatePresence>
                       {mode === "arpeggiator" && instrument!='theremin' && (
                         <motion.div 
@@ -922,7 +918,6 @@ export default function Page() {
                           exit={{ opacity: 0, height: 0, overflow: "hidden" }}
                           transition={{ duration: 0.3 }}
                         >
-                          {/* Octave Span */}
                           <motion.div 
                             className="bg-teal-50 rounded-lg p-3 border border-teal-100"
                             initial={{ opacity: 0, y: 10 }}
@@ -953,7 +948,7 @@ export default function Page() {
                             </div>
                           </motion.div>
 
-                          {/* Direction */}
+                          {/* Arpeggio Direction */}
                           <motion.div 
                             className="bg-teal-50 rounded-lg p-3 border border-teal-100"
                             initial={{ opacity: 0, y: 10 }}

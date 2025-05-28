@@ -1,15 +1,15 @@
-// romanToOffset.ts - COMPLETELY FIXED VERSION
+
 // Maps Roman numerals to their positions in the chord array
 
 export const romanToOffsetMajor: Record<string, number> = {
-  // Basic major scale Roman numerals with proper positions
-  "I": 0,    // Tonic (C in C major)
-  "ii": 1,   // Supertonic (D minor in C major)
-  "iii": 2,  // Mediant (E minor in C major)
-  "IV": 3,   // Subdominant (F in C major)
-  "V": 4,    // Dominant (G in C major)
-  "vi": 5,   // Submediant (A minor in C major)
-  "vii°": 6, // Leading tone (B diminished in C major)
+
+  "I": 0, 
+  "ii": 1,
+  "iii": 2,
+  "IV": 3,
+  "V": 4,
+  "vi": 5,
+  "vii°": 6, 
   
   // Seventh chords
   "I7": 0,
@@ -20,15 +20,14 @@ export const romanToOffsetMajor: Record<string, number> = {
   "vi7": 5,
   "vii7": 6,
   
-  // Flattened chords
-  "bVII": 6, // Approximation
-  "bIII": 2, // Approximation
-  "bVI": 5,  // Approximation
-  "bii": 1,  // Approximation
-  "bV": 4,   // Approximation
-  "bI": 0,   // Approximation
+  "bVII": 6, 
+  "bIII": 2,
+  "bVI": 5,
+  "bii": 1,
+  "bV": 4,
+  "bI": 0,
   
-  // Alternate notation forms (for fallback)
+  // Alternate notation forms
   "i": 0,
   "II": 1,
   "III": 2,
@@ -40,15 +39,16 @@ export const romanToOffsetMajor: Record<string, number> = {
   "vii": 6
 };
 
+// Minor version
 export const romanToOffsetMinor: Record<string, number> = {
-  // Basic minor scale Roman numerals with proper positions
-  "i": 0,   // Tonic (A in A minor)
-  "ii°": 1, // Supertonic (B diminished in A minor)
-  "III": 2, // Mediant (C in A minor)
-  "iv": 3,  // Subdominant (D minor in A minor)
-  "v": 4,   // Dominant (E minor in A minor)
-  "VI": 5,  // Submediant (F in A minor)
-  "VII": 6, // Subtonic (G in A minor)
+
+  "i": 0,
+  "ii°": 1,
+  "III": 2,
+  "iv": 3,
+  "v": 4,
+  "VI": 5,
+  "VII": 6,
   
   // Seventh chords
   "i7": 0,
@@ -59,10 +59,9 @@ export const romanToOffsetMinor: Record<string, number> = {
   "VI7": 5,
   "VII7": 6,
   
-  // Flattened chords
-  "bVII": 6, // Approximation
-  "bIII": 2, // Approximation
-  "bVI": 5,  // Approximation
+  "bVII": 6,
+  "bIII": 2,
+  "bVI": 5,
   
   // Alternate notation forms
   "I": 0,
@@ -76,18 +75,11 @@ export const romanToOffsetMinor: Record<string, number> = {
   "ii": 1
 };
 
-/**
- * Get the offset position for a Roman numeral, adjusted for the chord grid
- * @param symbol The Roman numeral (e.g., "I", "V", "vi", "bVII", "V7")
- * @param isMajor Whether the key is major (true) or minor (false)
- * @returns The offset position in the chord array
- */
+// Get the offset position for a Roman numeral, adjusted for the chord grid
+
 export function getOffsetFromMap(symbol: string, isMajor: boolean): number {
-  // First try direct lookup in the appropriate map
   const map = isMajor ? romanToOffsetMajor : romanToOffsetMinor;
-  
-  // Direct lookup in the map
-  let val = map[symbol];
+    let val = map[symbol];
   if (val !== undefined) {
     return val;
   }
@@ -101,13 +93,10 @@ export function getOffsetFromMap(symbol: string, isMajor: boolean): number {
   
   // Handle seventh chords if not in map
   if (symbol.endsWith("7") && !map[symbol]) {
-    // Remove the "7" suffix and find the base chord
     const baseSymbol = symbol.slice(0, -1);
     return getOffsetFromMap(baseSymbol, isMajor);
   }
-  
-  // Try flipping case (for minor/major ambiguity)
-  const alt = isMajor 
+    const alt = isMajor 
     ? symbol.toLowerCase() 
     : symbol.toUpperCase();
   val = map[alt];
@@ -117,8 +106,8 @@ export function getOffsetFromMap(symbol: string, isMajor: boolean): number {
   
   // Last resort: try to match by stripping decorations and using base numeral
   const baseSymbol = symbol
-    .replace(/°|o|7|M|m|maj|min/g, '') // Remove quality indicators
-    .replace(/b|#/g, '');              // Remove accidentals
+    .replace(/°|o|7|M|m|maj|min/g, '')
+    .replace(/b|#/g, '');
     
   // Match by Roman numeral value
   switch (baseSymbol.toUpperCase()) {
@@ -131,44 +120,6 @@ export function getOffsetFromMap(symbol: string, isMajor: boolean): number {
     case 'VII': return 6;
     default:
       console.warn(`Unknown Roman numeral: ${symbol}. Using tonic as fallback.`);
-      return 0; // Default to tonic if all else fails
+      return 0;
   }
-}
-
-
-/**
- * This is a key function that needed to be fixed!
- * buildEightChordsFromCell now properly handles the special cases in the grid
- */
-export function buildEightChordsFromCell(
-  cellIndex: number,
-  keyName: string,
-  romanPattern: string[]
-): string[] {
-  const chordsInKey = getChordsForKey(keyName);
-  if (chordsInKey.length < 9) return [];
-  
-  const isMajor = keyName.includes("Major");
-  
-  // Special handling for cells that need to be treated specially
-  if (cellIndex === 7) { // Bottom middle is a duplicate of the top left (C major)
-    cellIndex = 0; // Treat it as the top left cell
-  }
-  
-  return romanPattern.map((symbol) => {
-    // Get the offset for this Roman numeral
-    const offset = getOffsetFromMap(symbol, isMajor);
-    
-    // Calculate the target chord index (wrapping around if needed)
-    const targetIndex = (cellIndex + offset) % chordsInKey.length;
-    
-    // Return the chord name at that position
-    return chordsInKey[targetIndex]?.name || chordsInKey[cellIndex].name;
-  });
-}
-
-// For debugging
-function getChordsForKey(keyName: string): any[] {
-  // This is just a stub that will be replaced with the actual implementation
-  return [];
 }

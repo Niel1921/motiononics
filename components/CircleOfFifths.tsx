@@ -3,14 +3,13 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-// --------------------- Utility Functions ---------------------
+// Utility function to convert polar coordinates to Cartesian
 function polarToCartesian(
   centerX: number,
   centerY: number,
   radius: number,
   angleInDegrees: number
 ) {
-  // 0° => 12 o'clock
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
   return {
     x: centerX + radius * Math.cos(angleInRadians),
@@ -18,10 +17,8 @@ function polarToCartesian(
   };
 }
 
-/**
- * Creates an SVG path for a "ring wedge" between innerRadius and outerRadius
- * from startAngle to endAngle. This yields a donut-slice shape.
- */
+// Creates an SVG path for a "ring wedge" between innerRadius and outerRadius from startAngle to endAngle. 
+// This makes donut shape
 function describeRingArc(
   cx: number,
   cy: number,
@@ -49,11 +46,8 @@ function describeRingArc(
   ].join(" ");
 }
 
-// --------------------- Circle of Fifths Data ---------------------
-/**
- * 12 slices: each has a major key + its relative minor key.
- * You can reorder or rename these if you prefer a different arrangement.
- */
+
+// 12 slices with a major key and its relative minor key.
 const circleData = [
   { major: "C Major", minor: "A Minor" },
   { major: "G Major", minor: "E Minor" },
@@ -69,7 +63,6 @@ const circleData = [
   { major: "F Major", minor: "D Minor" },
 ];
 
-// Find which slice has the given key in either major or minor.
 function findIndexByKey(keyName: string) {
   const i = circleData.findIndex(
     (slice) => slice.major === keyName || slice.minor === keyName
@@ -77,19 +70,17 @@ function findIndexByKey(keyName: string) {
   return i >= 0 ? i : 0;
 }
 
-// --------------------- Static Chord Labels ---------------------
-// Place them at specific angles so they remain fixed on the outside/inside
-// even as the wheel rotates.
+// Chord labels for the outside and inside of the circle
 const outsideChordLabels = [
-  { label: "I", angle: 0 },   // top
-  { label: "V", angle: 30 }, // right
-  { label: "IV", angle: 330 } // left
+  { label: "I", angle: 0 }, 
+  { label: "V", angle: 30 },
+  { label: "IV", angle: 330 } 
 ];
 
 const insideChordLabels = [
-  { label: "vi", angle: 0 },  // top
-  { label: "iii", angle: 35 }, // right
-  { label: "ii", angle: 325 }  // left
+  { label: "vi", angle: 0 }, 
+  { label: "iii", angle: 35 },
+  { label: "ii", angle: 325 }
 ];
 
 interface CircleOfFifthsProps {
@@ -97,7 +88,6 @@ interface CircleOfFifthsProps {
   onSelectKey: (keyName: string) => void;
 }
 
-// --------------------- Main Component ---------------------
 export default function CircleOfFifths({
   selectedKey,
   onSelectKey,
@@ -120,14 +110,14 @@ export default function CircleOfFifths({
   // Each slice => 360/12 = 30°
   const wedgeAngle = 360 / circleData.length;
 
-  // Figure out which slice is selected
   const selectedIndex = findIndexByKey(selectedKey);
+
   // Rotate so that the midpoint of slice i is at the top
   const rotation = -((selectedIndex + 0.5) * wedgeAngle);
 
-  // Radii for placing the static chord labels
-  const outsideChordRadius = radiusMajorOuter + 25; // slightly outside the major ring
-  const insideChordRadius = radiusMinorInner - 20;  // slightly inside the minor ring
+  // Inner and outer radius for static chord labels
+  const outsideChordRadius = radiusMajorOuter + 25; 
+  const insideChordRadius = radiusMinorInner - 20; 
 
   return (
     <svg width={width} height={height} viewBox="0 0 400 400">
@@ -143,7 +133,6 @@ export default function CircleOfFifths({
           const startAngle = i * wedgeAngle;
           const endAngle = (i + 1) * wedgeAngle;
 
-          // Outer wedge (major)
           const majorPath = describeRingArc(
             cx,
             cy,
@@ -152,7 +141,7 @@ export default function CircleOfFifths({
             radiusMajorInner,
             radiusMajorOuter
           );
-          // Inner wedge (minor)
+
           const minorPath = describeRingArc(
             cx,
             cy,
@@ -162,11 +151,11 @@ export default function CircleOfFifths({
             radiusMinorOuter
           );
 
-          // Highlight whichever wedge is the selectedKey
+          // Highlight the selected key
           const majorIsSelected = slice.major === selectedKey;
           const minorIsSelected = slice.minor === selectedKey;
-          const majorColor = majorIsSelected ? "#FFD700" : "#4FD1C5"; // gold vs teal
-          const minorColor = minorIsSelected ? "#FFD700" : "#A78BFA"; // gold vs purple
+          const majorColor = majorIsSelected ? "#FFD700" : "#4FD1C5";
+          const minorColor = minorIsSelected ? "#FFD700" : "#A78BFA"; 
 
           return (
             <React.Fragment key={i}>
@@ -220,7 +209,6 @@ export default function CircleOfFifths({
         {/* Minor Key Labels */}
         {circleData.map((slice, i) => {
           const angle = (i + 0.5) * wedgeAngle;
-          // Position near the center of the minor ring
           const labelRadius = (radiusMinorInner + radiusMinorOuter) / 2;
           const pos = polarToCartesian(cx, cy, labelRadius, angle);
 
@@ -242,11 +230,6 @@ export default function CircleOfFifths({
           );
         })}
       </motion.g>
-
-      {/* 
-        2) Static chord function labels (outside ring: I, IV, V; inside ring: iii, ii, vi) 
-        These do NOT rotate, so they're outside the <motion.g> 
-      */}
 
       {/* Outside chord labels */}
       {outsideChordLabels.map(({ label, angle }) => {

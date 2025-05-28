@@ -169,14 +169,6 @@ export default function AboutPage() {
               className="text-center"
             >
               <div className="w-32 h-32 rounded-full overflow-hidden mx-auto mb-4 bg-teal-100">
-                {/* Uncomment when you have actual team photos */}
-                {/* <Image 
-                  src={member.image} 
-                  alt={member.name} 
-                  width={128}
-                  height={128}
-                  className="object-cover"
-                /> */}
                 <div className="w-full h-full flex items-center justify-center text-3xl">
                   {member.name.charAt(0)}
                 </div>

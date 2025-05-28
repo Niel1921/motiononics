@@ -1,5 +1,3 @@
-// musicUtils.ts
-
 import { keySignatures } from "../data/keySignatures"
 import { getOffsetFromMap } from "../data/romantoOffset"
 
@@ -8,11 +6,8 @@ export interface ChordInfo {
   roman: string
 }
 
-/**
- * Given a cell index (0–8), a key name ("C Major", "A Minor", etc.)
- * and a Roman pattern array, build the 8-chord sequence.
- * Now supports seventh chords and flattened chords.
- */
+// Given a cell index (0–8), a key name, and a Roman pattern array, build the 8-chord sequence.
+
 export function buildEightChordsFromCell(
   cellIndex: number,
   keyName: string,
@@ -23,13 +18,12 @@ export function buildEightChordsFromCell(
 
   const isMajor = keyName.includes("Major");
   
-  // Fix for the bottom middle Cmaj cell
   if (cellIndex === 7) { 
-    cellIndex = 0; // Treat it as the top left cell (tonic)
+    cellIndex = 0; 
   }
   
   return romanPattern.map((symbol) => {
-    // Get the offset for this Roman numeral
+    // Get the offset for the Roman numeral
     const offset = getOffsetFromMap(symbol, isMajor);
     
     // Calculate the target chord index (wrapping around if needed)
@@ -40,31 +34,23 @@ export function buildEightChordsFromCell(
     
     // Check if we need to modify the chord name for 7th chords
     if (symbol.includes("7")) {
-      // Remove any existing quality suffix
       chordName = chordName.replace(/maj|min|dim/g, "");
-      // Add "7" to the chord name
       chordName += "7";
     }
     
-    // Check if we need to flatten the chord (for bVII, bIII, etc.)
+    // Check if we need to flatten the chord
     if (symbol.startsWith("b")) {
-      // Extract the root note from the chord
+
       const rootNote = chordName.charAt(0);
       const hasAccidental = chordName.charAt(1) === '#' || chordName.charAt(1) === 'b';
       const accidental = hasAccidental ? chordName.charAt(1) : '';
       const restOfChord = hasAccidental ? chordName.substring(2) : chordName.substring(1);
-      
-      // Create a flatted version of the chord
-      let newRoot;
+            let newRoot;
       if (accidental === '#') {
-        // A flattened sharp is just the natural note
         newRoot = rootNote;
       } else if (accidental === 'b') {
-        // A double-flattened note (rare, but possible)
-        // Using a simplification here - this would need a proper accidental system for full correctness
         newRoot = getFlattenedNote(rootNote + 'b');
       } else {
-        // Flatten a natural note
         newRoot = getFlattenedNote(rootNote);
       }
       
@@ -75,24 +61,20 @@ export function buildEightChordsFromCell(
   });
 }
 
-/**
- * Helper function to flatten a note
- */
+// Function to flatten a note
+
 function getFlattenedNote(note: string): string {
-  // This is a simplified flattening - a complete implementation would consider
-  // proper enharmonic equivalents based on key signature
   const notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   
-  // Handle notes with accidentals
+  //Double flat handling
   if (note.length > 1 && note[1] === 'b') {
-    // Already has a flat, so we're adding another flat (double flat)
+
     return note + 'b';
   }
   
   const noteIndex = notes.indexOf(note[0]);
-  if (noteIndex === -1) return note; // Unknown note
+  if (noteIndex === -1) return note;
   
-  // Special cases: B→Bb, E→Eb
   if (note === 'E') return 'Eb';
   if (note === 'B') return 'Bb';
   
@@ -113,7 +95,7 @@ export function getChordsForKey(keyName: string): ChordInfo[] {
   let flatChords: string[], flatRomans: string[];
 
   if (k.includes("Major")) {
-    // Standard diatonic chords in major keys
+    // Standard chords in major keys
     chords = [
       sig.notes[0] + "maj", // I
       sig.notes[1] + "min", // ii
@@ -122,8 +104,8 @@ export function getChordsForKey(keyName: string): ChordInfo[] {
       sig.notes[4] + "maj", // V
       sig.notes[5] + "min", // vi
       sig.notes[6] + "dim", // vii°
-      sig.notes[0] + "maj", // I (repeat)
-      sig.notes[4] + "maj", // V (repeat)
+      sig.notes[0] + "maj", // I
+      sig.notes[4] + "maj", // V
     ];
     romans = ["I", "ii", "iii", "IV", "V", "vi", "vii°", "I", "V"];
 
@@ -133,9 +115,9 @@ export function getChordsForKey(keyName: string): ChordInfo[] {
       sig.notes[1] + "min7", // ii7
       sig.notes[2] + "min7", // iii7
       sig.notes[3] + "maj7", // IVmaj7
-      sig.notes[4] + "7",    // V7 (dominant)
+      sig.notes[4] + "7",    // V7 
       sig.notes[5] + "min7", // vi7
-      sig.notes[6] + "min7b5", // vii7 (half-diminished)
+      sig.notes[6] + "min7b5", // vii7
     ];
     seventhRomans = ["Imaj7", "ii7", "iii7", "IVmaj7", "V7", "vi7", "vii7"];
 
@@ -147,8 +129,7 @@ export function getChordsForKey(keyName: string): ChordInfo[] {
     ];
     flatRomans = ["bIII", "bVI", "bVII"];
   } else {
-    // assume minor
-    // Standard diatonic chords in minor keys
+    // Standard chords in minor keys
     chords = [
       sig.notes[0] + "min",
       sig.notes[1] + "dim",
@@ -165,12 +146,12 @@ export function getChordsForKey(keyName: string): ChordInfo[] {
     // Seventh chords in minor keys
     seventhChords = [
       sig.notes[0] + "min7", // i7
-      sig.notes[1] + "min7b5", // ii7 (half-diminished)
+      sig.notes[1] + "min7b5", // ii7
       sig.notes[2] + "maj7", // IIImaj7
       sig.notes[3] + "min7", // iv7
       sig.notes[4] + "min7", // v7
       sig.notes[5] + "maj7", // VImaj7
-      sig.notes[6] + "7",    // VII7 (dominant)
+      sig.notes[6] + "7",    // VII7
     ];
     seventhRomans = ["i7", "ii7", "III7", "iv7", "v7", "VI7", "VII7"];
 
@@ -182,17 +163,13 @@ export function getChordsForKey(keyName: string): ChordInfo[] {
     ];
     flatRomans = ["bIII", "bVI", "bVII"];
   }
-
-  // Return the base chords - the other specialized chords will be constructed as needed
   return chords.map((c, i) => ({ name: c, roman: romans[i] }));
 }
 
-/**
- * Helper function to flatten a note
- */
+// Helper function to flatten a note 
+
 function flattenNote(note: string): string {
   if (note.includes('#')) {
-    // A flattened sharp is just the natural note
     return note.replace('#', '');
   }
   
@@ -210,11 +187,9 @@ function flattenNote(note: string): string {
   return noteMap[note] || note;
 }
 
-/**
- * Given a chord name like "C#min", "Ebmaj", "G7", or "Dbdim", return an array of semitone offsets.
- * Handles major, minor, diminished, and seventh chords including flattened roots.
- */
+// Given a chord name, return the semitone offsets for its notes.
 export function getNotesForChord(chordName: string): number[] {
+
   // Parse root note and accidental
   const root = chordName.charAt(0);
   let accidental = "";
@@ -244,9 +219,9 @@ export function getNotesForChord(chordName: string): number[] {
   };
   
   const base = rootOffsets[rootKey] ?? 0;
-  const intervals: number[] = [0]; // Root note
+  const intervals: number[] = [0];
   
-  // Add appropriate intervals based on chord type
+  // Intervals based on chord type
   if (isDim) {
     intervals.push(3, 6); // Minor third and diminished fifth
     if (isSeventh) {
@@ -267,9 +242,8 @@ export function getNotesForChord(chordName: string): number[] {
   return intervals.map((i) => base + i);
 }
 
-/**
- * Convert a semitone number (0 = C) into a note+octave like "G#4".
- */
+// Convert a semitone number (0 = C) into a note+octave like "G#4".
+
 export function semitoneToNoteName(semitone: number): string {
   const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
   const octave = Math.floor(semitone / 12) + 4

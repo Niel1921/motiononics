@@ -16,7 +16,6 @@ export default function ThreePianoVisualizer({
   const mountRef = useRef<HTMLDivElement | null>(null);
   const whiteKeysRef = useRef<THREE.Mesh[]>([]);
   const blackKeysRef = useRef<THREE.Mesh[]>([]);
-  // ← Provide an initial null so TS knows this ref can start empty
   const requestRef = useRef<number | null>(null);
 
   // Key dimensions
@@ -47,7 +46,7 @@ export default function ThreePianoVisualizer({
     10: 4,
   };
 
-  // Build the scene once
+  // Build the scene
   useEffect(() => {
     const scene = new THREE.Scene();
     const textureLoader = new THREE.TextureLoader();
@@ -124,7 +123,7 @@ export default function ThreePianoVisualizer({
     dir.shadow.mapSize.set(1024, 1024);
     scene.add(dir);
 
-    // Table surface
+    // Table surface/texture
     textureLoader.load("/textures/table.jpg", (tex) => {
       const geom = new THREE.BoxGeometry(
         totalWhiteWidth + 2,
@@ -144,9 +143,10 @@ export default function ThreePianoVisualizer({
     };
     animate();
 
+    // Unmount cleanup
+
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      // only remove if the mount container still exists and actually contains our canvas
       if (mountRef.current?.contains(renderer.domElement)) {
         mountRef.current.removeChild(renderer.domElement);
       }
@@ -155,7 +155,7 @@ export default function ThreePianoVisualizer({
     
   }, []);
 
-  // Memoize the available semitones set
+  // Make a Memo of the available semitones
   const availableSet = useMemo(
     () => new Set(availableSemitones),
     [availableSemitones]
@@ -163,7 +163,7 @@ export default function ThreePianoVisualizer({
 
   // Recolor keys whenever key signature changes
   useEffect(() => {
-    // Whites
+    // White keys (Red when not available)
     for (const [stStr, idx] of Object.entries(whiteMapping)) {
       const semitone = Number(stStr);
       const mesh = whiteKeysRef.current[idx];
@@ -176,7 +176,8 @@ export default function ThreePianoVisualizer({
         mat.emissive.setHex(0xF33C40);
       }
     }
-    // Blacks
+
+    // Black keys (Dark when not available)
     for (const [stStr, idx] of Object.entries(blackMapping)) {
       const semitone = Number(stStr);
       const mesh = blackKeysRef.current[idx];

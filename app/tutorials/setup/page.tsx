@@ -44,7 +44,7 @@ const sfxPaths = {
   tutorial: "/sounds/tutorial-complete.wav",
 };
 
-// Tutorial step definitions with detailed instructions for each instrument
+// Tutorial step definitions for each instrument
 const tutorialSteps: Record<"piano" | "guitar" | "theremin", TutorialStep[]> = {
   piano: [
     {
@@ -163,8 +163,6 @@ export default function InstrumentTutorialPage() {
   const lastNoneY = useRef<number | null>(null);
   const fingerPressedRef = useRef<Record<number, boolean>>({});
   const gestureRecognizer = useGesture();
-  const audioElementsRef = useRef<Record<string, HTMLAudioElement>>({});
-  const prevAllCompleted = useRef(false);
 
   // Audio setup
   const {
@@ -181,7 +179,7 @@ export default function InstrumentTutorialPage() {
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [allCompleted, setAllCompleted] = useState(false);
 
-  // Webcam and visualization state
+  // Webcam and visualisation state
   const [webcamEnabled, setWebcamEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recognizedGesture, setRecognizedGesture] = useState<string>("");
@@ -232,20 +230,19 @@ export default function InstrumentTutorialPage() {
   // Computed properties
   const currentSteps = tutorialSteps[selectedInstrument];
   const currentStep = currentSteps[currentStepIndex];
-  const progress = (completedSteps.filter((step) => step.startsWith(selectedInstrument)).length / currentSteps.length) * 100;
   
   const availableSemitones = React.useMemo(() => {
     if (selectedKey === "None") return Array.from({length:12}, (_,i)=>i);
-    return Array.from({length:12}, (_,i)=>i); // This would need to be updated with actual key mapping
+    return Array.from({length:12}, (_,i)=>i);
   }, [selectedKey]);
 
-  // Initialize on component mount
+  // Initialise audio
   useEffect(() => {
     initAudio();
     setLoading(false);
   }, [initAudio]);
 
-    // ---- NEW: Update overall progress ----
+    // Update overall progress function
     useEffect(() => {
       const allStepIds = [
         ...tutorialSteps.piano.map(s => s.id),
@@ -277,7 +274,7 @@ export default function InstrumentTutorialPage() {
     }
   }, [currentStep, selectedInstrument]);
 
-  // Only auto-set waveform when changing instrument, or when on FIRST step
+  // Set Theremin waveform
   useEffect(() => {
     if (
       selectedInstrument === "theremin" &&
@@ -286,7 +283,6 @@ export default function InstrumentTutorialPage() {
     ) {
       setThereminWaveform(currentStep.waveform);
     }
-    // Do NOT set on other steps!
   }, [selectedInstrument, currentStepIndex, currentStep]);
 
   useEffect(() => {
@@ -337,11 +333,13 @@ export default function InstrumentTutorialPage() {
     };
   }, [webcamEnabled]);
 
+
+  // Handle mode completion
+
   useEffect(() => {
     const modeSteps = tutorialSteps[selectedInstrument];
     const completedCount = completedSteps.filter(id => id.startsWith(selectedInstrument)).length;
   
-    // Only show if all steps done and NOT previously shown
     if (
       completedCount === modeSteps.length &&
       modeSteps.length > 0 &&
@@ -352,7 +350,7 @@ export default function InstrumentTutorialPage() {
     }
   }, [completedSteps, selectedInstrument, shownModeModals]);
 
-  // Process webcam frames and recognize gestures
+  // Process webcam frames and recognise gestures
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
     
@@ -414,17 +412,17 @@ export default function InstrumentTutorialPage() {
         
         // Draw hand landmarks
         if (results?.landmarks) {
-          const currentColor = "#14b8a6"; // Teal color for consistency
+          const currentColor = "#14b8a6"; 
           
           results.landmarks.forEach(landmarks => {
             // Draw connections between landmarks
             const connections = [
-              [0, 1, 2, 3, 4], // thumb
-              [0, 5, 6, 7, 8], // index
-              [9, 10, 11, 12], // middle
-              [13, 14, 15, 16], // ring
-              [17, 18, 19, 20], // pinky
-              [0, 5, 9, 13, 17] // palm
+              [0, 1, 2, 3, 4],
+              [0, 5, 6, 7, 8],
+              [9, 10, 11, 12],
+              [13, 14, 15, 16],
+              [17, 18, 19, 20],
+              [0, 5, 9, 13, 17]
             ];
             
             connections.forEach(conn => {
@@ -459,32 +457,28 @@ export default function InstrumentTutorialPage() {
           });
         }
         
-        // Draw target for the current step
+        // Draw hand target for the current step
         if (!completedSteps.includes(currentStep.id) && ctx && canvasEl) {
-          const targetX = (1 - currentStep.targetPosition.x) * canvasEl.width; // Mirror for correct display
+          const targetX = (1 - currentStep.targetPosition.x) * canvasEl.width; 
           const targetY = currentStep.targetPosition.y * canvasEl.height;
           
-          // Draw target circle
           ctx.beginPath();
           ctx.arc(targetX, targetY, 40, 0, 2 * Math.PI);
           ctx.strokeStyle = "rgba(20, 184, 166, 0.5)";
           ctx.lineWidth = 4;
           ctx.stroke();
           
-          // Draw inner circle
           ctx.beginPath();
           ctx.arc(targetX, targetY, 15, 0, 2 * Math.PI);
           ctx.fillStyle = "rgba(20, 184, 166, 0.5)";
           ctx.fill();
           
-          // Draw gesture overlay if available
           if (currentStep.image && currentStep.image.includes("overlay")) {
             const img = new window.Image();
             img.src = currentStep.image;
             
             ctx.save();
             ctx.globalAlpha = 0.4;
-            // Center the overlay on the target
             ctx.drawImage(
               img,
               targetX - 150,
@@ -529,7 +523,7 @@ export default function InstrumentTutorialPage() {
         handleGuitarGesture(gesture, position, landmarks);
         break;
       case "theremin":
-        handleThereminGesture(gesture, position, landmarks);
+        handleThereminGesture(position, landmarks);
         break;
     }
   };
@@ -544,7 +538,7 @@ export default function InstrumentTutorialPage() {
       if (pianoInput === "fist" && gesture === "Closed_Fist" && !notePlayingRef.current) {
         playNoteManual(gesture, position);
       } else if (pianoInput === "finger" && gesture === "None") {
-        detectFingerTap(landmarks);
+
       }
     } else if (mode === "autoChord" && gesture === "Closed_Fist" && !notePlayingRef.current) {
       playChordFromHandPosition(gesture, position);
@@ -554,15 +548,12 @@ export default function InstrumentTutorialPage() {
   };
 
   
-
+  // Guitar-specific gesture handling
   const handleGuitarGesture = (
     gesture: string,
     position: { x: number; y: number },
     landmarks: { x: number; y: number }[]
   ) => {
-    // You can add real handedness detection here if you want!
-    const handedLabel: "Left" | "Right" = "Left";
-  
     if (mode === "manual") {
       if (gesture === "None" && !notePlayingRef.current) {
         const stringIndex = getStringIndexFromY(position.y);
@@ -570,7 +561,7 @@ export default function InstrumentTutorialPage() {
         guitarRef.current?.triggerString(stringIndex);
         // Mark string as played
         setStringsPlayed(prev => {
-          if (prev[stringIndex]) return prev; // already marked
+          if (prev[stringIndex]) return prev; 
           const updated = [...prev];
           updated[stringIndex] = true;
           return updated;
@@ -583,9 +574,9 @@ export default function InstrumentTutorialPage() {
     }
   };
 
+  // Guitar-specific gesture handling
 
   const handleThereminGesture = (
-    gesture: string,
     position: { x: number; y: number },
     landmarks: { x: number; y: number }[]
   ) => {
@@ -600,14 +591,13 @@ export default function InstrumentTutorialPage() {
     setThereminVolume(volume);
     setThereminVibrato(vibrato);
   
-    // Update WebAudio nodes!
     const ctx = audioCtxRef.current;
     if (ctx && thereminOscillatorRef.current && thereminGainRef.current && thereminVibratoOscRef.current && thereminVibratoGainRef.current) {
       const now = ctx.currentTime;
       thereminOscillatorRef.current.frequency.setTargetAtTime(frequency, now, 0.03);
       thereminGainRef.current.gain.setTargetAtTime(volume, now, 0.03);
       thereminVibratoOscRef.current.frequency.setTargetAtTime(vibrato, now, 0.03);
-      thereminVibratoGainRef.current.gain.setTargetAtTime(10, now, 0.03); // Vibrato depth (adjust if needed)
+      thereminVibratoGainRef.current.gain.setTargetAtTime(10, now, 0.03); 
     }
   };
 
@@ -619,15 +609,13 @@ export default function InstrumentTutorialPage() {
     if (!currentStep) return;
     if (completedSteps.includes(currentStep.id)) return;
   
-    // Only care about theremin
+    // SPECIAL CASE: Theremin steps work differently so are handled here too
     if (selectedInstrument === "theremin") {  
       // THEREMIN 3: Vibrato by pinching
       if (currentStep.id === "theremin-3" && landmarks.length > 8) {
-        // Check for thumb and index pinch
         const thumb = landmarks[4];
         const index = landmarks[8];
         const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
-        // Require small pinch for vibrato
         if (pinchDist < 0.06) {
           setShowSuccess(true);
           setTimeout(() => {
@@ -701,7 +689,6 @@ export default function InstrumentTutorialPage() {
     const ctx = audioCtxRef.current;
     if (!ctx) return;
   
-    // Clean up old nodes if present
     thereminOscillatorRef.current?.disconnect();
     thereminGainRef.current?.disconnect();
     thereminVibratoOscRef.current?.disconnect();
@@ -710,7 +697,7 @@ export default function InstrumentTutorialPage() {
     // Create nodes
     const osc = ctx.createOscillator();
     osc.type = waveform;
-    osc.frequency.value = 440; // default
+    osc.frequency.value = 440; 
   
     const gain = ctx.createGain();
     gain.gain.value = 0;
@@ -721,25 +708,26 @@ export default function InstrumentTutorialPage() {
     vibratoOsc.frequency.value = 2;
   
     const vibratoGain = ctx.createGain();
-    vibratoGain.gain.value = 10; // Vibrato depth (Hz)
+    vibratoGain.gain.value = 10;
   
-    // Connect vibrato
     vibratoOsc.connect(vibratoGain);
     vibratoGain.connect(osc.frequency);
   
-    // Connect main chain
+    // Connect main chain and start oscillators
     osc.connect(gain).connect(ctx.destination);
-  
-    // Start oscillators
     osc.start();
     vibratoOsc.start();
   
-    // Save refs
     thereminOscillatorRef.current = osc;
     thereminGainRef.current = gain;
     thereminVibratoOscRef.current = vibratoOsc;
     thereminVibratoGainRef.current = vibratoGain;
   }
+
+
+  //  --------------------------------------------------------------------
+  // | PLAYBACK/ANIMATION FUNCTIONS REUSED FROM MAIN PAGE                 |
+  //  --------------------------------------------------------------------
   
 
   function playChordFromHandPosition(gestureLabel: string, pos: { x: number; y: number }) {
@@ -749,7 +737,7 @@ export default function InstrumentTutorialPage() {
     const cellY = Math.floor(pos.y * 3);
     const cellIndex = cellX + cellY * 3;
     setCurrentChordCell(cellIndex);
-    setLastPlayedChordCell(cellIndex); // <--- ADD THIS LINE
+    setLastPlayedChordCell(cellIndex); 
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
@@ -763,7 +751,7 @@ export default function InstrumentTutorialPage() {
     const cellY = Math.floor(pos.y * 3);
     const cellIndex = cellX + cellY * 3;
     setCurrentChordCell(cellIndex);
-    setLastPlayedChordCell(cellIndex); // <--- ADD THIS LINE
+    setLastPlayedChordCell(cellIndex); 
     setTimeout(() => setCurrentChordCell(null), 500);
     const chords = getChordsForKey(selectedKey);
     const chordObj = chords[cellIndex];
@@ -791,7 +779,7 @@ export default function InstrumentTutorialPage() {
     else if (chordType === "min") intervals = [0, 3, 7];
     else if (chordType === "dim") intervals = [0, 3, 6];
   
-    // Set visualized notes
+    // Set visualised notes
     setCurrentNotes(intervals.map(i => (noteToSemitone[root] + i) % 12));
     setTimeout(() => setCurrentNotes([]), 500);
   
@@ -802,7 +790,7 @@ export default function InstrumentTutorialPage() {
       if (!source.buffer) return;
   
       let semitoneOffset = (noteToSemitone[root] ?? 0) + interval;
-      // if guitar, shift sample down into C3
+      // if guitar, shift sample down to C3
       if (selectedInstrument === "guitar") semitoneOffset += -16;
       source.playbackRate.value = Math.pow(2, semitoneOffset / 12);
       const gainNode = audioCtx.createGain();
@@ -896,70 +884,6 @@ export default function InstrumentTutorialPage() {
     }, totalTime * 1000);
   }
 
-  function processNoneGesture(
-    handLandmarks: { x: number; y: number }[],
-    handedLabel: "Right" | "Left",
-    onStrum?: (start: number, end: number) => void
-  ) {    
-    // Actually check for back of hand
-    const isBack = isBackOfHand(handLandmarks, handedLabel);
-    if (!isBack) {
-      lastNoneY.current = null;
-      return;
-    }
-  
-    const pos = getHandPosition(handLandmarks);
-  
-    if (lastNoneY.current === null) {
-      lastNoneY.current = pos.y;
-      return;
-    }
-  
-    const deltaY = pos.y - lastNoneY.current;
-  
-    if (Math.abs(deltaY) > 0.05) { // Threshold for swipe detection
-      const oldIndex = getStringIndexFromY(lastNoneY.current);
-      const newIndex = getStringIndexFromY(pos.y);
-      const start = Math.min(oldIndex, newIndex);
-      const end = Math.max(oldIndex, newIndex);
-  
-      // Play all strings in the sweep range
-      if (audioCtxRef.current) {
-        for (let s = start; s <= end; s++) {
-          const delay = (s - start) * 50;
-          setTimeout(() => {
-            playGuitarString(s, bpm, noteLength);
-            guitarRef.current?.triggerString(s);
-          }, delay);
-        }
-      }
-  
-      // Call the callback after the strum
-      if (onStrum) onStrum(start, end);
-  
-      lastNoneY.current = null;
-    }
-  }
-  
-  
-
-  function detectFingerTap(landmarks: { x: number; y: number }[]) {
-    [4, 8, 12, 16, 20].forEach((idx, fi) => {
-      const y = landmarks[idx].y;
-      const avg = [4, 8, 12, 16, 20]
-        .filter(j => j !== idx)
-        .reduce((s, j) => s + landmarks[j].y, 0) / 4;
-      
-      const pressed = y - avg > 0.06;
-      
-      if (pressed && !fingerPressedRef.current[idx]) {
-        fingerPressedRef.current[idx] = true;
-        playNoteManual("Closed_Fist", { x: fi / 4, y: 0.5 });
-      } else if (!pressed) {
-        fingerPressedRef.current[idx] = false;
-      }
-    });
-  }
 
   // Handle instrument change
   const handleInstrumentChange = (instrument: "piano" | "guitar" | "theremin") => {

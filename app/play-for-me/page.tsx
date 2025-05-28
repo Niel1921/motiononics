@@ -237,7 +237,7 @@ export default function PlayForMePage() {
   
     if (recorderNodeRef.current) {
       recorderNodeRef.current.disconnect(audioCtx.destination);
-      // 2) …and also disconnect the convolver from *that* processor
+
       if (convolverRef.current) {
         convolverRef.current.disconnect(recorderNodeRef.current);
       }
@@ -530,31 +530,27 @@ export default function PlayForMePage() {
     vfRenderer.resize(width, height);
     const ctx = vfRenderer.getContext();
   
-    let y = 40; // start a little below the top
+    let y = 40; 
     for (let line = 0; line < lines; line++) {
-
       const stave = new Stave(10, y, width - 20);
       if (line === 0) stave.addClef("treble").addTimeSignature("4/4").addKeySignature(vfKey);
       stave.setContext(ctx).draw();
-  
       // slice out exactly 4 chords
       const slice = chords.slice(
         line * measuresPerLine,
         line * measuresPerLine + measuresPerLine
       );
-  
       // build up to 4 VexFlow notes (pad with rests if needed)
       const notes = slice.map((chord) => {
         const semis = getNotesForChord(chord);
         const keys  = semis.map((semi) => {
-          // shift down one octave: middle C is MIDI 60, so add 48
+          // shift down one octave: (add 48 not 60)
           const n = semi + 48;
           const octave = Math.floor(n / 12);
           const name   = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"][n % 12];
           return `${name}/${octave}`;
         });
         const staveNote = new StaveNote({ keys, duration: "q" });
-
         const ann = new Annotation(chord)
           .setFont("Arial", 12)
           .setVerticalJustification(Annotation.VerticalJustify.TOP);

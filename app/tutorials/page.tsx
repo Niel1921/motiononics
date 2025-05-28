@@ -73,14 +73,12 @@ export default function TutorialsPage() {
             whileHover="hover"
             className="h-full"
           >
-            {/* Ensure the card stretches to fill the grid cell */}
             <Card className="bg-white hover:shadow-xl transition-shadow flex flex-col h-full">
               <CardHeader>
                 <h2 className="text-2xl font-semibold text-teal-800">
                   {tutorial.title}
                 </h2>
               </CardHeader>
-              {/* Flex‑grow content so the CTA sits at the bottom */}
               <CardContent className="flex-1 flex flex-col">
                 <p className="text-teal-700 flex-1">{tutorial.description}</p>
                 <Link href={tutorial.link} className="self-start">

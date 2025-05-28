@@ -5,6 +5,8 @@ import {
   GestureRecognizer
 } from "@mediapipe/tasks-vision";
 
+// This hook initialises the MediaPipe Gesture Recognizer
+
 export function useGesture() {
   const [recognizer, setRecognizer] = useState<GestureRecognizer|null>(null);
 
