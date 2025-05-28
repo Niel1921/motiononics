@@ -20,7 +20,7 @@ import {
   semitoneToNoteName,
 } from "../hooks/musicUtils"
 
-// -------------------- Animation Variants --------------------
+// Animation Variants 
 const pageVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.5 } },
@@ -31,11 +31,11 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-const MAX_CHORDS = 48;
+const MAX_CHORDS = 64;
 
-// -------------------- Main Page --------------------
 export default function PlayForMePage() {
-  // Basic state
+
+  // All refs needed 
   const [selectedKey, setSelectedKey] = useState("C Major");
 
   const [selectedChordGenre, setSelectedChordGenre] = useState<keyof typeof chordPatternsByGenre>("pop");
@@ -66,15 +66,7 @@ export default function PlayForMePage() {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
 
-  const [recording, setRecording] = useState(false);
-  const [recordedChords, setRecordedChords] = useState<string[]>([]);
-  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 
-  const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
-  const pcmLeftRef = useRef<Float32Array[]>([]);
-  const pcmRightRef = useRef<Float32Array[]>([]);
-
-  
 
   // Audio
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -83,11 +75,19 @@ export default function PlayForMePage() {
   const convolverRef = useRef<ConvolverNode | null>(null);
   const beatTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [recording, setRecording] = useState(false);
+  const [recordedChords, setRecordedChords] = useState<string[]>([]);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+
+  const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const pcmLeftRef = useRef<Float32Array[]>([]);
+  const pcmRightRef = useRef<Float32Array[]>([]);
+
   // Visual
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // -------------------- Initialize Audio --------------------
+  // Initialise Audio 
   const initAudio = useCallback(async () => {
     try {
       if (!audioContextRef.current || audioContextRef.current.state === "closed") {
@@ -97,16 +97,12 @@ export default function PlayForMePage() {
       const audioCtx = audioContextRef.current;
       const samples: Record<string, AudioBuffer> = {};
 
-      // In initAudio():
       try {
-        // Already loading the piano sample
         const pianoResponse = await fetch("/samples/fist.wav");
         if (pianoResponse.ok) {
           const arrayBuffer = await pianoResponse.arrayBuffer();
           samples["Closed_Fist_Piano"] = await audioCtx.decodeAudioData(arrayBuffer);
         }
-
-        // Load a second sample for guitar:
         const guitarResponse = await fetch("/samples/guitarnew.wav");
         if (guitarResponse.ok) {
           const guitarArrayBuffer = await guitarResponse.arrayBuffer();
@@ -118,8 +114,6 @@ export default function PlayForMePage() {
         console.error("Error loading sample:", error);
       }
 
-
-      // Optional IR
       try {
         const irResponse = await fetch("/samples/impulse.wav");
         if (irResponse.ok) {
@@ -136,7 +130,7 @@ export default function PlayForMePage() {
     }
   }, []);
 
-  // -------------------- Initialize GestureRecognizer --------------------
+  // Initialise GestureRecognizer 
   const initGestureRecognizer = useCallback(async () => {
     try {
       setLoading(true);
@@ -159,7 +153,6 @@ export default function PlayForMePage() {
     }
   }, []);
 
-  // -------------------- useEffect --------------------
   useEffect(() => {
     initGestureRecognizer();
     initAudio();
@@ -172,7 +165,7 @@ export default function PlayForMePage() {
     };
   }, [initGestureRecognizer, initAudio]);
 
-    // whenever blobUrl changes, force the audio to reload
+    // whenever blobUrl changes, force the audio to reload (Prevents errors)
     useEffect(() => {
       if (blobUrl && audioPreviewRef.current) {
         audioPreviewRef.current.load();
@@ -180,7 +173,7 @@ export default function PlayForMePage() {
     }, [blobUrl]);
   
 
-  // -------------------- Webcam Setup --------------------
+  // Webcam Setup 
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!webcamEnabled || !videoEl) return;
@@ -202,6 +195,10 @@ export default function PlayForMePage() {
     };
   }, [webcamEnabled]);
 
+  //  --------------------------------------------------------------------
+  // | RECORDING HANDLING FUNCTIONs (START, STOP, SAVE)                   |
+  //  --------------------------------------------------------------------
+
   function startRecording() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
@@ -212,7 +209,6 @@ export default function PlayForMePage() {
     }
 
     setErrorMessage("");
-    // reset buffers
     pcmLeftRef.current  = [];
     pcmRightRef.current = [];
   
@@ -261,7 +257,7 @@ export default function PlayForMePage() {
       offset += leftArrs[i].length;
     }
   
-    // interleave L + R
+    // interleave Left + Right
     const interleaved = new Float32Array(total * 2);
     for (let i = 0, j = 0; i < total; i++) {
       interleaved[j++] = flatL[i];
@@ -307,7 +303,7 @@ export default function PlayForMePage() {
     return buffer;
   }
 
-  // -------------------- Gesture logic each frame --------------------
+  // Gesture logic for each frame 
   useEffect(() => {
     if (!gestureRecognizer || !webcamEnabled) return;
 
@@ -374,12 +370,12 @@ export default function PlayForMePage() {
               ctx.strokeStyle = currentColor;
               ctx.lineWidth = 3;
               const connections = [
-                [0, 1, 2, 3, 4], // thumb
-                [0, 5, 6, 7, 8], // index
-                [9, 10, 11, 12], // middle
-                [13, 14, 15, 16], // ring
-                [17, 18, 19, 20], // pinky
-                [0, 5, 9, 13, 17], // palm
+                [0, 1, 2, 3, 4],
+                [0, 5, 6, 7, 8],
+                [9, 10, 11, 12],
+                [13, 14, 15, 16],
+                [17, 18, 19, 20],
+                [0, 5, 9, 13, 17],
               ];
 
               connections.forEach((conn) => {
@@ -395,7 +391,7 @@ export default function PlayForMePage() {
                 ctx.stroke();
               });
 
-              // Circles on each landmark
+              // Circles for each landmark
               lmArr.forEach((lm) => {
                 ctx.beginPath();
                 ctx.arc(lm.x * canvasEl.width, lm.y * canvasEl.height, 6, 0, 2 * Math.PI);
@@ -414,7 +410,6 @@ export default function PlayForMePage() {
 
         ctx.restore();
 
-        // chord grid
         drawChordGrid(ctx, canvasEl.width, canvasEl.height);
       }
 
@@ -425,11 +420,12 @@ export default function PlayForMePage() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [gestureRecognizer, webcamEnabled, isPlaying, selectedKey]);
 
-  // -------------------- startPlayingFromCell --------------------
+
+  // Start playing the Chord pattern
   function startPlayingFromCell(cellIndex: number) {
     if (isPlaying || notePlayingRef.current) return;
 
-    // block if reached max
+    // Maximum 64 chords
     if (recording && recordedChords.length >= MAX_CHORDS) {
       setErrorMessage(`You've reached the max of ${MAX_CHORDS} chords.`);
       return;
@@ -453,7 +449,7 @@ export default function PlayForMePage() {
     playPattern(spelledChords);
   }
 
-  // -------------------- playPattern --------------------
+  // Play the pattern 
   function playPattern(chords: string[]) {
     if (!chords.length) {
       setIsPlaying(false);
@@ -468,7 +464,6 @@ export default function PlayForMePage() {
     );
     const velocities = chosenRhythm.velocities;
 
-    // play & record beat 0
     playChord(chords[0], beatDurations[0], velocities[0]);
     setCurrentBeatIndex(0);
     if (recording) {
@@ -507,9 +502,13 @@ export default function PlayForMePage() {
     beatTimerRef.current = setTimeout(doNext, beatDurations[0]);
   }
 
+  //  --------------------------------------------------------------------
+  // | CHORD SHEET PDF HANDLING                                           |
+  //  --------------------------------------------------------------------
+
   function downloadChordSheetPDF(chords: string[]) {
 
-    const tonic = selectedKey.split(' ')[0];           // e.g. "G" or "Bb"
+    const tonic = selectedKey.split(' ')[0];
     const isMinor = selectedKey.includes('Minor');
     const vfKey   = isMinor ? tonic + 'm' : tonic;  
     // 1) Layout settings
@@ -535,7 +534,7 @@ export default function PlayForMePage() {
       const stave = new Stave(10, y, width - 20);
       if (line === 0) stave.addClef("treble").addTimeSignature("4/4").addKeySignature(vfKey);
       stave.setContext(ctx).draw();
-      // slice out exactly 4 chords
+
       const slice = chords.slice(
         line * measuresPerLine,
         line * measuresPerLine + measuresPerLine
@@ -544,7 +543,7 @@ export default function PlayForMePage() {
       const notes = slice.map((chord) => {
         const semis = getNotesForChord(chord);
         const keys  = semis.map((semi) => {
-          // shift down one octave: (add 48 not 60)
+          // shift down one octave
           const n = semi + 48;
           const octave = Math.floor(n / 12);
           const name   = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"][n % 12];
@@ -558,23 +557,22 @@ export default function PlayForMePage() {
         return staveNote;
       });
   
-      // pad with quarter-note rests if <4
+      // Pad with quarter-note rests if <4
       for (let i = slice.length; i < measuresPerLine; i++) {
         notes.push(new StaveNote({ keys: ["b/4"], duration: "qr" }));
       }
   
-      // create a 4/4 voice
+      // Create a 4/4 voice and draw
       const voice = new Voice({ numBeats: measuresPerLine, beatValue: 4 });
       voice.addTickables(notes);
   
-      // format & draw
       new Formatter().joinVoices([voice]).format([voice], width - 180);
       voice.draw(ctx, stave);
   
       y += lineHeight;
     }
   
-    // 4) Turn canvas into a true PNG
+    // 4) Turn canvas into PNG
     const pngData = canvas.toDataURL("image/png");
     document.body.removeChild(canvas);
   
@@ -598,7 +596,9 @@ export default function PlayForMePage() {
     pdf.save("chord-sheet-music.pdf");
   }
   
-  // -------------------- playChord --------------------
+
+  //  Standard play chord function
+
   function playChord(chordName: string, beatDurationMs: number, velocity: number = 0.7) {
     const audioCtx = audioContextRef.current;
     if (!audioCtx || notePlayingRef.current) return;
@@ -647,7 +647,8 @@ export default function PlayForMePage() {
   }
   
 
-  // -------------------- drawChordGrid --------------------
+  //  Draw the chord grid overlay
+
   function drawChordGrid(ctx: CanvasRenderingContext2D, width: number, height: number) {
     const cellWidth = width / 3;
     const cellHeight = height / 3;
@@ -708,7 +709,6 @@ export default function PlayForMePage() {
     ctx.restore();
   }
 
-  // -------------------- Render --------------------
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white relative">
       <Header />
