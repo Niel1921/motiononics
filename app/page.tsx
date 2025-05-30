@@ -93,6 +93,13 @@ export default function Page() {
   const [thereminVibrato, setThereminVibrato] = useState<number>(2);
   const [thereminWaveform, setThereminWaveform] = useState<string>("square");
 
+  const [frameProcessingTimes, setFrameProcessingTimes] = useState<number[]>([]);
+
+  const averageProcessingTime =
+    frameProcessingTimes.length > 0
+      ? frameProcessingTimes.reduce((sum, time) => sum + time, 0) / frameProcessingTimes.length
+      : 0;
+
   // Calculate which semitones are available based on the selected key
   const availableSemitones = React.useMemo(() => {
     if (selectedKey === "None") return Array.from({length:12}, (_,i)=>i);
@@ -435,10 +442,14 @@ export default function Page() {
   
     // --- handle one video frame ---
     const processFrame = async () => {
+
+      const start = performance.now();
+
       if (videoEl.readyState < videoEl.HAVE_ENOUGH_DATA || !ctx) {
         animationFrameId = requestAnimationFrame(processFrame);
         return;
       }
+
   
       // mirror & draw
       ctx.save();
@@ -466,6 +477,18 @@ export default function Page() {
       }
   
       ctx.restore();
+
+      const end = performance.now();
+      const duration = end - start;
+
+      setFrameProcessingTimes((prev) => {
+        const newTimes = [...prev, duration];
+        if (newTimes.length > 100) { // Keep only the last 100 samples
+          newTimes.shift();
+        }
+        return newTimes;
+      });
+    
       animationFrameId = requestAnimationFrame(processFrame);
     };
   
@@ -1056,6 +1079,22 @@ export default function Page() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* TEST FOR FRAME PROCESSING TIME, TO TEST UNCOMMENT THIS
+            <Card className="bg-white shadow-md mb-6">
+              <CardHeader className="bg-purple-50 border-b border-purple-100">
+                <h2 className="text-2xl font-bold text-purple-800">Performance</h2>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-purple-700 mb-2">Frame Processing Time</h3>
+                  <p className="text-gray-700">
+                    Average: {averageProcessingTime.toFixed(2)} ms
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            */}
           </div>
         </div>
       </div>
