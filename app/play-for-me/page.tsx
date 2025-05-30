@@ -789,6 +789,11 @@ export default function PlayForMePage() {
                 {/* Key */}
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Key</h3>
+
+                  <Link href="/tutorials/chord-modes">
+                    <Button className="bg-purple-500 hover:bg-purple-600 text-white">Learn more!</Button>
+                  </Link>
+
                   <CircleOfFifths selectedKey={selectedKey} onSelectKey={setSelectedKey} />
                 </div>
 
@@ -796,7 +801,7 @@ export default function PlayForMePage() {
               </CardContent>
             </Card>
   
-            {/* Updated Record-For-Me Card */}
+            {/* Record-For-Me Card */}
             <motion.div
               className="bg-white shadow-md rounded-lg overflow-hidden mb-6"
               initial={{ opacity: 0, y: 20 }}
@@ -1164,15 +1169,20 @@ export default function PlayForMePage() {
                       <Button
                         key={rp.id}
                         onClick={() => setSelectedRhythmPatternId(rp.id)}
-                        className={
-                          selectedRhythmPatternId === rp.id
-                            ? "bg-purple-600 text-white px-4 py-6 text-left justify-start"
-                            : "bg-purple-100 text-purple-800 px-4 py-6 text-left justify-start"
-                        }
+                        className={`
+                          w-full
+                          flex flex-col items-start
+                          px-4 py-10
+                          ${
+                            selectedRhythmPatternId === rp.id
+                              ? "bg-purple-600 text-white"
+                              : "bg-purple-100 text-purple-800"
+                          }
+                        `}
                       >
-                        <div>
-                          <div className="font-medium">{rp.name}</div>
-                          <div className="text-xs">{rp.description}</div>
+                        <div className="font-medium text-sm">{rp.name}</div>
+                        <div className="text-s whitespace-normal break-words">
+                          {rp.description}
                         </div>
                       </Button>
                     ))}
@@ -1203,15 +1213,18 @@ export default function PlayForMePage() {
                       <Button
                         key={cp.id}
                         onClick={() => setSelectedChordPatternId(cp.id)}
-                        className={
-                          selectedChordPatternId === cp.id
-                            ? "bg-purple-600 text-white px-4 py-6 text-left justify-start"
-                            : "bg-purple-100 text-purple-800 px-4 py-6 text-left justify-start"
-                        }
+                        className={`
+                          w-full
+                          px-2 py-10 
+                          flex flex-col items-start
+                          ${selectedChordPatternId === cp.id
+                            ? "bg-purple-600 text-white"
+                            : "bg-purple-100 text-purple-800"}
+                        `}
                       >
-                        <div>
-                          <div className="font-medium">{cp.name}</div>
-                          <div className="text-xs">{cp.description}</div>
+                        <div className="font-medium text-sm">{cp.name}</div>
+                        <div className="text-s whitespace-normal ">
+                          {cp.description}
                         </div>
                       </Button>
                     ))}
