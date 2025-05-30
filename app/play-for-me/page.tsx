@@ -13,6 +13,8 @@ import { Renderer, Stave, StaveNote, Formatter, Voice, Annotation } from 'vexflo
 import { jsPDF } from 'jspdf';
 import { chordPatternsByGenre } from "../data/chordPatterns"
 import { rhythmPatternsByGenre } from "../data/rhythmPatterns"
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   buildEightChordsFromCell,
   getChordsForKey,
@@ -32,8 +34,15 @@ const cardVariants = {
 };
 
 const MAX_CHORDS = 64;
+type DragItem = { index: number; type: string };
+
 
 export default function PlayForMePage() {
+
+  // Add new state for the editable pattern
+  const [editableCurrentChords, setEditableCurrentChords] = useState<string[]>([]);
+  const [isEditingPattern, setIsEditingPattern] = useState(false); 
+  const [editableRomanPattern, setEditableRomanPattern] = useState<string[]>([]);
 
   // All refs needed 
   const [selectedKey, setSelectedKey] = useState("C Major");
@@ -195,6 +204,33 @@ export default function PlayForMePage() {
       }
     };
   }, [webcamEnabled]);
+
+
+  useEffect(() => {
+    const basePattern = chordPatternsByGenre[selectedChordGenre].find(p => p.id === selectedChordPatternId)!.romanArray;
+    setEditableRomanPattern([...basePattern]);
+    setIsEditingPattern(false);
+    setNextChordCell(null);
+  }, [selectedChordGenre, selectedChordPatternId]);
+
+  
+  // Helper to reorder beats
+  const moveBeat = useCallback((from: number, to: number) => {
+    setEditableRomanPattern(prev => {
+      const copy = [...prev];
+      const [moved] = copy.splice(from, 1);
+      copy.splice(to, 0, moved);
+      return copy;
+    });
+    if (currentChordCell !== null) {
+      const newChords = buildEightChordsFromCell(
+        currentChordCell,
+        selectedKey,
+        editableRomanPattern
+      );
+      setEditableCurrentChords(newChords);
+    }
+  }, [currentChordCell, selectedKey, editableRomanPattern]);
 
   //  --------------------------------------------------------------------
   // | RECORDING HANDLING FUNCTIONs (START, STOP, SAVE)                   |
@@ -449,19 +485,13 @@ export default function PlayForMePage() {
     setCurrentChordCell(cellIndex);
     setIsPlaying(true);
 
-    const patternList = chordPatternsByGenre[selectedChordGenre];
-    const chosenChordPattern =
-      patternList.find((p) => p.id === selectedChordPatternId) || patternList[0];
-
-    const spelledChords = buildEightChordsFromCell(
-      cellIndex,
-      selectedKey,
-      chosenChordPattern.romanArray
-    );
-    setCurrentChords(spelledChords);
+    const chosenPattern = chordPatternsByGenre[selectedChordGenre].find(p => p.id === selectedChordPatternId)!;
+    const baseRoman = isEditingPattern ? editableRomanPattern : chosenPattern.romanArray;
+    const spelled = buildEightChordsFromCell(cellIndex, selectedKey, baseRoman);
+    setCurrentChords(spelled);
+    setEditableCurrentChords(spelled);
     setCurrentBeatIndex(0);
-
-    playPattern(spelledChords);
+    playPattern(spelled);
   }
 
   // Play the pattern 
@@ -1121,23 +1151,84 @@ export default function PlayForMePage() {
                         </div>
                       )}
 
-                      <AnimatePresence>
-                        {currentChordCell !== null && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="absolute left-4 top-4 bg-purple-600/80 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg"
-                          >
-                            <p className="font-semibold">
-                              Now Playing: {currentChords[currentBeatIndex]}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      
                     </>
                   )}
                 </div>
+                <AnimatePresence>
+                  {!isEditingPattern && (
+                    <motion.div
+                      key="edit-button"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-4 flex justify-center"
+                    >
+                      <Button
+                        onClick={() => setIsEditingPattern(true)}
+                        className="text-sm px-2 py-1 bg-purple-700 hover:bg-purple-500 rounded m-1"
+                      >
+                        Edit this progression
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* DRAG-AND-DROP EDITOR (when editing) */}
+                <AnimatePresence>
+                  {isEditingPattern && (
+                    <motion.div
+                      key="editor"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <DndProvider backend={HTML5Backend}>
+                        <div className="mt-4 bg-purple-700 p-3 border border-purple-600 mb-6">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-purple-200">
+                              Make my own progression
+                            </h3>
+                            <Button
+                              onClick={() => {
+
+                                if (currentChordCell !== null) {
+                                  const newChords = buildEightChordsFromCell(
+                                    currentChordCell,
+                                    selectedKey,
+                                    editableRomanPattern
+                                  );
+                                  setCurrentChords(newChords);
+                                  setEditableCurrentChords(newChords);
+                                }
+                                setNextChordCell(null);
+                                setIsEditingPattern(false);
+                                
+                              }}
+                              className="text-sm purple-800 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800"
+                            >
+                              Done
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-8 gap-1">
+                            {editableRomanPattern.map((chord, i) => (
+                              <BeatCell
+                                key={i}
+                                index={i}
+                                chord={chord}
+                                isActive={currentBeatIndex === i}
+                                isEditing={true}
+                                moveBeat={moveBeat}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </DndProvider>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Pattern & Rhythm Selections */}
                 <div className="mt-4 bg-purple-50 p-3 border border-purple-200 rounded">
@@ -1160,6 +1251,7 @@ export default function PlayForMePage() {
                     ))}
                   </div>
                 </div>
+                {/* Rhythm and Chord Pattern Selection */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Rhythm Genre</h3>
                   <div className="flex gap-2 mb-4">
@@ -1311,4 +1403,50 @@ export default function PlayForMePage() {
       </motion.div>
     </div>
   );
-}
+
+  function BeatCell({
+    index,
+    chord,
+    isActive,
+    isEditing,
+    moveBeat,
+  }: {
+    index: number;
+    chord: string;
+    isActive: boolean;
+    isEditing: boolean;
+    moveBeat: (from: number, to: number) => void;
+  }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [, drag] = useDrag<DragItem, void, unknown>({
+      type: 'BEAT',
+      item: { index } as DragItem,
+      canDrag: isEditing,
+    });
+    const [, drop] = useDrop<DragItem, void, unknown>({
+
+      accept: 'BEAT',
+      canDrop: () => isEditing,
+      hover: (item: DragItem) => {
+        if (item.index !== index) {
+          moveBeat(item.index, index);
+          item.index = index;
+        }
+      }
+    });
+    drag(drop(ref));
+  
+    return (
+      <div
+        ref={ref}
+        className={`relative p-2 text-center border hover:bg-purple-200 rounded ${
+          isActive ? 'bg-purple-200 border-purple-400' : 'bg-white border-purple-100'
+        } ${isEditing ? 'cursor-move' : ''}`}
+      >
+        <div className="text-sm font-mono text-purple-800">Beat {index + 1}</div>
+        <div className="font-semibold text-purple-600 mt-1">{chord || '-'}</div>
+        {isEditing && <span className="absolute top-1 right-1 text-xs opacity-50">☰</span>}
+      </div>
+    );
+  }
+}  
