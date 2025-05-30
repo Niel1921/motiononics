@@ -42,7 +42,7 @@ Head to motiononics.com to have a go!
   - jsPDF → sheet-music.pdf  
   - Audio Blob → recording.wav  
 
-### /record (RecordPage)
+### /record (RecordPage) (CURRENTLY NOT IN USE)
 - Header  
 - useAudio (record mode)  
 - UI::Button → “Save WAV”  
