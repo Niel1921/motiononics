@@ -43,13 +43,18 @@ export default function PlayForMePage() {
   const [editableCurrentChords, setEditableCurrentChords] = useState<string[]>([]);
   const [isEditingPattern, setIsEditingPattern] = useState(false); 
   const [editableRomanPattern, setEditableRomanPattern] = useState<string[]>([]);
+  
 
   // All refs needed 
   const [selectedKey, setSelectedKey] = useState("C Major");
 
-  const [selectedChordGenre, setSelectedChordGenre] = useState<keyof typeof chordPatternsByGenre>("pop");
-  const [selectedChordPatternId, setSelectedChordPatternId] = useState<string>("pop1");
+  const [selectedChordGenre, setSelectedChordGenre] =
+  useState<keyof typeof chordPatternsByGenre>("pop");
 
+  const [selectedChordPatternId, setSelectedChordPatternId] =
+    useState<string>(
+      chordPatternsByGenre["pop"][0].id
+    );
   const [selectedRhythmGenre, setSelectedRhythmGenre] = useState<keyof typeof rhythmPatternsByGenre>("pop");
   const [selectedRhythmPatternId, setSelectedRhythmPatternId] = useState<string>("pop-basic");
 
@@ -207,8 +212,17 @@ export default function PlayForMePage() {
 
 
   useEffect(() => {
-    const basePattern = chordPatternsByGenre[selectedChordGenre].find(p => p.id === selectedChordPatternId)!.romanArray;
-    setEditableRomanPattern([...basePattern]);
+    const patterns = chordPatternsByGenre[selectedChordGenre];
+    const chosen =
+      patterns.find(p => p.id === selectedChordPatternId)
+      ?? patterns[0];
+
+    // if we fell back, sync the ID so the UI buttons stay in sync
+    if (chosen.id !== selectedChordPatternId) {
+      setSelectedChordPatternId(chosen.id);
+    }
+
+    setEditableRomanPattern([...chosen.romanArray]);
     setIsEditingPattern(false);
     setNextChordCell(null);
   }, [selectedChordGenre, selectedChordPatternId]);
@@ -1186,9 +1200,9 @@ export default function PlayForMePage() {
                       transition={{ duration: 0.4 }}
                     >
                       <DndProvider backend={HTML5Backend}>
-                        <div className="mt-4 bg-purple-700 p-3 border border-purple-600 mb-6">
+                        <div className="mt-4 bg-purple-700 p-3 border border-purple-600 rounded mb-6">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-lg font-semibold text-purple-200">
+                            <h3 className="text-lg font-semibold text-purple-200 mb-2">
                               Make my own progression
                             </h3>
                             <Button
@@ -1207,9 +1221,9 @@ export default function PlayForMePage() {
                                 setIsEditingPattern(false);
                                 
                               }}
-                              className="text-sm purple-800 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800"
+                              className="text-sm purple-800 px-2 py-1 mb-2 bg-purple-100 hover:bg-purple-200 text-purple-800"
                             >
-                              Done
+                              Done (Reset Pattern)
                             </Button>
                           </div>
                           <div className="grid grid-cols-8 gap-1">
@@ -1437,16 +1451,17 @@ export default function PlayForMePage() {
     drag(drop(ref));
   
     return (
-      <div
+      <motion.div
+        layout
         ref={ref}
         className={`relative p-2 text-center border hover:bg-purple-200 rounded ${
           isActive ? 'bg-purple-200 border-purple-400' : 'bg-white border-purple-100'
         } ${isEditing ? 'cursor-move' : ''}`}
       >
-        <div className="text-sm font-mono text-purple-800">Beat {index + 1}</div>
-        <div className="font-semibold text-purple-600 mt-1">{chord || '-'}</div>
-        {isEditing && <span className="absolute top-1 right-1 text-xs opacity-50">☰</span>}
-      </div>
-    );
+          <div className="text-sm font-mono text-purple-800">Beat {index + 1}</div>
+          <div className="font-semibold text-purple-600 mt-1">{chord || '-'}</div>
+          {isEditing && <span className="absolute top-1 right-1 text-xs opacity-50">☰</span>}
+      </motion.div>
+      );
   }
 }  
