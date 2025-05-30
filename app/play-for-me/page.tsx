@@ -39,12 +39,6 @@ type DragItem = { index: number; type: string };
 
 export default function PlayForMePage() {
 
-  // Add new state for the editable pattern
-  const [editableCurrentChords, setEditableCurrentChords] = useState<string[]>([]);
-  const [isEditingPattern, setIsEditingPattern] = useState(false); 
-  const [editableRomanPattern, setEditableRomanPattern] = useState<string[]>([]);
-  
-
   // All refs needed 
   const [selectedKey, setSelectedKey] = useState("C Major");
 
@@ -60,6 +54,11 @@ export default function PlayForMePage() {
 
   const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
   const [bpm, setBpm] = useState(90);
+
+  // Drag and Drop states
+  const [editableCurrentChords, setEditableCurrentChords] = useState<string[]>([]);
+  const [isEditingPattern, setIsEditingPattern] = useState(false); 
+  const [editableRomanPattern, setEditableRomanPattern] = useState<string[]>([]);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
@@ -210,14 +209,14 @@ export default function PlayForMePage() {
     };
   }, [webcamEnabled]);
 
-
+  //  --------------------------------------------------------------------
+  // | DRAG AND DROP CHORD HANDLING                                       |
+  //  --------------------------------------------------------------------
   useEffect(() => {
     const patterns = chordPatternsByGenre[selectedChordGenre];
     const chosen =
       patterns.find(p => p.id === selectedChordPatternId)
       ?? patterns[0];
-
-    // if we fell back, sync the ID so the UI buttons stay in sync
     if (chosen.id !== selectedChordPatternId) {
       setSelectedChordPatternId(chosen.id);
     }
@@ -662,7 +661,6 @@ export default function PlayForMePage() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx || notePlayingRef.current) return;
   
-    // guard
     notePlayingRef.current = true;
     setTimeout(() => { notePlayingRef.current = false; }, 300);
   
@@ -1417,6 +1415,8 @@ export default function PlayForMePage() {
       </motion.div>
     </div>
   );
+
+  // BeatCell component for drag-and-drop functionality
 
   function BeatCell({
     index,
