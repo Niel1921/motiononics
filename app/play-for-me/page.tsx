@@ -80,6 +80,7 @@ export default function PlayForMePage() {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 
   const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const recordingRef = useRef(false);
   const pcmLeftRef = useRef<Float32Array[]>([]);
   const pcmRightRef = useRef<Float32Array[]>([]);
 
@@ -221,7 +222,7 @@ export default function PlayForMePage() {
     };
     proc.connect(audioCtx.destination);
     recorderNodeRef.current = proc;
-  
+    recordingRef.current = true;
     setRecording(true);
     setRecordedChords([]);
   }
@@ -230,17 +231,31 @@ export default function PlayForMePage() {
   function stopRecording() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
-  
+    
+    if (pcmLeftRef.current.length === 0) {
+      setErrorMessage("No audio detected. Please play at least one chord before stopping the recording.");
+      return;
+    }  
     if (recorderNodeRef.current) {
-      recorderNodeRef.current.disconnect(audioCtx.destination);
-
-      if (convolverRef.current) {
-        convolverRef.current.disconnect(recorderNodeRef.current);
+      try {
+        recorderNodeRef.current.disconnect(audioCtx.destination);
+      } catch (err) {
+        console.warn("Recorder node wasn't connected to destination:", err);
       }
+      if (convolverRef.current) {
+        try {
+          convolverRef.current.disconnect(recorderNodeRef.current);
+        } catch (err) {
+          console.warn("Convolver wasn't connected to recorder node:", err);
+        }
+      }
+  
       recorderNodeRef.current = null;
     }
-  
+
+    recordingRef.current = false;
     setRecording(false);
+    setErrorMessage(""); 
   
     // flatten the buffers
     const leftArrs  = pcmLeftRef.current;
@@ -466,7 +481,7 @@ export default function PlayForMePage() {
 
     playChord(chords[0], beatDurations[0], velocities[0]);
     setCurrentBeatIndex(0);
-    if (recording) {
+    if (recordingRef.current) {
       setRecordedChords((prev) => [...prev, chords[0]]);
     }
 
@@ -493,7 +508,7 @@ export default function PlayForMePage() {
       const thisVel = velocities[currentBeat];
       playChord(chordToPlay, thisDur, thisVel);
 
-      if (recording) {
+      if (recordingRef.current) {
         setRecordedChords((prev) => [...prev, chordToPlay]);
       }
       beatTimerRef.current = setTimeout(doNext, thisDur);
