@@ -13,6 +13,8 @@ import { Renderer, Stave, StaveNote, Formatter, Voice, Annotation } from 'vexflo
 import { jsPDF } from 'jspdf';
 import { chordPatternsByGenre } from "../data/chordPatterns"
 import { rhythmPatternsByGenre } from "../data/rhythmPatterns"
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   buildEightChordsFromCell,
   getChordsForKey,
@@ -32,20 +34,31 @@ const cardVariants = {
 };
 
 const MAX_CHORDS = 64;
+type DragItem = { index: number; type: string };
+
 
 export default function PlayForMePage() {
 
   // All refs needed 
   const [selectedKey, setSelectedKey] = useState("C Major");
 
-  const [selectedChordGenre, setSelectedChordGenre] = useState<keyof typeof chordPatternsByGenre>("pop");
-  const [selectedChordPatternId, setSelectedChordPatternId] = useState<string>("pop1");
+  const [selectedChordGenre, setSelectedChordGenre] =
+  useState<keyof typeof chordPatternsByGenre>("pop");
 
+  const [selectedChordPatternId, setSelectedChordPatternId] =
+    useState<string>(
+      chordPatternsByGenre["pop"][0].id
+    );
   const [selectedRhythmGenre, setSelectedRhythmGenre] = useState<keyof typeof rhythmPatternsByGenre>("pop");
   const [selectedRhythmPatternId, setSelectedRhythmPatternId] = useState<string>("pop-basic");
 
   const [instrument, setInstrument] = useState<"piano" | "guitar">("piano");
   const [bpm, setBpm] = useState(90);
+
+  // Drag and Drop states
+  const [editableCurrentChords, setEditableCurrentChords] = useState<string[]>([]);
+  const [isEditingPattern, setIsEditingPattern] = useState(false); 
+  const [editableRomanPattern, setEditableRomanPattern] = useState<string[]>([]);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentChordCell, setCurrentChordCell] = useState<number | null>(null);
@@ -80,6 +93,7 @@ export default function PlayForMePage() {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 
   const recorderNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const recordingRef = useRef(false);
   const pcmLeftRef = useRef<Float32Array[]>([]);
   const pcmRightRef = useRef<Float32Array[]>([]);
 
@@ -196,6 +210,42 @@ export default function PlayForMePage() {
   }, [webcamEnabled]);
 
   //  --------------------------------------------------------------------
+  // | DRAG AND DROP CHORD HANDLING                                       |
+  //  --------------------------------------------------------------------
+  useEffect(() => {
+    const patterns = chordPatternsByGenre[selectedChordGenre];
+    const chosen =
+      patterns.find(p => p.id === selectedChordPatternId)
+      ?? patterns[0];
+    if (chosen.id !== selectedChordPatternId) {
+      setSelectedChordPatternId(chosen.id);
+    }
+
+    setEditableRomanPattern([...chosen.romanArray]);
+    setIsEditingPattern(false);
+    setNextChordCell(null);
+  }, [selectedChordGenre, selectedChordPatternId]);
+
+  
+  // Helper to reorder beats
+  const moveBeat = useCallback((from: number, to: number) => {
+    setEditableRomanPattern(prev => {
+      const copy = [...prev];
+      const [moved] = copy.splice(from, 1);
+      copy.splice(to, 0, moved);
+      return copy;
+    });
+    if (currentChordCell !== null) {
+      const newChords = buildEightChordsFromCell(
+        currentChordCell,
+        selectedKey,
+        editableRomanPattern
+      );
+      setEditableCurrentChords(newChords);
+    }
+  }, [currentChordCell, selectedKey, editableRomanPattern]);
+
+  //  --------------------------------------------------------------------
   // | RECORDING HANDLING FUNCTIONs (START, STOP, SAVE)                   |
   //  --------------------------------------------------------------------
 
@@ -221,7 +271,7 @@ export default function PlayForMePage() {
     };
     proc.connect(audioCtx.destination);
     recorderNodeRef.current = proc;
-  
+    recordingRef.current = true;
     setRecording(true);
     setRecordedChords([]);
   }
@@ -230,17 +280,31 @@ export default function PlayForMePage() {
   function stopRecording() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx) return;
-  
+    
+    if (pcmLeftRef.current.length === 0) {
+      setErrorMessage("No audio detected. Please play at least one chord before stopping the recording.");
+      return;
+    }  
     if (recorderNodeRef.current) {
-      recorderNodeRef.current.disconnect(audioCtx.destination);
-
-      if (convolverRef.current) {
-        convolverRef.current.disconnect(recorderNodeRef.current);
+      try {
+        recorderNodeRef.current.disconnect(audioCtx.destination);
+      } catch (err) {
+        console.warn("Recorder node wasn't connected to destination:", err);
       }
+      if (convolverRef.current) {
+        try {
+          convolverRef.current.disconnect(recorderNodeRef.current);
+        } catch (err) {
+          console.warn("Convolver wasn't connected to recorder node:", err);
+        }
+      }
+  
       recorderNodeRef.current = null;
     }
-  
+
+    recordingRef.current = false;
     setRecording(false);
+    setErrorMessage(""); 
   
     // flatten the buffers
     const leftArrs  = pcmLeftRef.current;
@@ -434,19 +498,13 @@ export default function PlayForMePage() {
     setCurrentChordCell(cellIndex);
     setIsPlaying(true);
 
-    const patternList = chordPatternsByGenre[selectedChordGenre];
-    const chosenChordPattern =
-      patternList.find((p) => p.id === selectedChordPatternId) || patternList[0];
-
-    const spelledChords = buildEightChordsFromCell(
-      cellIndex,
-      selectedKey,
-      chosenChordPattern.romanArray
-    );
-    setCurrentChords(spelledChords);
+    const chosenPattern = chordPatternsByGenre[selectedChordGenre].find(p => p.id === selectedChordPatternId)!;
+    const baseRoman = isEditingPattern ? editableRomanPattern : chosenPattern.romanArray;
+    const spelled = buildEightChordsFromCell(cellIndex, selectedKey, baseRoman);
+    setCurrentChords(spelled);
+    setEditableCurrentChords(spelled);
     setCurrentBeatIndex(0);
-
-    playPattern(spelledChords);
+    playPattern(spelled);
   }
 
   // Play the pattern 
@@ -466,7 +524,7 @@ export default function PlayForMePage() {
 
     playChord(chords[0], beatDurations[0], velocities[0]);
     setCurrentBeatIndex(0);
-    if (recording) {
+    if (recordingRef.current) {
       setRecordedChords((prev) => [...prev, chords[0]]);
     }
 
@@ -493,7 +551,7 @@ export default function PlayForMePage() {
       const thisVel = velocities[currentBeat];
       playChord(chordToPlay, thisDur, thisVel);
 
-      if (recording) {
+      if (recordingRef.current) {
         setRecordedChords((prev) => [...prev, chordToPlay]);
       }
       beatTimerRef.current = setTimeout(doNext, thisDur);
@@ -603,7 +661,6 @@ export default function PlayForMePage() {
     const audioCtx = audioContextRef.current;
     if (!audioCtx || notePlayingRef.current) return;
   
-    // guard
     notePlayingRef.current = true;
     setTimeout(() => { notePlayingRef.current = false; }, 300);
   
@@ -789,6 +846,11 @@ export default function PlayForMePage() {
                 {/* Key */}
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Key</h3>
+
+                  <Link href="/tutorials/chord-modes">
+                    <Button className="bg-purple-500 hover:bg-purple-600 text-white">Learn more!</Button>
+                  </Link>
+
                   <CircleOfFifths selectedKey={selectedKey} onSelectKey={setSelectedKey} />
                 </div>
 
@@ -796,7 +858,7 @@ export default function PlayForMePage() {
               </CardContent>
             </Card>
   
-            {/* Updated Record-For-Me Card */}
+            {/* Record-For-Me Card */}
             <motion.div
               className="bg-white shadow-md rounded-lg overflow-hidden mb-6"
               initial={{ opacity: 0, y: 20 }}
@@ -1101,23 +1163,84 @@ export default function PlayForMePage() {
                         </div>
                       )}
 
-                      <AnimatePresence>
-                        {currentChordCell !== null && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="absolute left-4 top-4 bg-purple-600/80 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg"
-                          >
-                            <p className="font-semibold">
-                              Now Playing: {currentChords[currentBeatIndex]}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      
                     </>
                   )}
                 </div>
+                <AnimatePresence>
+                  {!isEditingPattern && (
+                    <motion.div
+                      key="edit-button"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-4 flex justify-center"
+                    >
+                      <Button
+                        onClick={() => setIsEditingPattern(true)}
+                        className="text-sm px-2 py-1 bg-purple-700 hover:bg-purple-500 rounded m-1"
+                      >
+                        Edit this progression
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* DRAG-AND-DROP EDITOR (when editing) */}
+                <AnimatePresence>
+                  {isEditingPattern && (
+                    <motion.div
+                      key="editor"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <DndProvider backend={HTML5Backend}>
+                        <div className="mt-4 bg-purple-700 p-3 border border-purple-600 rounded mb-6">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-purple-200 mb-2">
+                              Make my own progression
+                            </h3>
+                            <Button
+                              onClick={() => {
+
+                                if (currentChordCell !== null) {
+                                  const newChords = buildEightChordsFromCell(
+                                    currentChordCell,
+                                    selectedKey,
+                                    editableRomanPattern
+                                  );
+                                  setCurrentChords(newChords);
+                                  setEditableCurrentChords(newChords);
+                                }
+                                setNextChordCell(null);
+                                setIsEditingPattern(false);
+                                
+                              }}
+                              className="text-sm purple-800 px-2 py-1 mb-2 bg-purple-100 hover:bg-purple-200 text-purple-800"
+                            >
+                              Done (Reset Pattern)
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-8 gap-1">
+                            {editableRomanPattern.map((chord, i) => (
+                              <BeatCell
+                                key={i}
+                                index={i}
+                                chord={chord}
+                                isActive={currentBeatIndex === i}
+                                isEditing={true}
+                                moveBeat={moveBeat}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </DndProvider>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Pattern & Rhythm Selections */}
                 <div className="mt-4 bg-purple-50 p-3 border border-purple-200 rounded">
@@ -1140,6 +1263,7 @@ export default function PlayForMePage() {
                     ))}
                   </div>
                 </div>
+                {/* Rhythm and Chord Pattern Selection */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-purple-700 mb-2">Rhythm Genre</h3>
                   <div className="flex gap-2 mb-4">
@@ -1164,15 +1288,20 @@ export default function PlayForMePage() {
                       <Button
                         key={rp.id}
                         onClick={() => setSelectedRhythmPatternId(rp.id)}
-                        className={
-                          selectedRhythmPatternId === rp.id
-                            ? "bg-purple-600 text-white px-4 py-6 text-left justify-start"
-                            : "bg-purple-100 text-purple-800 px-4 py-6 text-left justify-start"
-                        }
+                        className={`
+                          w-full
+                          flex flex-col items-start
+                          px-4 py-10
+                          ${
+                            selectedRhythmPatternId === rp.id
+                              ? "bg-purple-600 text-white"
+                              : "bg-purple-100 text-purple-800"
+                          }
+                        `}
                       >
-                        <div>
-                          <div className="font-medium">{rp.name}</div>
-                          <div className="text-xs">{rp.description}</div>
+                        <div className="font-medium text-sm">{rp.name}</div>
+                        <div className="text-s whitespace-normal break-words">
+                          {rp.description}
                         </div>
                       </Button>
                     ))}
@@ -1203,15 +1332,18 @@ export default function PlayForMePage() {
                       <Button
                         key={cp.id}
                         onClick={() => setSelectedChordPatternId(cp.id)}
-                        className={
-                          selectedChordPatternId === cp.id
-                            ? "bg-purple-600 text-white px-4 py-6 text-left justify-start"
-                            : "bg-purple-100 text-purple-800 px-4 py-6 text-left justify-start"
-                        }
+                        className={`
+                          w-full
+                          px-2 py-10 
+                          flex flex-col items-start
+                          ${selectedChordPatternId === cp.id
+                            ? "bg-purple-600 text-white"
+                            : "bg-purple-100 text-purple-800"}
+                        `}
                       >
-                        <div>
-                          <div className="font-medium">{cp.name}</div>
-                          <div className="text-xs">{cp.description}</div>
+                        <div className="font-medium text-sm">{cp.name}</div>
+                        <div className="text-s whitespace-normal ">
+                          {cp.description}
                         </div>
                       </Button>
                     ))}
@@ -1283,4 +1415,53 @@ export default function PlayForMePage() {
       </motion.div>
     </div>
   );
-}
+
+  // BeatCell component for drag-and-drop functionality
+
+  function BeatCell({
+    index,
+    chord,
+    isActive,
+    isEditing,
+    moveBeat,
+  }: {
+    index: number;
+    chord: string;
+    isActive: boolean;
+    isEditing: boolean;
+    moveBeat: (from: number, to: number) => void;
+  }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [, drag] = useDrag<DragItem, void, unknown>({
+      type: 'BEAT',
+      item: { index } as DragItem,
+      canDrag: isEditing,
+    });
+    const [, drop] = useDrop<DragItem, void, unknown>({
+
+      accept: 'BEAT',
+      canDrop: () => isEditing,
+      hover: (item: DragItem) => {
+        if (item.index !== index) {
+          moveBeat(item.index, index);
+          item.index = index;
+        }
+      }
+    });
+    drag(drop(ref));
+  
+    return (
+      <motion.div
+        layout
+        ref={ref}
+        className={`relative p-2 text-center border hover:bg-purple-200 rounded ${
+          isActive ? 'bg-purple-200 border-purple-400' : 'bg-white border-purple-100'
+        } ${isEditing ? 'cursor-move' : ''}`}
+      >
+          <div className="text-sm font-mono text-purple-800">Beat {index + 1}</div>
+          <div className="font-semibold text-purple-600 mt-1">{chord || '-'}</div>
+          {isEditing && <span className="absolute top-1 right-1 text-xs opacity-50">☰</span>}
+      </motion.div>
+      );
+  }
+}  
