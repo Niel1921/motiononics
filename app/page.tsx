@@ -12,6 +12,7 @@ import ThreeThereminVisualizer from "../components/ThreeThereminVisualizer";
 import Header from "@/components/ui/header";
 import { keySignatures } from "./data/keySignatures";
 import CircleOfFifths from "@/components/CircleOfFifths";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
     NOTE_TO_SEMITONE,
@@ -363,6 +364,31 @@ export default function Page() {
   const thereminFilterRef = useRef<BiquadFilterNode | null>(null);
   const thereminVibratoOscRef = useRef<OscillatorNode | null>(null);
   const thereminVibratoGainRef = useRef<GainNode | null>(null);
+
+const stopTheremin = () => {
+  if (thereminOscillatorRef.current) {
+    try { thereminOscillatorRef.current.stop(); } catch {}
+    thereminOscillatorRef.current.disconnect();
+    thereminOscillatorRef.current = null;
+  }
+  if (thereminVibratoOscRef.current) {
+    try { thereminVibratoOscRef.current.stop(); } catch {}
+    thereminVibratoOscRef.current.disconnect();
+    thereminVibratoOscRef.current = null;
+  }
+  thereminGainRef.current        = null;
+  thereminFilterRef.current      = null;
+  thereminVibratoGainRef.current = null;
+};
+
+  const pathname = usePathname();
+  useEffect(() => {
+    return () => {
+      // As soon as the Page component unmounts (i.e. user clicks any <Link> to navigate away),
+      // call stopTheremin so the oscillator is shut off immediately.
+      stopTheremin();
+    };
+  }, []); 
 
   useEffect(() => {
     const audioCtx = audioCtxRef.current;
