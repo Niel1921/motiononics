@@ -384,8 +384,6 @@ const stopTheremin = () => {
   const pathname = usePathname();
   useEffect(() => {
     return () => {
-      // As soon as the Page component unmounts (i.e. user clicks any <Link> to navigate away),
-      // call stopTheremin so the oscillator is shut off immediately.
       stopTheremin();
     };
   }, []); 
